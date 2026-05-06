@@ -1,0 +1,49 @@
+{
+  "name": "Customer",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Customer full name"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email address"
+    },
+    "last_visit_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of last visit"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags like VIP, lapsed, new, etc."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "lost",
+        "reactivated"
+      ],
+      "default": "active",
+      "description": "Customer status"
+    },
+    "revenue": {
+      "type": "number",
+      "default": 0,
+      "description": "Total revenue from this customer"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

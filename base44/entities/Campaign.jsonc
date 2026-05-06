@@ -1,0 +1,79 @@
+{
+  "name": "Campaign",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Campaign name"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "sms",
+        "email",
+        "both"
+      ],
+      "default": "both",
+      "description": "Message channel"
+    },
+    "sms_message": {
+      "type": "string",
+      "description": "SMS message content"
+    },
+    "email_subject": {
+      "type": "string",
+      "description": "Email subject line"
+    },
+    "email_body": {
+      "type": "string",
+      "description": "Email body content"
+    },
+    "segment_filter": {
+      "type": "object",
+      "description": "Filter criteria for target segment"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When to send"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "scheduled",
+        "sending",
+        "sent",
+        "cancelled"
+      ],
+      "default": "draft"
+    },
+    "total_recipients": {
+      "type": "number",
+      "default": 0
+    },
+    "sent_count": {
+      "type": "number",
+      "default": 0
+    },
+    "replied_count": {
+      "type": "number",
+      "default": 0
+    },
+    "came_back_count": {
+      "type": "number",
+      "default": 0
+    },
+    "revenue_recovered": {
+      "type": "number",
+      "default": 0
+    },
+    "webhook_url": {
+      "type": "string",
+      "description": "n8n webhook URL for sending"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
