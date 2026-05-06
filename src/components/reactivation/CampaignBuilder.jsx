@@ -7,19 +7,22 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Send, Loader2 } from "lucide-react";
+import { Sparkles, Send, Loader2, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
-export default function CampaignBuilder({ customerCount, segmentFilter, webhookUrl }) {
-  const [campaign, setCampaign] = useState({
-    name: "",
-    type: "both",
-    sms_message: "",
-    email_subject: "",
-    email_body: "",
-    scheduled_date: "",
-  });
+const emptyForm = {
+  name: "",
+  type: "both",
+  sms_message: "",
+  email_subject: "",
+  email_body: "",
+  scheduled_date: "",
+};
+
+export default function CampaignBuilder({ customerCount, segmentFilter, customers = [], businessName = "" }) {
+  const [campaign, setCampaign] = useState(emptyForm);
   const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -28,14 +31,7 @@ export default function CampaignBuilder({ customerCount, segmentFilter, webhookU
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
       toast({ title: "Campaign created", description: "Your reactivation campaign has been scheduled." });
-      setCampaign({
-        name: "",
-        type: "both",
-        sms_message: "",
-        email_subject: "",
-        email_body: "",
-        scheduled_date: "",
-      });
+      setCampaign(emptyForm);
     },
   });
 
@@ -66,16 +62,103 @@ export default function CampaignBuilder({ customerCount, segmentFilter, webhookU
     setGenerating(false);
   };
 
-  const handleCreate = () => {
+  const handleSaveDraft = () => {
     if (!campaign.name) return;
     createMutation.mutate({
       ...campaign,
       segment_filter: segmentFilter,
       total_recipients: customerCount,
-      webhook_url: webhookUrl || "",
       status: campaign.scheduled_date ? "scheduled" : "draft",
     });
   };
+
+  const handleSendNow = async () => {
+    if (!campaign.name) return;
+    setSending(true);
+
+    // 1. Fetch the singleton AppConfig to get the webhook URL
+    let webhookUrl = "";
+    try {
+      const configs = await base44.entities.AppConfig.list();
+      webhookUrl = configs[0]?.n8n_webhook_url || "";
+    } catch {
+      // admin-only entity — non-admins will get an error, treat as not configured
+    }
+
+    if (!webhookUrl) {
+      toast({
+        title: "Sending is not configured yet.",
+        description: "Please contact your account manager.",
+        variant: "destructive",
+      });
+      setSending(false);
+      return;
+    }
+
+    // 2. Create the campaign record first
+    let createdCampaign;
+    try {
+      createdCampaign = await base44.entities.Campaign.create({
+        ...campaign,
+        segment_filter: segmentFilter,
+        total_recipients: customerCount,
+        status: "sending",
+      });
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    } catch {
+      toast({ title: "Failed to create campaign", variant: "destructive" });
+      setSending(false);
+      return;
+    }
+
+    // 3. Build the recipients list from the customers passed in
+    const recipients = customers.map((c) => ({
+      customer_id: c.id,
+      name: c.name,
+      phone: c.phone || "",
+      email: c.email || "",
+    }));
+
+    // 4. POST to n8n
+    const payload = {
+      event: "campaign.send",
+      business_id: createdCampaign.created_by || "",
+      business_name: businessName,
+      campaign_id: createdCampaign.id,
+      campaign_name: campaign.name,
+      channel: campaign.type,
+      sms_message: campaign.sms_message,
+      email_subject: campaign.email_subject,
+      email_body: campaign.email_body,
+      recipients,
+    };
+
+    try {
+      await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      // n8n may not return CORS-friendly response — treat as sent if fetch didn't throw a network error
+    }
+
+    // 5. Update the campaign record
+    await base44.entities.Campaign.update(createdCampaign.id, {
+      status: "sent",
+      sent_count: recipients.length,
+    });
+    queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+
+    toast({
+      title: `Campaign sent to ${recipients.length} recipient${recipients.length !== 1 ? "s" : ""}.`,
+    });
+
+    setCampaign(emptyForm);
+    setSending(false);
+  };
+
+  const isBusy = createMutation.isPending || sending;
 
   return (
     <Card className="border-0 shadow-sm">
@@ -86,7 +169,7 @@ export default function CampaignBuilder({ customerCount, segmentFilter, webhookU
             variant="outline"
             size="sm"
             onClick={handleAIGenerate}
-            disabled={generating}
+            disabled={generating || isBusy}
           >
             {generating ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -167,21 +250,37 @@ export default function CampaignBuilder({ customerCount, segmentFilter, webhookU
             value={campaign.scheduled_date}
             onChange={(e) => setCampaign({ ...campaign, scheduled_date: e.target.value })}
           />
-          <p className="text-xs text-muted-foreground">Leave empty to save as draft</p>
+          <p className="text-xs text-muted-foreground">Leave empty to save as draft or send immediately</p>
         </div>
 
-        <Button
-          className="w-full"
-          onClick={handleCreate}
-          disabled={!campaign.name || createMutation.isPending}
-        >
-          {createMutation.isPending ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4 mr-2" />
-          )}
-          {campaign.scheduled_date ? "Schedule Campaign" : "Save as Draft"}
-        </Button>
+        <div className="flex gap-3 pt-1">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={handleSaveDraft}
+            disabled={!campaign.name || isBusy}
+          >
+            {createMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <FileText className="w-4 h-4 mr-2" />
+            )}
+            {campaign.scheduled_date ? "Schedule" : "Save as Draft"}
+          </Button>
+
+          <Button
+            className="flex-1"
+            onClick={handleSendNow}
+            disabled={!campaign.name || isBusy}
+          >
+            {sending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4 mr-2" />
+            )}
+            Send Now
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

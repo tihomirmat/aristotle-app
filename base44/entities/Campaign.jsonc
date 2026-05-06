@@ -67,10 +67,6 @@
     "revenue_recovered": {
       "type": "number",
       "default": 0
-    },
-    "webhook_url": {
-      "type": "string",
-      "description": "n8n webhook URL for sending"
     }
   },
   "required": [

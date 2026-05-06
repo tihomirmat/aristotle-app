@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,7 +25,7 @@ export default function Reactivation() {
     queryFn: () => base44.entities.BusinessSettings.list(),
   });
 
-  const webhookUrl = settings[0]?.webhook_url || "";
+  const businessName = settings[0]?.business_name || "";
 
   return (
     <div>
@@ -52,7 +52,8 @@ export default function Reactivation() {
           <CampaignBuilder
             customerCount={customers.length}
             segmentFilter={{}}
-            webhookUrl={webhookUrl}
+            customers={customers}
+            businessName={businessName}
           />
         </TabsContent>
 

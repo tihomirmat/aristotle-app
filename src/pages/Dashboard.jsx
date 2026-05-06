@@ -17,6 +17,12 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Campaign.list(),
   });
 
+  const { data: user } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => base44.auth.me(),
+  });
+  const isAdmin = user?.role === "admin";
+
   const now = new Date();
   const monthStart = startOfMonth(now);
 
@@ -89,7 +95,9 @@ export default function Dashboard() {
           <CardContent className="space-y-3">
             <QuickAction label="Import Customer Database" desc="Upload CSV with your customer list" href="/reactivation" />
             <QuickAction label="Create Reactivation Campaign" desc="Win back lapsed customers" href="/reactivation" />
-            <QuickAction label="Configure Webhook" desc="Connect to n8n automation" href="/settings" />
+            {isAdmin && (
+              <QuickAction label="Configure Webhook" desc="Manage central n8n integration" href="/settings" />
+            )}
           </CardContent>
         </Card>
       </div>

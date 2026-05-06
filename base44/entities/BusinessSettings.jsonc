@@ -19,10 +19,6 @@
       ],
       "description": "Type of business"
     },
-    "webhook_url": {
-      "type": "string",
-      "description": "n8n webhook URL for campaign sends"
-    },
     "phone_number": {
       "type": "string",
       "description": "Business phone number"
