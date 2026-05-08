@@ -8,12 +8,8 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen bg-background font-inter">
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-      <main
-        className={`transition-all duration-300 min-h-screen ${
-          collapsed ? "ml-[68px]" : "ml-[260px]"
-        }`}
-      >
-        <div className="p-6 md:p-8 max-w-7xl">
+      <main className={`transition-all duration-300 min-h-screen ${collapsed ? "ml-[68px]" : "ml-[240px]"}`}>
+        <div className="p-6 md:p-8 max-w-5xl">
           <Outlet />
         </div>
       </main>

@@ -1,121 +1,114 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Users, UserPlus, Star, PhoneMissed, DollarSign } from "lucide-react";
-import KpiCard from "@/components/dashboard/KpiCard";
+import { useBusiness } from "@/lib/business-context";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { differenceInDays, startOfMonth } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Lock, Mail, Star, Globe, MessageSquare, Bot, BarChart3, ArrowRight } from "lucide-react";
+
+const PILLARS = [
+  { key: "pillar_reactivation", label: "Reaktivacija strank", desc: "Avtomatska reaktivacija neaktivnih strank po e-pošti.", icon: Mail, color: "bg-blue-500", href: "/prejeto", stat_label: "sporočil ta teden", plans: ["starter","growth","scale"] },
+  { key: "pillar_reviews", label: "Ocene & napotitve", desc: "Avtomatske prošnje za Google ocene in napotitve.", icon: Star, color: "bg-amber-500", href: "/ocene", stat_label: "prošenj ta teden", plans: ["starter","growth","scale"] },
+  { key: "pillar_leads", label: "Pridobivanje strank", desc: "Avtomatska nega potencialnih strank iz spletnega obrazca.", icon: Globe, color: "bg-emerald-500", href: "/stranke", stat_label: "novih strank ta teden", plans: ["starter","growth","scale"] },
+  { key: "pillar_chatbot", label: "Klepetalni pomočnik", desc: "AI klepetalni widget na vašem spletnem mestu.", icon: MessageSquare, color: "bg-violet-500", href: "/klepet", stat_label: "pogovorov ta teden", plans: ["starter","growth","scale"] },
+  { key: "pillar_assistant", label: "Osebni asistent", desc: "AI asistent za upravljanje terminov in dnevnih nalog.", icon: Bot, color: "bg-rose-500", href: "/asistent", stat_label: "akcij ta teden", plans: ["growth","scale"], min_plan: "growth" },
+  { key: "pillar_digest", label: "Tedenski povzetek", desc: "Avtomatski tedenski poročili vsak ponedeljek.", icon: BarChart3, color: "bg-indigo-500", href: "/asistent", stat_label: "poročil", plans: ["scale"], min_plan: "scale" },
+];
+
+const PLAN_ORDER = ["free", "starter", "growth", "scale"];
+
+function planGte(userPlan, minPlan) {
+  return PLAN_ORDER.indexOf(userPlan) >= PLAN_ORDER.indexOf(minPlan);
+}
 
 export default function Dashboard() {
-  const { data: customers = [] } = useQuery({
-    queryKey: ["customers"],
-    queryFn: () => base44.entities.Customer.list(),
+  const { business } = useBusiness();
+  const queryClient = useQueryClient();
+
+  const { data: drafts = [] } = useQuery({
+    queryKey: ["drafts", business?.id],
+    queryFn: () => base44.entities.DraftMessage.filter({ business_id: business.id, status: "pending" }),
+    enabled: !!business?.id,
   });
 
-  const { data: campaigns = [] } = useQuery({
-    queryKey: ["campaigns"],
-    queryFn: () => base44.entities.Campaign.list(),
+  const toggleMutation = useMutation({
+    mutationFn: ({ key, val }) => base44.entities.Business.update(business.id, { [key]: val }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["business"] }),
   });
 
-  const { data: user } = useQuery({
-    queryKey: ["me"],
-    queryFn: () => base44.auth.me(),
-  });
-  const isAdmin = user?.role === "admin";
-
-  const now = new Date();
-  const monthStart = startOfMonth(now);
-
-  const totalCustomers = customers.length;
-  const leadsThisMonth = customers.filter(
-    (c) => new Date(c.created_date) >= monthStart
-  ).length;
-  const lapsedCustomers = customers.filter(
-    (c) => c.last_visit_date && differenceInDays(now, new Date(c.last_visit_date)) > 90
-  ).length;
-  const reactivatedCount = customers.filter((c) => c.status === "reactivated").length;
-  const revenueRecovered = campaigns.reduce((sum, c) => sum + (c.revenue_recovered || 0), 0);
-
-  const kpis = [
-    { label: "Customers in Database", value: totalCustomers, icon: Users, color: "bg-indigo-500", trend: 12 },
-    { label: "Leads This Month", value: leadsThisMonth, icon: UserPlus, color: "bg-emerald-500", trend: 8 },
-    { label: "Lapsed (90+ days)", value: lapsedCustomers, icon: PhoneMissed, color: "bg-amber-500", trend: -5 },
-    { label: "Reactivated", value: reactivatedCount, icon: Star, color: "bg-violet-500", trend: 22 },
-    { label: "Revenue Recovered", value: `$${revenueRecovered.toLocaleString()}`, icon: DollarSign, color: "bg-rose-500", trend: 15 },
-  ];
-
-  const recentCampaigns = campaigns.slice(0, 5);
+  const plan = business?.plan || "starter";
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Welcome back. Here's your business overview.</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Pregled</h1>
+        <p className="text-muted-foreground mt-1">Dobrodošli. Tukaj je pregled vašega sistema.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
-        {kpis.map((kpi) => (
-          <KpiCard key={kpi.label} {...kpi} />
-        ))}
-      </div>
+      {drafts.length > 0 && (
+        <Link to="/prejeto" className="block mb-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between hover:bg-amber-100 transition-colors">
+            <div>
+              <p className="font-semibold text-amber-900">Imate {drafts.length} sporočil za pregled</p>
+              <p className="text-sm text-amber-700">Kliknite za odobritev ali urejanje.</p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-amber-700 shrink-0" />
+          </div>
+        </Link>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Recent Campaigns</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentCampaigns.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                No campaigns yet. Create one in Database Reactivation.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {recentCampaigns.map((campaign) => (
-                  <div key={campaign.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-sm">{campaign.name}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{campaign.status} · {campaign.type}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {PILLARS.map((pillar) => {
+          const enabled = business?.[pillar.key] || false;
+          const canUse = !pillar.min_plan || planGte(plan, pillar.min_plan);
+          const Icon = pillar.icon;
+
+          return (
+            <Card key={pillar.key} className={`border-0 shadow-sm transition-opacity ${!enabled && canUse ? "opacity-60" : ""}`}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-lg ${pillar.color} flex items-center justify-center shrink-0`}>
+                      <Icon className="w-4 h-4 text-white" />
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold">{campaign.sent_count || 0} sent</p>
-                      <p className="text-xs text-muted-foreground">{campaign.replied_count || 0} replied</p>
+                    <div>
+                      <CardTitle className="text-sm font-semibold">{pillar.label}</CardTitle>
+                      {!canUse && (
+                        <Badge variant="outline" className="text-xs mt-0.5 border-amber-300 text-amber-600">
+                          <Lock className="w-2.5 h-2.5 mr-1" />
+                          {pillar.min_plan === "growth" ? "Growth+" : "Scale"}
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <QuickAction label="Import Customer Database" desc="Upload CSV with your customer list" href="/reactivation" />
-            <QuickAction label="Create Reactivation Campaign" desc="Win back lapsed customers" href="/reactivation" />
-            {isAdmin && (
-              <QuickAction label="Configure Webhook" desc="Manage central n8n integration" href="/settings" />
-            )}
-          </CardContent>
-        </Card>
+                  {canUse && business?.id && (
+                    <Switch checked={enabled} onCheckedChange={(v) => toggleMutation.mutate({ key: pillar.key, val: v })} />
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-4">{pillar.desc}</p>
+                {!canUse ? (
+                  <Button size="sm" variant="outline" className="w-full border-amber-300 text-amber-700 hover:bg-amber-50" asChild>
+                    <Link to="/nastavitve?tab=billing">Nadgradi načrt</Link>
+                  </Button>
+                ) : enabled ? (
+                  <Button size="sm" variant="outline" className="w-full" asChild>
+                    <Link to={pillar.href}>Odpri <ArrowRight className="w-3.5 h-3.5 ml-1" /></Link>
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="ghost" className="w-full text-muted-foreground" onClick={() => toggleMutation.mutate({ key: pillar.key, val: true })}>
+                    Aktiviraj
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
-  );
-}
-
-function QuickAction({ label, desc, href }) {
-  return (
-    <a
-      href={href}
-      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-accent transition-colors group"
-    >
-      <div>
-        <p className="font-medium text-sm group-hover:text-accent-foreground">{label}</p>
-        <p className="text-xs text-muted-foreground">{desc}</p>
-      </div>
-      <span className="text-muted-foreground group-hover:text-accent-foreground">→</span>
-    </a>
   );
 }
