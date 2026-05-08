@@ -9,7 +9,9 @@ import { useBusiness } from "@/lib/business-context";
 
 export default function Sidebar({ collapsed, setCollapsed }) {
   const location = useLocation();
-  const { business, user } = useBusiness();
+  const ctx = useBusiness();
+  const business = ctx?.business;
+  const user = ctx?.user;
   const isAdmin = user?.role === "admin";
   const plan = business?.plan || "starter";
   const PLAN_ORDER = ["free", "starter", "growth", "scale"];
