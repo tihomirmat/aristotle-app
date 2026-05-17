@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User } from "lucide-react";
+import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2 } from "lucide-react";
+import { seedDemoData } from "@/functions/seedDemoData";
+import { clearDemoData } from "@/functions/clearDemoData";
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams } from "react-router-dom";
 
@@ -74,6 +76,21 @@ export default function Nastavitve() {
   });
 
   const isHealthOk = business?.email_last_health_check_status === "ok";
+  const [demoLoading, setDemoLoading] = useState(null); // 'seed' | 'clear' | null
+
+  const handleSeedDemo = async () => {
+    setDemoLoading('seed');
+    await seedDemoData({ business_id: business.id });
+    setDemoLoading(null);
+    toast({ title: "Demo podatki uspešno naloženi!" });
+  };
+
+  const handleClearDemo = async () => {
+    setDemoLoading('clear');
+    await clearDemoData({ business_id: business.id });
+    setDemoLoading(null);
+    toast({ title: "Vsi demo zapisi so bili izbrisani." });
+  };
 
   return (
     <div>
@@ -112,6 +129,24 @@ export default function Nastavitve() {
               {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Shrani spremembe
             </Button>
+
+            {/* DEMO PODATKI */}
+            <div className="border rounded-xl p-5 bg-card shadow-sm mt-6">
+              <h3 className="font-semibold mb-1">Demo podatki</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Napolnite aplikacijo z primernimi demo podatki za predstavitev ali testiranje. Vse demo zapise lahko kasneje s pritiskom enega gumba popolnoma zbrišete.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={handleSeedDemo} disabled={!!demoLoading} className="gap-2">
+                  {demoLoading === 'seed' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
+                  Napolni demo podatke
+                </Button>
+                <Button onClick={handleClearDemo} disabled={!!demoLoading} variant="outline" className="gap-2 text-destructive border-destructive/40 hover:bg-destructive/5">
+                  {demoLoading === 'clear' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  Izbriši demo podatke
+                </Button>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
