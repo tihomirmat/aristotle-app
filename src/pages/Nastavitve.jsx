@@ -175,9 +175,12 @@ export default function Nastavitve() {
 
             {/* DEMO PODATKI */}
             <div className="border rounded-xl p-5 bg-card shadow-sm mt-6">
-              <h3 className="font-semibold mb-1">Demo podatki</h3>
+              <div className="flex items-center gap-2 mb-2">
+                <Database className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold">Demo podatki</h3>
+              </div>
               <p className="text-sm text-muted-foreground mb-4">
-                Napolnite aplikacijo z primernimi demo podatki za predstavitev ali testiranje. Vse demo zapise lahko kasneje s pritiskom enega gumba popolnoma zbrišete.
+                Napolnite aplikacijo s primernimi demo podatki za predstavitev. Vse demo zapise lahko kasneje s pritiskom enega gumba popolnoma zbrišete.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button onClick={handleSeedDemo} disabled={!!demoLoading} className="gap-2">
