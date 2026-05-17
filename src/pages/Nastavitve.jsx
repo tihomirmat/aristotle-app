@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Database } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -22,6 +23,7 @@ const PLAN_COLORS = { free: "bg-gray-100 text-gray-600", starter: "bg-blue-100 t
 export default function Nastavitve() {
   const { business } = useBusiness();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "profil";
@@ -227,13 +229,13 @@ export default function Nastavitve() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Ali ste prepričani?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        To bo trajno zbrisalo vse demo zapise (stranke, sporočila, termine, znanje baze itd.) kjer je <strong>is_demo = true</strong>. Tega dejanja ni mogoče razveljaviti.
+                        To bo zbrisalo vse demo zapise v aplikaciji.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Prekliči</AlertDialogCancel>
                       <AlertDialogAction onClick={handleClearDemo} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Da, zbriši vse
+                        Da, zbriši
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
