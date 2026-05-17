@@ -13,9 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2 } from "lucide-react";
 import { seedDemoData } from "@/functions/seedDemoData";
 import { clearDemoData } from "@/functions/clearDemoData";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const INDUSTRY_LABELS = { gym: "Fitnes / Gym", dental_medspa: "Zobozdravstvo / Med Spa", home_services: "Domače storitve", restaurant: "Restavracija / Café", salon_barber: "Salon / Frizerstvo", auto: "Avto storitve", other: "Drugo" };
 const PLAN_LABELS = { free: "Brezplačno", starter: "Starter", growth: "Growth", scale: "Scale" };
@@ -25,6 +25,7 @@ export default function Nastavitve() {
   const { business } = useBusiness();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "profil";
 
@@ -78,34 +79,20 @@ export default function Nastavitve() {
 
   const isHealthOk = business?.email_last_health_check_status === "ok";
   const [demoLoading, setDemoLoading] = useState(null); // 'seed' | 'clear' | null
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [demoCount, setDemoCount] = useState(null);
 
   const handleSeedDemo = async () => {
     setDemoLoading('seed');
     await seedDemoData({ business_id: business.id });
     setDemoLoading(null);
-    toast({ title: "Demo podatki uspešno naloženi!" });
+    toast({ title: "Demo podatki ustvarjeni" });
+    navigate("/");
   };
 
-  const handleClearClick = async () => {
-    setDemoLoading('counting');
-    const entities = ['Lead', 'DraftMessage', 'KnowledgeBase', 'ChatbotConversation', 'AssistantChat', 'AssistantBriefing', 'BookingProposal', 'ConfirmedBooking', 'ExecutiveDigest'];
-    const counts = await Promise.all(entities.map((e) =>
-      base44.entities[e].filter({ business_id: business.id, is_demo: true }).then((r) => r.length).catch(() => 0)
-    ));
-    setDemoCount(counts.reduce((a, b) => a + b, 0));
-    setDemoLoading(null);
-    setShowClearConfirm(true);
-  };
-
-  const handleClearConfirmed = async () => {
-    setShowClearConfirm(false);
+  const handleClearDemo = async () => {
     setDemoLoading('clear');
     await clearDemoData({ business_id: business.id });
     setDemoLoading(null);
-    setDemoCount(null);
-    toast({ title: "Vsi demo zapisi so bili izbrisani." });
+    toast({ title: "Demo podatki počiščeni" });
   };
 
   return (
@@ -157,29 +144,30 @@ export default function Nastavitve() {
                   {demoLoading === 'seed' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
                   Napolni demo podatke
                 </Button>
-                <Button onClick={handleClearClick} disabled={!!demoLoading} variant="destructive" className="gap-2">
-                  {(demoLoading === 'clear' || demoLoading === 'counting') ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  Počisti demo podatke
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button disabled={!!demoLoading} variant="destructive" className="gap-2">
+                      {demoLoading === 'clear' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      Počisti demo podatke
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Ali ste prepričani?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        To bo trajno zbrisalo vse demo zapise (stranke, sporočila, termine, znanje baze itd.) kjer je <strong>is_demo = true</strong>. Tega dejanja ni mogoče razveljaviti.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Prekliči</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleClearDemo} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Da, zbriši vse
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
-
-            <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Ali ste prepričani?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    To bo trajno zbrisalo <strong>{demoCount} demo zapisov</strong> iz vseh razdelkov aplikacije. Tega dejanja ni mogoče razveljaviti.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Prekliči</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleClearConfirmed} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-                    Da, zbriši vse
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </div>
         </TabsContent>
 
