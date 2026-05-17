@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, X, Pencil, Mail, Loader2, Inbox } from "lucide-react";
 import { format } from "date-fns";
+import DemoMessageModal from "@/components/prejeto/DemoMessageModal";
 
 const PILLAR_LABELS = {
   reactivation: "Reaktivacija",
@@ -27,6 +28,7 @@ export default function Prejeto() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [showDemo, setShowDemo] = useState(false);
 
   const { data: drafts = [], isLoading } = useQuery({
     queryKey: ["drafts-pending", business?.id],
@@ -68,11 +70,16 @@ export default function Prejeto() {
         <p className="text-muted-foreground mt-1">Sporočila, ki čakajo na vašo odobritev pred pošiljanjem.</p>
       </div>
 
+      <DemoMessageModal open={showDemo} onOpenChange={setShowDemo} />
+
       {drafts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <Inbox className="w-12 h-12 text-muted-foreground/40 mb-4" />
           <p className="font-medium text-muted-foreground">Ni sporočil za pregled.</p>
-          <p className="text-sm text-muted-foreground mt-1">Ko AI pripravi nova sporočila, se bodo pojavila tukaj.</p>
+          <p className="text-sm text-muted-foreground mt-1 mb-5">Ko AI pripravi nova sporočila, se bodo pojavila tukaj.</p>
+          <Button variant="outline" onClick={() => setShowDemo(true)}>
+            <Mail className="w-4 h-4 mr-2" /> Glej primer sporočila
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">

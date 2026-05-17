@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Lock, Mail, Star, Globe, MessageSquare, Bot, BarChart3, ArrowRight, Users, InboxIcon, CalendarCheck, TrendingUp } from "lucide-react";
+import { Lock, Mail, Star, Globe, MessageSquare, Bot, BarChart3, ArrowRight, Users, UserPlus, Calendar, TrendingUp } from "lucide-react";
 
 const PILLARS = [
   { key: "pillar_reactivation", label: "Reaktivacija strank", desc: "Avtomatska reaktivacija neaktivnih strank po e-pošti.", icon: Mail, color: "bg-blue-500", href: "/prejeto", stat_label: "sporočil ta teden", plans: ["starter","growth","scale"] },
@@ -53,18 +53,23 @@ export default function Dashboard() {
 
   const plan = business?.plan || "starter";
 
-  const sentThisWeek = drafts.filter((d) => {
-    if (!d.sent_at) return false;
-    const sent = new Date(d.sent_at);
-    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-    return sent >= weekAgo;
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7);
+  const weekFromNow = new Date(); weekFromNow.setDate(now.getDate() + 7);
+
+  const leadsThisMonth = leads.filter((l) => new Date(l.created_date) >= startOfMonth).length;
+  const bookingsThisWeek = confirmedBookings.filter((b) => {
+    if (!b.booked_at) return false;
+    const d = new Date(b.booked_at);
+    return d >= now && d <= weekFromNow;
   }).length;
 
   const kpis = [
-    { label: "Stranke skupaj", value: leads.length, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Čaka na pregled", value: drafts.length, icon: InboxIcon, color: "text-amber-600", bg: "bg-amber-50" },
-    { label: "Potrjeni termini", value: confirmedBookings.length, icon: CalendarCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Novih ta teden", value: leads.filter((l) => { const d = new Date(l.created_date); const w = new Date(); w.setDate(w.getDate() - 7); return d >= w; }).length, icon: TrendingUp, color: "text-violet-600", bg: "bg-violet-50" },
+    { label: "Stranke skupaj", value: leads.length, icon: Users, color: "text-blue-600", bg: "bg-blue-50", delta: leads.filter((l) => new Date(l.created_date) >= weekAgo).length > 0 ? `+${leads.filter((l) => new Date(l.created_date) >= weekAgo).length} ta teden` : null },
+    { label: "Leadi ta mesec", value: leadsThisMonth, icon: UserPlus, color: "text-emerald-600", bg: "bg-emerald-50", delta: null },
+    { label: "Čakajoči drafts", value: drafts.length, icon: Mail, color: "text-amber-600", bg: "bg-amber-50", delta: drafts.length > 0 ? "čaka na odobritev" : null },
+    { label: "Rezervacije ta teden", value: bookingsThisWeek, icon: Calendar, color: "text-violet-600", bg: "bg-violet-50", delta: null },
   ];
 
   return (
@@ -80,14 +85,13 @@ export default function Dashboard() {
           const Icon = kpi.icon;
           return (
             <Card key={kpi.label} className="border-0 shadow-sm">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className={`w-11 h-11 rounded-xl ${kpi.bg} flex items-center justify-center shrink-0`}>
+              <CardContent className="p-5">
+                <div className={`w-10 h-10 rounded-xl ${kpi.bg} flex items-center justify-center mb-3`}>
                   <Icon className={`w-5 h-5 ${kpi.color}`} />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{kpi.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{kpi.label}</p>
-                </div>
+                <p className="text-3xl font-bold leading-none">{kpi.value}</p>
+                <p className="text-sm text-muted-foreground mt-1.5">{kpi.label}</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">{kpi.delta || "—"}</p>
               </CardContent>
             </Card>
           );

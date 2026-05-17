@@ -1,14 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Inbox, Users, MessageSquare, Bot,
   Star, Settings, ChevronLeft, ChevronRight, Zap,
-  Building2, BarChart3
+  Building2, BarChart3, Lock
 } from "lucide-react";
 import { useBusiness } from "@/lib/business-context";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 export default function Sidebar({ collapsed, setCollapsed }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const ctx = useBusiness();
   const business = ctx?.business;
   const user = ctx?.user;
@@ -16,15 +22,24 @@ export default function Sidebar({ collapsed, setCollapsed }) {
   const plan = business?.plan || "starter";
   const PLAN_ORDER = ["free", "starter", "growth", "scale"];
   const planGte = (min) => PLAN_ORDER.indexOf(plan) >= PLAN_ORDER.indexOf(min);
+  const [lockedDialog, setLockedDialog] = useState(null); // { label, desc }
+
+  const { data: pendingDrafts = [] } = useQuery({
+    queryKey: ["drafts-sidebar", business?.id],
+    queryFn: () => base44.entities.DraftMessage.filter({ business_id: business.id, status: "pending" }),
+    enabled: !!business?.id,
+    refetchInterval: 60000,
+  });
+  const pendingCount = pendingDrafts.length;
 
   const navItems = [
-    { path: "/", label: "Pregled", icon: LayoutDashboard, show: true },
-    { path: "/prejeto", label: "Prejeto", icon: Inbox, show: true },
-    { path: "/stranke", label: "Stranke", icon: Users, show: true },
-    { path: "/klepet", label: "Klepetalni pomočnik", icon: MessageSquare, show: business?.pillar_chatbot },
-    { path: "/asistent", label: "Asistent", icon: Bot, show: business?.pillar_assistant && planGte("growth") },
-    { path: "/ocene", label: "Ocene", icon: Star, show: business?.pillar_reviews },
-    { path: "/nastavitve", label: "Nastavitve", icon: Settings, show: true },
+    { path: "/", label: "Pregled", icon: LayoutDashboard, locked: false },
+    { path: "/prejeto", label: "Prejeto", icon: Inbox, locked: false, badge: pendingCount > 0 ? pendingCount : null },
+    { path: "/stranke", label: "Stranke", icon: Users, locked: false },
+    { path: "/klepet", label: "Klepetalni pomočnik", icon: MessageSquare, locked: !business?.pillar_chatbot, lockDesc: "Aktivirajte klepetalni pomočnik v Pregledu." },
+    { path: "/asistent", label: "Asistent", icon: Bot, locked: !business?.pillar_assistant || !planGte("growth"), lockDesc: "Aktivirajte osebni asistent v Pregledu (zahteva Growth načrt)." },
+    { path: "/ocene", label: "Ocene & napotitve", icon: Star, locked: !business?.pillar_reviews, lockDesc: "Aktivirajte module za ocene v Pregledu." },
+    { path: "/nastavitve", label: "Nastavitve", icon: Settings, locked: false },
   ];
 
   const adminItems = [
@@ -44,13 +59,31 @@ export default function Sidebar({ collapsed, setCollapsed }) {
 
       {/* Nav */}
       <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
-        {navItems.filter((i) => i.show).map((item) => {
+        {navItems.map((item) => {
           const isActive = item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path);
+          if (item.locked) {
+            return (
+              <button
+                key={item.path}
+                onClick={() => setLockedDialog({ label: item.label, desc: item.lockDesc, path: item.path })}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-sidebar-foreground/50 hover:bg-sidebar-accent/30 w-full text-left opacity-50"
+              >
+                <item.icon className="w-4 h-4 shrink-0" />
+                {!collapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
+                {!collapsed && <Lock className="w-3 h-3 shrink-0" />}
+              </button>
+            );
+          }
           return (
             <Link key={item.path} to={item.path}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${isActive ? "bg-sidebar-accent text-white" : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-white"}`}>
               <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-sidebar-primary" : ""}`} />
-              {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+              {!collapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
+              {!collapsed && item.badge && (
+                <span className="bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -77,6 +110,22 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       <button onClick={() => setCollapsed(!collapsed)} className="mx-2 mb-4 p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground">
         {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
       </button>
+
+      {/* Locked pillar dialog */}
+      {lockedDialog && (
+        <Dialog open={!!lockedDialog} onOpenChange={() => setLockedDialog(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Ta funkcionalnost ni aktivirana</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground mt-1">{lockedDialog.desc}</p>
+            <div className="flex gap-2 mt-4">
+              <Button onClick={() => { setLockedDialog(null); navigate("/"); }}>Aktiviraj v Pregledu</Button>
+              <Button variant="outline" onClick={() => setLockedDialog(null)}>Zapri</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </aside>
   );
 }

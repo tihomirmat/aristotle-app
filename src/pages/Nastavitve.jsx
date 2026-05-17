@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2 } from "lucide-react";
+import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw } from "lucide-react";
+import { toast as sonnerToast } from "sonner";
 import { seedDemoData } from "@/functions/seedDemoData";
 import { clearDemoData } from "@/functions/clearDemoData";
 import { useToast } from "@/components/ui/use-toast";
@@ -33,6 +34,8 @@ export default function Nastavitve() {
     name: "", industry_template: "other", phone: "", address: "", website: "",
     hours: "", services: "", current_offer: "", google_review_link: "",
   });
+  const [savedForm, setSavedForm] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   const [bookingForm, setBookingForm] = useState({
     booking_enabled: false, booking_auto_mode: false,
     booking_hours_start: "09:00", booking_hours_end: "17:00",
@@ -43,7 +46,7 @@ export default function Nastavitve() {
 
   useEffect(() => {
     if (business) {
-      setForm({
+      const initial = {
         name: business.name || "",
         industry_template: business.industry_template || "other",
         phone: business.phone || "",
@@ -53,7 +56,9 @@ export default function Nastavitve() {
         services: business.services || "",
         current_offer: business.current_offer || "",
         google_review_link: business.google_review_link || "",
-      });
+      };
+      setForm(initial);
+      setSavedForm(initial);
       setBookingForm({
         booking_enabled: business.booking_enabled || false,
         booking_auto_mode: business.booking_auto_mode || false,
@@ -69,11 +74,26 @@ export default function Nastavitve() {
     }
   }, [business]);
 
+  const PHONE_RE = /^(\+386|0)[1-9][0-9]{7,8}$/;
+  const URL_RE = /^https?:\/\/.+/;
+
+  const isDirty = savedForm && JSON.stringify(form) !== JSON.stringify(savedForm);
+
+  const validateProfile = () => {
+    const errors = {};
+    if (form.phone && !PHONE_RE.test(form.phone.replace(/\s/g, ""))) errors.phone = "Neveljavna telefonska številka (npr. +38640123456)";
+    if (form.website && !URL_RE.test(form.website)) errors.website = "Vnesite veljaven URL (npr. https://www.primer.si)";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const saveMutation = useMutation({
     mutationFn: (data) => base44.entities.Business.update(business.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["business"] });
-      toast({ title: "Nastavitve shranjene." });
+      setSavedForm({ ...form });
+      setFormErrors({});
+      sonnerToast.success("Profil je posodobljen.");
     },
   });
 
@@ -112,7 +132,7 @@ export default function Nastavitve() {
 
         {/* PROFIL */}
         <TabsContent value="profil">
-          <div className="max-w-lg space-y-4">
+          <div className="max-w-lg space-y-4 pb-24">
             <div className="space-y-2"><Label>Ime podjetja *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
             <div className="space-y-2">
               <Label>Panoga</Label>
@@ -121,17 +141,37 @@ export default function Nastavitve() {
                 <SelectContent>{Object.entries(INDUSTRY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>Telefon</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+386 40 123 456" /></div>
+            <div className="space-y-2">
+              <Label>Telefon</Label>
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+386 40 123 456" className={formErrors.phone ? "border-destructive" : ""} />
+              {formErrors.phone && <p className="text-xs text-destructive">{formErrors.phone}</p>}
+            </div>
             <div className="space-y-2"><Label>Naslov</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Ulica 1, Ljubljana" /></div>
-            <div className="space-y-2"><Label>Spletna stran</Label><Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://www.primer.si" /></div>
+            <div className="space-y-2">
+              <Label>Spletna stran</Label>
+              <Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://www.primer.si" className={formErrors.website ? "border-destructive" : ""} />
+              {formErrors.website && <p className="text-xs text-destructive">{formErrors.website}</p>}
+            </div>
             <div className="space-y-2"><Label>Delovni čas</Label><Input value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder="Pon–Pet 8:00–18:00" /></div>
             <div className="space-y-2"><Label>Storitve</Label><Textarea value={form.services} onChange={(e) => setForm({ ...form, services: e.target.value })} placeholder="Navedite vaše storitve..." className="h-24" /></div>
             <div className="space-y-2"><Label>Trenutna ponudba</Label><Input value={form.current_offer} onChange={(e) => setForm({ ...form, current_offer: e.target.value })} placeholder="Npr. 20% popust za nove stranke" /></div>
             <div className="space-y-2"><Label>Povezava za Google ocene</Label><Input value={form.google_review_link} onChange={(e) => setForm({ ...form, google_review_link: e.target.value })} placeholder="https://g.page/r/..." /></div>
-            <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Shrani spremembe
-            </Button>
+
+            {/* STICKY SAVE BAR */}
+            {isDirty && (
+              <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm px-6 py-3 flex items-center justify-between gap-4">
+                <span className="text-sm text-muted-foreground">Imate neshranjene spremembe</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" disabled={saveMutation.isPending} onClick={() => { setForm({ ...savedForm }); setFormErrors({}); }}>
+                    <RotateCcw className="w-4 h-4 mr-2" /> Razveljavi
+                  </Button>
+                  <Button disabled={saveMutation.isPending} onClick={() => { if (validateProfile()) saveMutation.mutate(form); }}>
+                    {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                    Shrani spremembe
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* DEMO PODATKI */}
             <div className="border rounded-xl p-5 bg-card shadow-sm mt-6">

@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, UserPlus, Loader2, Users } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Search, UserPlus, Loader2, Users, ChevronDown, Upload, Download } from "lucide-react";
 import { format } from "date-fns";
+import CustomerImportModal from "@/components/stranke/CustomerImportModal";
 
 const STATUS_LABELS = { new: "Novo", contacted: "Kontaktiran/a", replied: "Odgovoril/a", converted: "Pretvorjen/a", unsubscribed: "Odjavljen/a" };
 const STATUS_COLORS = { new: "bg-blue-100 text-blue-700", contacted: "bg-amber-100 text-amber-700", replied: "bg-emerald-100 text-emerald-700", converted: "bg-violet-100 text-violet-700", unsubscribed: "bg-gray-100 text-gray-500" };
@@ -21,6 +23,7 @@ export default function Stranke() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [newLead, setNewLead] = useState({ name: "", email: "", phone: "", consent_email: false });
 
   const { data: leads = [], isLoading } = useQuery({
@@ -53,9 +56,26 @@ export default function Stranke() {
           <h1 className="text-2xl font-bold">Stranke</h1>
           <p className="text-muted-foreground mt-1">Vaše stranke in potencialne stranke.</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <UserPlus className="w-4 h-4 mr-2" /> Dodaj stranko
-        </Button>
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Akcije <ChevronDown className="w-4 h-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowImport(true)}>
+                <Upload className="w-4 h-4 mr-2" /> Uvozi CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Download className="w-4 h-4 mr-2" /> Izvozi CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button onClick={() => setShowAdd(true)}>
+            <UserPlus className="w-4 h-4 mr-2" /> Dodaj stranko
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-3 mb-4 flex-wrap">
@@ -78,7 +98,11 @@ export default function Stranke() {
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <Users className="w-12 h-12 text-muted-foreground/40 mb-4" />
           <p className="font-medium text-muted-foreground">Ni najdenih strank.</p>
-          <p className="text-sm text-muted-foreground mt-1">Dodajte stranko ročno ali uvozite CSV.</p>
+          <p className="text-sm text-muted-foreground mt-1 mb-5">Dodajte stranko ročno ali uvozite CSV.</p>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowAdd(true)}><UserPlus className="w-4 h-4 mr-2" /> Dodaj stranko</Button>
+            <Button variant="outline" onClick={() => setShowImport(true)}><Upload className="w-4 h-4 mr-2" /> Uvozi CSV</Button>
+          </div>
         </div>
       ) : (
         <div className="bg-card rounded-xl border overflow-hidden shadow-sm">
@@ -116,6 +140,8 @@ export default function Stranke() {
           </table>
         </div>
       )}
+
+      <CustomerImportModal open={showImport} onOpenChange={setShowImport} />
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent>
