@@ -1,0 +1,70 @@
+{
+  "name": "DraftMessage",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "lead_id": {
+      "type": "string"
+    },
+    "pillar": {
+      "type": "string",
+      "enum": [
+        "reactivation",
+        "review_request",
+        "review_response",
+        "referral_ask",
+        "web_form_lead",
+        "chatbot_handoff",
+        "assistant_action",
+        "booking_proposal",
+        "booking_confirmation"
+      ]
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "email",
+        "review_response"
+      ],
+      "default": "email"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "skipped",
+        "sent",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "scheduled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ai_model_used": {
+      "type": "string"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "business_id",
+    "pillar"
+  ]
+}

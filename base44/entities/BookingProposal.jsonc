@@ -1,0 +1,71 @@
+{
+  "name": "BookingProposal",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "lead_id": {
+      "type": "string"
+    },
+    "proposed_slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "start_datetime": {
+            "type": "string"
+          },
+          "end_datetime": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "message": {
+      "type": "string"
+    },
+    "service_requested": {
+      "type": "string"
+    },
+    "duration_minutes": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "rejected",
+        "expired"
+      ],
+      "default": "pending"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lead_response_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "selected_slot": {
+      "type": "object"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "business_id",
+    "lead_id"
+  ]
+}

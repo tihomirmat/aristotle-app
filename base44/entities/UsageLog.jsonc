@@ -1,0 +1,53 @@
+{
+  "name": "UsageLog",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "pillar": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "input_tokens": {
+      "type": "number",
+      "default": 0
+    },
+    "output_tokens": {
+      "type": "number",
+      "default": 0
+    },
+    "cost_eur": {
+      "type": "number",
+      "default": 0
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "business_id",
+    "date"
+  ],
+  "rls": {
+    "read": {
+      "role": "admin"
+    },
+    "create": {
+      "role": "admin"
+    },
+    "update": {
+      "role": "admin"
+    },
+    "delete": {
+      "role": "admin"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "AssistantBriefing",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "content": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "business_id",
+    "date"
+  ]
+}

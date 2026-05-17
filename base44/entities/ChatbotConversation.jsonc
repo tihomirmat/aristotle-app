@@ -1,0 +1,66 @@
+{
+  "name": "ChatbotConversation",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "visitor_id": {
+      "type": "string"
+    },
+    "visitor_email": {
+      "type": "string"
+    },
+    "visitor_phone": {
+      "type": "string"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "lead_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "escalated",
+        "resolved"
+      ],
+      "default": "active"
+    },
+    "escalated": {
+      "type": "boolean",
+      "default": false
+    },
+    "escalation_reason": {
+      "type": "string"
+    },
+    "flagged_for_review": {
+      "type": "boolean",
+      "default": false
+    },
+    "converted": {
+      "type": "boolean",
+      "default": false
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "business_id"
+  ]
+}

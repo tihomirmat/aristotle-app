@@ -1,0 +1,301 @@
+{
+  "name": "Business",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "plan": {
+      "type": "string",
+      "enum": [
+        "free",
+        "starter",
+        "growth",
+        "scale"
+      ],
+      "default": "starter"
+    },
+    "subscription_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "trialing",
+        "past_due",
+        "cancelled"
+      ],
+      "default": "trialing"
+    },
+    "subscription_id": {
+      "type": "string"
+    },
+    "industry_template": {
+      "type": "string",
+      "enum": [
+        "gym",
+        "dental_medspa",
+        "home_services",
+        "restaurant",
+        "salon_barber",
+        "auto",
+        "other"
+      ]
+    },
+    "current_offer": {
+      "type": "string"
+    },
+    "google_review_link": {
+      "type": "string"
+    },
+    "hours": {
+      "type": "string"
+    },
+    "services": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "locale": {
+      "type": "string",
+      "enum": [
+        "sl"
+      ],
+      "default": "sl"
+    },
+    "draft_mode": {
+      "type": "boolean",
+      "default": true
+    },
+    "daily_token_limit": {
+      "type": "number",
+      "default": 500000
+    },
+    "tokens_used_today": {
+      "type": "number",
+      "default": 0
+    },
+    "onboarding_complete": {
+      "type": "boolean",
+      "default": false
+    },
+    "last_activity_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "pillar_reactivation": {
+      "type": "boolean",
+      "default": false
+    },
+    "pillar_reviews": {
+      "type": "boolean",
+      "default": false
+    },
+    "pillar_leads": {
+      "type": "boolean",
+      "default": false
+    },
+    "pillar_chatbot": {
+      "type": "boolean",
+      "default": false
+    },
+    "pillar_assistant": {
+      "type": "boolean",
+      "default": false
+    },
+    "pillar_digest": {
+      "type": "boolean",
+      "default": false
+    },
+    "anthropic_model": {
+      "type": "string",
+      "enum": [
+        "haiku",
+        "sonnet",
+        "opus"
+      ],
+      "default": "haiku"
+    },
+    "chatbot_calibration_ends_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "email_provider": {
+      "type": "string",
+      "enum": [
+        "gmail",
+        "outlook",
+        "smtp"
+      ]
+    },
+    "gmail_email": {
+      "type": "string"
+    },
+    "gmail_access_token": {
+      "type": "string"
+    },
+    "gmail_refresh_token": {
+      "type": "string"
+    },
+    "gmail_token_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "outlook_email": {
+      "type": "string"
+    },
+    "outlook_access_token": {
+      "type": "string"
+    },
+    "outlook_refresh_token": {
+      "type": "string"
+    },
+    "outlook_token_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "smtp_host": {
+      "type": "string"
+    },
+    "smtp_port": {
+      "type": "number"
+    },
+    "smtp_user": {
+      "type": "string"
+    },
+    "smtp_pass": {
+      "type": "string"
+    },
+    "smtp_from_email": {
+      "type": "string"
+    },
+    "smtp_from_name": {
+      "type": "string"
+    },
+    "smtp_encryption": {
+      "type": "string",
+      "enum": [
+        "starttls",
+        "ssl_tls",
+        "none"
+      ],
+      "default": "starttls"
+    },
+    "email_last_health_check_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "email_last_health_check_status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "error"
+      ]
+    },
+    "email_last_health_check_error": {
+      "type": "string"
+    },
+    "google_calendar_connected": {
+      "type": "boolean",
+      "default": false
+    },
+    "booking_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "booking_auto_mode": {
+      "type": "boolean",
+      "default": false
+    },
+    "booking_hours_start": {
+      "type": "string",
+      "default": "09:00"
+    },
+    "booking_hours_end": {
+      "type": "string",
+      "default": "17:00"
+    },
+    "booking_days_of_week": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat",
+          "sun"
+        ]
+      },
+      "default": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri"
+      ]
+    },
+    "booking_buffer_minutes": {
+      "type": "number",
+      "default": 15
+    },
+    "booking_default_duration_minutes": {
+      "type": "number",
+      "default": 60
+    },
+    "booking_max_advance_days": {
+      "type": "number",
+      "default": 30
+    },
+    "booking_min_advance_hours": {
+      "type": "number",
+      "default": 4
+    },
+    "booking_proposals_count": {
+      "type": "number",
+      "default": 3
+    },
+    "booking_response_window_hours": {
+      "type": "number",
+      "default": 24
+    },
+    "booking_excluded_keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "OOO",
+        "Dopust",
+        "Bolni\u0161ka"
+      ]
+    },
+    "booking_blackout_periods": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "booking_calendar_id": {
+      "type": "string",
+      "default": "primary"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
