@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2 } from "lucide-react";
 import { seedDemoData } from "@/functions/seedDemoData";
 import { clearDemoData } from "@/functions/clearDemoData";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams } from "react-router-dom";
 
@@ -77,6 +78,8 @@ export default function Nastavitve() {
 
   const isHealthOk = business?.email_last_health_check_status === "ok";
   const [demoLoading, setDemoLoading] = useState(null); // 'seed' | 'clear' | null
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [demoCount, setDemoCount] = useState(null);
 
   const handleSeedDemo = async () => {
     setDemoLoading('seed');
@@ -85,10 +88,23 @@ export default function Nastavitve() {
     toast({ title: "Demo podatki uspešno naloženi!" });
   };
 
-  const handleClearDemo = async () => {
+  const handleClearClick = async () => {
+    setDemoLoading('counting');
+    const entities = ['Lead', 'DraftMessage', 'KnowledgeBase', 'ChatbotConversation', 'AssistantChat', 'AssistantBriefing', 'BookingProposal', 'ConfirmedBooking', 'ExecutiveDigest'];
+    const counts = await Promise.all(entities.map((e) =>
+      base44.entities[e].filter({ business_id: business.id, is_demo: true }).then((r) => r.length).catch(() => 0)
+    ));
+    setDemoCount(counts.reduce((a, b) => a + b, 0));
+    setDemoLoading(null);
+    setShowClearConfirm(true);
+  };
+
+  const handleClearConfirmed = async () => {
+    setShowClearConfirm(false);
     setDemoLoading('clear');
     await clearDemoData({ business_id: business.id });
     setDemoLoading(null);
+    setDemoCount(null);
     toast({ title: "Vsi demo zapisi so bili izbrisani." });
   };
 
@@ -141,12 +157,29 @@ export default function Nastavitve() {
                   {demoLoading === 'seed' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
                   Napolni demo podatke
                 </Button>
-                <Button onClick={handleClearDemo} disabled={!!demoLoading} variant="outline" className="gap-2 text-destructive border-destructive/40 hover:bg-destructive/5">
-                  {demoLoading === 'clear' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  Izbriši demo podatke
+                <Button onClick={handleClearClick} disabled={!!demoLoading} variant="destructive" className="gap-2">
+                  {(demoLoading === 'clear' || demoLoading === 'counting') ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  Počisti demo podatke
                 </Button>
               </div>
             </div>
+
+            <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Ali ste prepričani?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    To bo trajno zbrisalo <strong>{demoCount} demo zapisov</strong> iz vseh razdelkov aplikacije. Tega dejanja ni mogoče razveljaviti.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Prekliči</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearConfirmed} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+                    Da, zbriši vse
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </TabsContent>
 
