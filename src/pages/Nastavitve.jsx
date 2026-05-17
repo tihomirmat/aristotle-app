@@ -12,9 +12,6 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Database } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
-import { seedDemoData } from "@/functions/seedDemoData";
-import { clearDemoData } from "@/functions/clearDemoData";
-import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -25,7 +22,6 @@ const PLAN_COLORS = { free: "bg-gray-100 text-gray-600", starter: "bg-blue-100 t
 export default function Nastavitve() {
   const { business } = useBusiness();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "profil";
@@ -133,9 +129,22 @@ export default function Nastavitve() {
 
   const handleClearDemo = async () => {
     setDemoLoading('clear');
-    await clearDemoData({ business_id: business.id });
+    const entities = [
+      base44.entities.Lead,
+      base44.entities.DraftMessage,
+      base44.entities.BookingProposal,
+      base44.entities.ConfirmedBooking,
+      base44.entities.KnowledgeBase,
+      base44.entities.ChatbotConversation,
+    ];
+    await Promise.all(
+      entities.map(async (entity) => {
+        const records = await entity.filter({ is_demo: true });
+        await Promise.all(records.map((r) => entity.delete(r.id)));
+      })
+    );
     setDemoLoading(null);
-    toast({ title: "Demo podatki počiščeni" });
+    sonnerToast.success("Demo podatki počiščeni");
   };
 
   return (
