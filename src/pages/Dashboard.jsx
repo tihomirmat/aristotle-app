@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Lock, Mail, Star, Globe, MessageSquare, Bot, BarChart3, ArrowRight } from "lucide-react";
+import { Lock, Mail, Star, Globe, MessageSquare, Bot, BarChart3, ArrowRight, Users, InboxIcon, CalendarCheck, TrendingUp } from "lucide-react";
 
 const PILLARS = [
   { key: "pillar_reactivation", label: "Reaktivacija strank", desc: "Avtomatska reaktivacija neaktivnih strank po e-pošti.", icon: Mail, color: "bg-blue-500", href: "/prejeto", stat_label: "sporočil ta teden", plans: ["starter","growth","scale"] },
@@ -34,6 +34,18 @@ export default function Dashboard() {
     enabled: !!business?.id,
   });
 
+  const { data: leads = [] } = useQuery({
+    queryKey: ["leads_all", business?.id],
+    queryFn: () => base44.entities.Lead.filter({ business_id: business.id }),
+    enabled: !!business?.id,
+  });
+
+  const { data: confirmedBookings = [] } = useQuery({
+    queryKey: ["confirmed_bookings", business?.id],
+    queryFn: () => base44.entities.ConfirmedBooking.filter({ business_id: business.id, status: "confirmed" }),
+    enabled: !!business?.id,
+  });
+
   const toggleMutation = useMutation({
     mutationFn: ({ key, val }) => base44.entities.Business.update(business.id, { [key]: val }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["business"] }),
@@ -41,11 +53,45 @@ export default function Dashboard() {
 
   const plan = business?.plan || "starter";
 
+  const sentThisWeek = drafts.filter((d) => {
+    if (!d.sent_at) return false;
+    const sent = new Date(d.sent_at);
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+    return sent >= weekAgo;
+  }).length;
+
+  const kpis = [
+    { label: "Stranke skupaj", value: leads.length, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Čaka na pregled", value: drafts.length, icon: InboxIcon, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Potrjeni termini", value: confirmedBookings.length, icon: CalendarCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Novih ta teden", value: leads.filter((l) => { const d = new Date(l.created_date); const w = new Date(); w.setDate(w.getDate() - 7); return d >= w; }).length, icon: TrendingUp, color: "text-violet-600", bg: "bg-violet-50" },
+  ];
+
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Pregled</h1>
         <p className="text-muted-foreground mt-1">Dobrodošli. Tukaj je pregled vašega sistema.</p>
+      </div>
+
+      {/* KPI KARTICE */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
+          return (
+            <Card key={kpi.label} className="border-0 shadow-sm">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className={`w-11 h-11 rounded-xl ${kpi.bg} flex items-center justify-center shrink-0`}>
+                  <Icon className={`w-5 h-5 ${kpi.color}`} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{kpi.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{kpi.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {drafts.length > 0 && (
