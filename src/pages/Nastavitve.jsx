@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw } from "lucide-react";
+import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Database } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import { seedDemoData } from "@/functions/seedDemoData";
 import { clearDemoData } from "@/functions/clearDemoData";
