@@ -100,12 +100,35 @@ export default function Nastavitve() {
   const isHealthOk = business?.email_last_health_check_status === "ok";
   const [demoLoading, setDemoLoading] = useState(null); // 'seed' | 'clear' | null
 
+  const DEMO_LEADS = [
+    { name: "Ana Novak", email: "ana.novak@example.si", phone: "+386 40 111 222", status: "new", source: "form" },
+    { name: "Marko Horvat", email: "marko.horvat@example.si", phone: "+386 41 333 444", status: "contacted", source: "chatbot" },
+    { name: "Petra Kovač", email: "petra.kovac@example.si", phone: "+386 31 555 666", status: "replied", source: "manual", tags: ["VIP"] },
+    { name: "Jure Krajnc", email: "jure.krajnc@example.si", phone: "+386 51 777 888", status: "new", source: "import" },
+    { name: "Maja Vidmar", email: "maja.vidmar@example.si", phone: "+386 40 999 111", status: "converted", source: "form" },
+    { name: "Tomaž Zupančič", email: "tomaz.zupancic@example.si", phone: "+386 41 222 333", status: "contacted", source: "chatbot", tags: ["VIP"] },
+    { name: "Nina Rupnik", email: "nina.rupnik@example.si", phone: "+386 31 444 555", status: "new", source: "manual" },
+    { name: "Andrej Pavlič", email: "andrej.pavlic@example.si", phone: "+386 51 666 777", status: "unsubscribed", source: "form" },
+    { name: "Sara Bezjak", email: "sara.bezjak@example.si", phone: "+386 40 888 999", status: "replied", source: "chatbot" },
+    { name: "Luka Hribar", email: "luka.hribar@example.si", phone: "+386 41 111 333", status: "converted", source: "manual" },
+  ];
+
   const handleSeedDemo = async () => {
     setDemoLoading('seed');
-    await seedDemoData({ business_id: business.id });
+    await Promise.all(
+      DEMO_LEADS.map((l) =>
+        base44.entities.Lead.create({
+          ...l,
+          tags: l.tags || [],
+          business_id: business.id,
+          consent_email: true,
+          is_demo: true,
+        })
+      )
+    );
     setDemoLoading(null);
-    toast({ title: "Demo podatki ustvarjeni" });
-    navigate("/");
+    sonnerToast.success("Demo podatki ustvarjeni (10 strank)");
+    window.location.href = "/";
   };
 
   const handleClearDemo = async () => {
@@ -175,12 +198,9 @@ export default function Nastavitve() {
 
             {/* DEMO PODATKI */}
             <div className="border rounded-xl p-5 bg-card shadow-sm mt-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Database className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold">Demo podatki</h3>
-              </div>
+              <h3 className="font-semibold mb-1">Demo podatki</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Napolnite aplikacijo s primernimi demo podatki za predstavitev. Vse demo zapise lahko kasneje s pritiskom enega gumba popolnoma zbrišete.
+                Napolnite aplikacijo z primernimi demo podatki za predstavitev ali testiranje. Vse demo zapise lahko kasneje s pritiskom enega gumba popolnoma zbrišete.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button onClick={handleSeedDemo} disabled={!!demoLoading} className="gap-2">
