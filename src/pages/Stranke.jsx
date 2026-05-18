@@ -4,12 +4,14 @@ import { base44 } from "@/api/base44Client";
 import { useBusiness } from "@/lib/business-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Search, UserPlus, Loader2, Users, ChevronDown, Upload, Download } from "lucide-react";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import CustomerImportModal from "@/components/stranke/CustomerImportModal";
 
@@ -24,7 +26,7 @@ export default function Stranke() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [newLead, setNewLead] = useState({ name: "", email: "", phone: "", consent_email: false });
+  const [newLead, setNewLead] = useState({ name: "", email: "", phone: "", status: "new", source: "manual", notes: "", consent_email: false });
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["leads", business?.id],
@@ -33,11 +35,12 @@ export default function Stranke() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Lead.create({ ...data, business_id: business.id, source: "manual" }),
+    mutationFn: (data) => base44.entities.Lead.create({ ...data, business_id: business.id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads", business?.id] });
       setShowAdd(false);
-      setNewLead({ name: "", email: "", phone: "", consent_email: false });
+      setNewLead({ name: "", email: "", phone: "", status: "new", source: "manual", notes: "", consent_email: false });
+      toast.success("Stranka dodana");
     },
   });
 
@@ -150,6 +153,30 @@ export default function Stranke() {
             <div className="space-y-2"><Label>Ime *</Label><Input value={newLead.name} onChange={(e) => setNewLead({ ...newLead, name: e.target.value })} placeholder="Ime in priimek" /></div>
             <div className="space-y-2"><Label>E-pošta</Label><Input value={newLead.email} onChange={(e) => setNewLead({ ...newLead, email: e.target.value })} placeholder="ime@primer.si" /></div>
             <div className="space-y-2"><Label>Telefon</Label><Input value={newLead.phone} onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })} placeholder="+386 40 123 456" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={newLead.status} onValueChange={(v) => setNewLead({ ...newLead, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Vir</Label>
+                <Select value={newLead.source} onValueChange={(v) => setNewLead({ ...newLead, source: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(SOURCE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Opombe</Label>
+              <Textarea value={newLead.notes} onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })} placeholder="Interne opombe..." className="h-20" />
+            </div>
             <div className="flex items-center gap-2">
               <input type="checkbox" id="consent" checked={newLead.consent_email} onChange={(e) => setNewLead({ ...newLead, consent_email: e.target.checked })} className="rounded" />
               <Label htmlFor="consent" className="text-sm cursor-pointer">Stranka je dala soglasje za e-pošto</Label>

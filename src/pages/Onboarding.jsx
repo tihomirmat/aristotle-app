@@ -1,76 +1,89 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Zap, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { Zap, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const INDUSTRY_OPTIONS = [
-  { value: "gym", label: "Fitnes / Gym" },
-  { value: "dental_medspa", label: "Zobozdravstvo / Med Spa" },
-  { value: "home_services", label: "Domače storitve" },
-  { value: "restaurant", label: "Restavracija / Café" },
-  { value: "salon_barber", label: "Salon / Frizerstvo" },
-  { value: "auto", label: "Avto storitve" },
-  { value: "other", label: "Drugo" },
+  { value: "gym", label: "Fitness / wellness" },
+  { value: "dental_medspa", label: "Zobozdravstvo / medspa" },
+  { value: "home_services", label: "Dom in popravila" },
+  { value: "restaurant", label: "Restavracija / kavarna" },
+  { value: "salon_barber", label: "Frizerski / lepotni salon" },
+  { value: "auto", label: "Avtoservis" },
+  { value: "other", label: "Marketing / storitve" },
+  { value: "other2", label: "Drugo" },
 ];
 
-const STEPS = [
-  "Ime podjetja",
-  "Informacije",
-  "Soglasje GDPR",
-  "Nastavitev e-pošte",
-  "Termini",
-];
+const TOTAL_STEPS = 4;
 
 export default function Onboarding() {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
     industry_template: "",
+    phone: "",
+    address: "",
+    website: "",
     hours: "",
-    current_offer: "",
     services: "",
+    current_offer: "",
     google_review_link: "",
     gdpr_confirmed: false,
-    email_provider: "",
   });
 
   const update = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
+  const canNext = () => {
+    if (step === 1) return form.name.trim().length > 0;
+    if (step === 4) return form.gdpr_confirmed;
+    return true;
+  };
+
   const handleFinish = async () => {
+    if (!form.gdpr_confirmed) return;
     setSaving(true);
     const user = await base44.auth.me();
+    const industryVal = form.industry_template === "other2" ? "other" : (form.industry_template || "other");
     await base44.entities.Business.create({
       name: form.name,
-      industry_template: form.industry_template || "other",
+      industry_template: industryVal,
+      phone: form.phone,
+      address: form.address,
+      website: form.website,
       hours: form.hours,
-      current_offer: form.current_offer,
       services: form.services,
+      current_offer: form.current_offer,
       google_review_link: form.google_review_link,
-      email_provider: form.email_provider || undefined,
       onboarding_complete: true,
+      draft_mode: true,
+      locale: "sl",
       plan: "starter",
       subscription_status: "trialing",
-      draft_mode: true,
       pillar_reactivation: true,
       pillar_reviews: true,
       pillar_leads: true,
+      pillar_chatbot: true,
+      pillar_assistant: false,
+      pillar_digest: false,
     });
     await queryClient.invalidateQueries({ queryKey: ["business", user.email] });
-    navigate("/");
+    toast.success("Aplikacija je pripravljena!");
+    window.location.href = "/";
   };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-xl">
-        {/* Header */}
+        {/* Logo */}
         <div className="flex items-center gap-3 justify-center mb-8">
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
             <Zap className="w-5 h-5 text-white" />
@@ -78,34 +91,50 @@ export default function Onboarding() {
           <span className="text-xl font-bold">AI Aristotle</span>
         </div>
 
-        {/* Progress */}
-        <div className="flex items-center gap-2 mb-8">
-          {STEPS.map((s, i) => (
-            <React.Fragment key={i}>
-              <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold shrink-0 ${i < step ? "bg-primary text-white" : i === step ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
-                {i < step ? <Check className="w-3.5 h-3.5" /> : i + 1}
-              </div>
-              {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 ${i < step ? "bg-primary" : "bg-muted"}`} />}
-            </React.Fragment>
-          ))}
+        {/* Progress bar */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+            <span>Korak {step} od {TOTAL_STEPS}</span>
+            <span>{Math.round((step / TOTAL_STEPS) * 100)}%</span>
+          </div>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-300"
+              style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
+            />
+          </div>
         </div>
 
         <div className="bg-card rounded-2xl border shadow-sm p-6">
-          <h2 className="text-lg font-semibold mb-1">{STEPS[step]}</h2>
-
-          {/* Step 0: Business name + industry */}
-          {step === 0 && (
-            <div className="space-y-4 mt-4">
+          {/* Step 1 — Dobrodošli */}
+          {step === 1 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Dobrodošli v AI Aristotle</h2>
+                <p className="text-sm text-muted-foreground">V naslednjih 3–5 minutah bomo postavili vašo aplikacijo, ki vam pomaga avtomatizirati marketing in komunikacijo s strankami.</p>
+              </div>
               <div className="space-y-2">
                 <Label>Ime podjetja *</Label>
-                <Input placeholder="Npr. Studio Fit Ljubljana" value={form.name} onChange={(e) => update("name", e.target.value)} />
+                <Input
+                  placeholder="Npr. Studio Fit Ljubljana"
+                  value={form.name}
+                  onChange={(e) => update("name", e.target.value)}
+                  autoFocus
+                />
               </div>
               <div className="space-y-2">
                 <Label>Panoga</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {INDUSTRY_OPTIONS.map((opt) => (
-                    <button key={opt.value} onClick={() => update("industry_template", opt.value)}
-                      className={`p-3 rounded-lg border text-sm text-left transition-colors ${form.industry_template === opt.value ? "border-primary bg-accent text-primary font-medium" : "border-border hover:border-primary/50"}`}>
+                    <button
+                      key={opt.value}
+                      onClick={() => update("industry_template", opt.value)}
+                      className={`p-3 rounded-lg border text-sm text-left transition-colors ${
+                        form.industry_template === opt.value
+                          ? "border-primary bg-accent text-primary font-medium"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
                       {opt.label}
                     </button>
                   ))}
@@ -114,89 +143,109 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* Step 1: Info */}
-          {step === 1 && (
-            <div className="space-y-4 mt-4">
+          {/* Step 2 — Kontakt in lokacija */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Kontakt in lokacija</h2>
+                <p className="text-sm text-muted-foreground">Te podatke bo AI uporabljal pri komunikaciji s strankami.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Telefon</Label>
+                <Input placeholder="030 301 300 ali +386 30 301 300" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Naslov</Label>
+                <Input placeholder="Ulica 1, Ljubljana" value={form.address} onChange={(e) => update("address", e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Spletna stran</Label>
+                <Input placeholder="https://www.primer.si" value={form.website} onChange={(e) => update("website", e.target.value)} />
+              </div>
               <div className="space-y-2">
                 <Label>Delovni čas</Label>
                 <Input placeholder="Pon–Pet 8:00–18:00, Sob 9:00–13:00" value={form.hours} onChange={(e) => update("hours", e.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label>Trenutna ponudba / akcija</Label>
-                <Input placeholder="Npr. 20% popust za nove stranke" value={form.current_offer} onChange={(e) => update("current_offer", e.target.value)} />
+            </div>
+          )}
+
+          {/* Step 3 — Storitve in ponudba */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Storitve in ponudba</h2>
+                <p className="text-sm text-muted-foreground">AI bo te podatke uporabil za personalizacijo sporočil.</p>
               </div>
               <div className="space-y-2">
                 <Label>Storitve</Label>
-                <Input placeholder="Npr. Osebni trening, skupinske vadbe, prehransko svetovanje" value={form.services} onChange={(e) => update("services", e.target.value)} />
+                <Textarea
+                  placeholder="Navedite vaše glavne storitve, po vrsticah"
+                  value={form.services}
+                  onChange={(e) => update("services", e.target.value)}
+                  className="h-28"
+                />
               </div>
               <div className="space-y-2">
-                <Label>Povezava za Google ocene</Label>
+                <Label>Trenutna posebna ponudba</Label>
+                <Textarea
+                  placeholder="Npr. Prvi obisk -20%"
+                  value={form.current_offer}
+                  onChange={(e) => update("current_offer", e.target.value)}
+                  className="h-20"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Google Review link</Label>
                 <Input placeholder="https://g.page/r/..." value={form.google_review_link} onChange={(e) => update("google_review_link", e.target.value)} />
               </div>
             </div>
           )}
 
-          {/* Step 2: GDPR */}
-          {step === 2 && (
-            <div className="mt-4 space-y-4">
-              <p className="text-sm text-muted-foreground">Pred nadaljevanjem potrdite skladnost z zakonodajo o varstvu osebnih podatkov.</p>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
-                <strong>Pomembno (GDPR / ZEPT)</strong><br />
-                Sistem bo v vašem imenu pošiljal e-poštna sporočila vašim strankam. Za to potrebujete veljavno pravno podlago (soglasje ali zakonit interes).
+          {/* Step 4 — GDPR */}
+          {step === 4 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-bold mb-1">GDPR soglasje</h2>
               </div>
-              <div className="flex items-start gap-3">
-                <Checkbox id="gdpr" checked={form.gdpr_confirmed} onCheckedChange={(v) => update("gdpr_confirmed", v)} />
+              <div className="flex items-start gap-3 bg-muted/50 rounded-lg p-4">
+                <Checkbox
+                  id="gdpr"
+                  checked={form.gdpr_confirmed}
+                  onCheckedChange={(v) => update("gdpr_confirmed", !!v)}
+                  className="mt-0.5"
+                />
                 <Label htmlFor="gdpr" className="text-sm leading-relaxed cursor-pointer">
-                  Potrjujem, da imam veljavno soglasje za pošiljanje e-poštnih sporočil mojim strankam in da ravnam v skladu z Uredbo GDPR ter Zakonom o elektronskih komunikacijah (ZEPT).
+                  Potrjujem, da imam veljavno soglasje za pošiljanje email sporočil svojim strankam (ZEPT-1, GDPR čl. 7).
                 </Label>
               </div>
-            </div>
-          )}
-
-          {/* Step 3: Email integration */}
-          {step === 3 && (
-            <div className="mt-4 space-y-3">
-              <p className="text-sm text-muted-foreground">Izberite način pošiljanja e-pošte. To lahko nastavite tudi pozneje v razdelku Nastavitve → Integracije.</p>
-              {[
-                { value: "gmail", label: "Gmail", desc: "Povežite Google račun za pošiljanje." },
-                { value: "outlook", label: "Outlook / Microsoft 365", desc: "Povežite Microsoft račun." },
-                { value: "smtp", label: "SMTP (lastni strežnik)", desc: "Ročna konfiguracija SMTP strežnika." },
-              ].map((p) => (
-                <button key={p.value} onClick={() => update("email_provider", p.value)}
-                  className={`w-full p-4 rounded-lg border text-left transition-colors ${form.email_provider === p.value ? "border-primary bg-accent" : "border-border hover:border-primary/40"}`}>
-                  <p className="font-medium text-sm">{p.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{p.desc}</p>
-                </button>
-              ))}
-              <button onClick={() => update("email_provider", "")} className="text-xs text-muted-foreground underline w-full text-center pt-1">
-                Preskoči za zdaj
-              </button>
-            </div>
-          )}
-
-          {/* Step 4: Bookings */}
-          {step === 4 && (
-            <div className="mt-4 space-y-4">
-              <p className="text-sm text-muted-foreground">Modul za rezervacije vam omogoča avtomatsko predlaganje terminov strankam. Zahteva povezavo z Google Kalendarjem.</p>
-              <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground text-center">
-                Podrobno nastavljanje terminov je na voljo v Nastavitve → Termini po zaključku uvajanja.
+              <div className="bg-accent border border-primary/20 rounded-lg p-4 text-sm text-muted-foreground">
+                Kasneje boste lahko v Nastavitvah povezali Gmail / Outlook ali nastavili SMTP za pošiljanje. Za zdaj boste videli draft sporočila pred pošiljanjem.
               </div>
             </div>
           )}
 
           {/* Navigation */}
-          <div className="flex justify-between mt-6">
-            <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled={step === 0}>
+          <div className="flex justify-between mt-8">
+            <Button
+              variant="outline"
+              onClick={() => setStep((s) => s - 1)}
+              disabled={step === 1}
+            >
               <ChevronLeft className="w-4 h-4 mr-1" /> Nazaj
             </Button>
-            {step < STEPS.length - 1 ? (
-              <Button onClick={() => setStep((s) => s + 1)}
-                disabled={step === 0 && !form.name || step === 2 && !form.gdpr_confirmed}>
+
+            {step < TOTAL_STEPS ? (
+              <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
                 Naprej <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             ) : (
-              <Button onClick={handleFinish} disabled={saving}>
-                {saving ? "Nalaganje..." : "Zaključi uvajanje"}
+              <Button
+                onClick={handleFinish}
+                disabled={saving || !form.gdpr_confirmed}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Zaključi onboarding
               </Button>
             )}
           </div>

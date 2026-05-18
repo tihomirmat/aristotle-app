@@ -31,17 +31,10 @@ const AppRoutes = () => {
     );
   }
 
-  if (business && !business.onboarding_complete) {
+  if (!business || !business.onboarding_complete) {
     return (
       <Routes>
-        <Route path="*" element={<Onboarding />} />
-      </Routes>
-    );
-  }
-
-  if (!business) {
-    return (
-      <Routes>
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="*" element={<Onboarding />} />
       </Routes>
     );
