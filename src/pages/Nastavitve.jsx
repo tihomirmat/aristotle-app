@@ -72,7 +72,7 @@ export default function Nastavitve() {
     }
   }, [business]);
 
-  const PHONE_RE = /^(\+386|0)[1-9][0-9]{7,8}$/;
+  const PHONE_RE = /^(\+386[\s]?|0)[1-9][\s]?[0-9]{2}[\s]?[0-9]{3}[\s]?[0-9]{3}$/;
   const URL_RE = /^https?:\/\/.+/;
 
   const isDirty = savedForm && JSON.stringify(form) !== JSON.stringify(savedForm);
