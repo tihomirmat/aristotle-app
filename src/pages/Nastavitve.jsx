@@ -86,12 +86,21 @@ export default function Nastavitve() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: (data) => base44.entities.Business.update(business.id, data),
+    mutationFn: async (data) => {
+      if (business?.id) {
+        return base44.entities.Business.update(business.id, data);
+      } else {
+        return base44.entities.Business.create({ ...data, onboarding_complete: true });
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["business"] });
       setSavedForm({ ...form });
       setFormErrors({});
       sonnerToast.success("Profil je posodobljen.");
+    },
+    onError: (err) => {
+      sonnerToast.error("Napaka pri shranjevanju: " + (err?.message || "Neznana napaka"));
     },
   });
 
