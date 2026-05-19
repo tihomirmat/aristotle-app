@@ -53,7 +53,7 @@ export default function Onboarding() {
     setSaving(true);
     const user = await base44.auth.me();
     const industryVal = form.industry_template === "other2" ? "other" : (form.industry_template || "other");
-    await base44.entities.Business.create({
+    const business = await base44.entities.Business.create({
       name: form.name,
       industry_template: industryVal,
       phone: form.phone,
@@ -74,9 +74,49 @@ export default function Onboarding() {
       pillar_chatbot: true,
       pillar_assistant: false,
       pillar_digest: false,
+      review_requests_enabled: true,
+      review_request_delay_hours: 24,
     });
+
+    // Auto-seed Knowledge Base
+    const phone = form.phone || "še ni vneseno";
+    const address = form.address || "še ni vneseno";
+    const website = form.website || "še ni vneseno";
+    const services = form.services || "naše storitve";
+    const email = user.email || "še ni vneseno";
+    await Promise.all([
+      base44.entities.KnowledgeBase.create({
+        business_id: business.id,
+        title: "Naše storitve",
+        content: `Pri ${form.name} ponujamo: ${services}. Za info pišite na ${email} ali pokličite ${phone}. Termini in cene se prilagajajo. Z veseljem vam pripravimo personaliziran predlog.`,
+        category: "Storitve",
+        active: true,
+      }),
+      base44.entities.KnowledgeBase.create({
+        business_id: business.id,
+        title: "Rezervacija termina",
+        content: `Termin lahko rezervirate na 3 načine: 1) Kliknete spodaj na Rezerviraj termin. 2) Pokličete ${phone}. 3) Pišete na ${email} s preferenco. Delovni čas pon-pet od 09:00 do 17:00. Potrditev v isti delovni dan.`,
+        category: "Termini",
+        active: true,
+      }),
+      base44.entities.KnowledgeBase.create({
+        business_id: business.id,
+        title: "Pogosta vprašanja",
+        content: `Ali ponujate brezplačno posvetovanje? Da, prvi razgovor je brezplačen. Kako poteka prvo srečanje? Spoznamo potrebe, predstavimo storitve, določimo naslednje korake. Ali izdajate račune? Da, s pravilno izdanim računom (z DDV kjer relevantno). Kako prekličem termin? Brezplačno do 24 ur pred rezervacijo. Kakšen rok za odgovor? V naslednjih delovnih dneh, običajno isti dan.`,
+        category: "FAQ",
+        active: true,
+      }),
+      base44.entities.KnowledgeBase.create({
+        business_id: business.id,
+        title: "Kontaktni podatki",
+        content: `Naslov: ${address}. Telefon: ${phone}. Email: ${email}. Spletna stran: ${website}. Delovni čas: pon-pet, 09:00-17:00.`,
+        category: "Kontakt",
+        active: true,
+      }),
+    ]);
+
     await queryClient.invalidateQueries({ queryKey: ["business", user.email] });
-    toast.success("Aplikacija je pripravljena!");
+    toast.success("Aplikacija je pripravljena! Baza znanja je nastavljena.");
     window.location.href = "/";
   };
 

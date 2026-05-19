@@ -1,142 +1,157 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
-  const base44 = createClientFromRequest(req);
-  const user = await base44.auth.me();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { business_id } = await req.json();
-  if (!business_id) return Response.json({ error: 'business_id required' }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+    const { business_id } = body;
+    if (!business_id) return Response.json({ error: 'business_id required' }, { status: 400 });
 
-  const db = base44.asServiceRole;
+    const businesses = await base44.asServiceRole.entities.Business.filter({ id: business_id });
+    const business = businesses[0];
+    if (!business) return Response.json({ error: 'Business not found' }, { status: 404 });
 
-  const now = new Date();
-  const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
-  const nextWeek = new Date(now); nextWeek.setDate(now.getDate() + 7);
+    const DEMO_LEADS = [
+      { name: "Ana Novak", email: "ana.novak@example.si", phone: "+386 40 111 222", status: "new", source: "form", notes: "Zanima me vaša storitev" },
+      { name: "Marko Horvat", email: "marko.horvat@example.si", phone: "+386 41 333 444", status: "contacted", source: "chatbot" },
+      { name: "Petra Kovač", email: "petra.kovac@example.si", phone: "+386 31 555 666", status: "replied", source: "manual", tags: ["VIP"] },
+      { name: "Jure Krajnc", email: "jure.krajnc@example.si", phone: "+386 51 777 888", status: "new", source: "import" },
+      { name: "Maja Vidmar", email: "maja.vidmar@example.si", phone: "+386 40 999 111", status: "converted", source: "form" },
+      { name: "Tomaž Zupančič", email: "tomaz.zupancic@example.si", phone: "+386 41 222 333", status: "contacted", source: "chatbot", tags: ["VIP"] },
+      { name: "Nina Rupnik", email: "nina.rupnik@example.si", phone: "+386 31 444 555", status: "new", source: "manual" },
+      { name: "Andrej Pavlič", email: "andrej.pavlic@example.si", phone: "+386 51 666 777", status: "unsubscribed", source: "form" },
+      { name: "Sara Bezjak", email: "sara.bezjak@example.si", phone: "+386 40 888 999", status: "replied", source: "chatbot" },
+      { name: "Luka Hribar", email: "luka.hribar@example.si", phone: "+386 41 111 333", status: "converted", source: "manual" },
+    ];
 
-  const randomPastDate = (daysBack) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - Math.floor(Math.random() * daysBack));
-    return d.toISOString();
-  };
+    const createdLeads = await Promise.all(
+      DEMO_LEADS.map((l) =>
+        base44.asServiceRole.entities.Lead.create({
+          ...l,
+          tags: l.tags || [],
+          business_id,
+          consent_email: true,
+          is_demo: true,
+        })
+      )
+    );
 
-  // 10 Leads
-  const leadData = [
-    { name: "Ana Novak", email: "ana.novak@gmail.com", phone: "+386 40 111 001", status: "new", source: "form", tags: [] },
-    { name: "Marko Horvat", email: "marko.horvat@gmail.com", phone: "+386 40 111 002", status: "contacted", source: "import", tags: ["VIP"] },
-    { name: "Petra Kovač", email: "petra.kovac@gmail.com", phone: "+386 40 111 003", status: "replied", source: "manual", tags: [] },
-    { name: "Jure Krajnc", email: "jure.krajnc@gmail.com", phone: "+386 40 111 004", status: "new", source: "chatbot", tags: [] },
-    { name: "Maja Vidmar", email: "maja.vidmar@gmail.com", phone: "+386 40 111 005", status: "contacted", source: "form", tags: [] },
-    { name: "Tomaž Zupančič", email: "tomaz.zupancic@gmail.com", phone: "+386 40 111 006", status: "replied", source: "import", tags: ["VIP"] },
-    { name: "Nina Rupnik", email: "nina.rupnik@gmail.com", phone: "+386 40 111 007", status: "new", source: "manual", tags: [] },
-    { name: "Andrej Pavlič", email: "andrej.pavlic@gmail.com", phone: "+386 40 111 008", status: "contacted", source: "form", tags: [] },
-    { name: "Sara Bezjak", email: "sara.bezjak@gmail.com", phone: "+386 40 111 009", status: "new", source: "chatbot", tags: [] },
-    { name: "Luka Hribar", email: "luka.hribar@gmail.com", phone: "+386 40 111 010", status: "replied", source: "import", tags: [] },
-  ];
+    const ana = createdLeads.find(l => l.name === "Ana Novak");
+    const marko = createdLeads.find(l => l.name === "Marko Horvat");
+    const petra = createdLeads.find(l => l.name === "Petra Kovač");
+    const maja = createdLeads.find(l => l.name === "Maja Vidmar");
+    const luka = createdLeads.find(l => l.name === "Luka Hribar");
 
-  const leads = await Promise.all(leadData.map((l) =>
-    db.entities.Lead.create({
-      ...l,
+    // Generiraj AI drafts za 3 leade
+    const draftResults = await Promise.all([
+      base44.asServiceRole.functions.invoke('generateDraft', {
+        business_id,
+        lead_id: ana?.id,
+        pillar: 'reactivation',
+        sequence_step: 1,
+      }).catch(() => null),
+      base44.asServiceRole.functions.invoke('generateDraft', {
+        business_id,
+        lead_id: marko?.id,
+        pillar: 'review_request',
+        sequence_step: 1,
+      }).catch(() => null),
+      base44.asServiceRole.functions.invoke('generateDraft', {
+        business_id,
+        lead_id: petra?.id,
+        pillar: 'web_form_lead',
+        sequence_step: 1,
+      }).catch(() => null),
+    ]);
+
+    // Booking proposal za Maja
+    const now = new Date();
+    const slot1 = new Date(now); slot1.setDate(slot1.getDate() + 7); slot1.setHours(9, 0, 0, 0);
+    const slot2 = new Date(now); slot2.setDate(slot2.getDate() + 8); slot2.setHours(11, 0, 0, 0);
+    const slot3 = new Date(now); slot3.setDate(slot3.getDate() + 9); slot3.setHours(14, 0, 0, 0);
+
+    await base44.asServiceRole.entities.BookingProposal.create({
       business_id,
-      consent_email: true,
-      booking_intent: false,
-      last_contacted_at: randomPastDate(30),
-      is_demo: true,
-    })
-  ));
-
-  // 3 DraftMessages for first 3 leads
-  await Promise.all([
-    db.entities.DraftMessage.create({
-      business_id,
-      lead_id: leads[0].id,
-      pillar: "reactivation",
-      channel: "email",
-      subject: "Pogrešamo vas, Ana!",
-      body: "Pozdravljeni Ana,\n\nopazili smo, da nas že nekaj časa niste obiskali. Radi bi vam ponudili posebno priložnost – ta mesec pripravljamo ekskluzivno ponudbo samo za naše stalne stranke.\n\nVas zanima? Z veseljem vam rezerviramo termin po vaši izbiri.\n\nLep pozdrav,\nVaša ekipa",
+      lead_id: maja?.id,
+      service_requested: "Uvodni termin",
+      duration_minutes: 60,
       status: "pending",
-      ai_model_used: "haiku",
+      expires_at: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      proposed_slots: [
+        { start_datetime: slot1.toISOString(), end_datetime: new Date(slot1.getTime() + 60 * 60000).toISOString(), label: slot1.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
+        { start_datetime: slot2.toISOString(), end_datetime: new Date(slot2.getTime() + 60 * 60000).toISOString(), label: slot2.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
+        { start_datetime: slot3.toISOString(), end_datetime: new Date(slot3.getTime() + 60 * 60000).toISOString(), label: slot3.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
+      ],
       is_demo: true,
-    }),
-    db.entities.DraftMessage.create({
+    });
+
+    // Confirmed booking za Luka
+    const bookedAt = new Date(now); bookedAt.setDate(bookedAt.getDate() + 2); bookedAt.setHours(10, 0, 0, 0);
+    await base44.asServiceRole.entities.ConfirmedBooking.create({
       business_id,
-      lead_id: leads[1].id,
-      pillar: "review_request",
-      channel: "email",
-      subject: "Kako smo se odrezali, Marko?",
-      body: "Pozdravljeni Marko,\n\nhvala, ker ste nas nedavno obiskali! Vaše mnenje nam veliko pomeni.\n\nBi si vzeli 2 minuti in nam pustili oceno? Vsaka beseda nam pomaga, da se izboljšamo in pomagamo novim strankam pri odločitvi.\n\n👉 Pustite oceno: https://g.page/r/primer\n\nIskrena hvala!\nVaša ekipa",
-      status: "pending",
-      ai_model_used: "haiku",
+      lead_id: luka?.id,
+      booked_at: bookedAt.toISOString(),
+      duration_minutes: 60,
+      notes: "Osebni termin",
+      status: "confirmed",
       is_demo: true,
-    }),
-    db.entities.DraftMessage.create({
-      business_id,
-      lead_id: leads[2].id,
-      pillar: "web_form_lead",
-      channel: "email",
-      subject: "Hvala za vaše povpraševanje, Petra!",
-      body: "Pozdravljeni Petra,\n\nhvala za vaše povpraševanje prek naše spletne strani!\n\nVaše sporočilo smo prejeli in vam bomo odgovorili v najkrajšem možnem času. Medtem si lahko ogledate naše storitve in ceniki na spletni strani.\n\nCe imate kakršnakoli vprašanja, nas pokličite na +386 40 000 000.\n\nLep pozdrav,\nVaša ekipa",
-      status: "pending",
-      ai_model_used: "haiku",
-      is_demo: true,
-    }),
-  ]);
+    });
 
-  // 1 BookingProposal with 3 slots next week
-  const slot1Start = new Date(nextWeek); slot1Start.setHours(9, 0, 0, 0);
-  const slot1End = new Date(slot1Start); slot1End.setMinutes(60);
-  const slot2Start = new Date(nextWeek); slot2Start.setDate(slot2Start.getDate() + 1); slot2Start.setHours(14, 0, 0, 0);
-  const slot2End = new Date(slot2Start); slot2End.setMinutes(60);
-  const slot3Start = new Date(nextWeek); slot3Start.setDate(slot3Start.getDate() + 2); slot3Start.setHours(11, 0, 0, 0);
-  const slot3End = new Date(slot3Start); slot3End.setMinutes(60);
+    // Knowledge Base auto-seed
+    const phone = business.phone || "še ni vneseno";
+    const email = user.email || "še ni vneseno";
+    const address = business.address || "še ni vneseno";
+    const website = business.website || "še ni vneseno";
+    const services = business.services || "naše storitve";
+    const hoursStart = business.booking_hours_start || "09:00";
+    const hoursEnd = business.booking_hours_end || "17:00";
 
-  await db.entities.BookingProposal.create({
-    business_id,
-    lead_id: leads[3].id,
-    proposed_slots: [
-      { start_datetime: slot1Start.toISOString(), end_datetime: slot1End.toISOString(), label: slot1Start.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
-      { start_datetime: slot2Start.toISOString(), end_datetime: slot2End.toISOString(), label: slot2Start.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
-      { start_datetime: slot3Start.toISOString(), end_datetime: slot3End.toISOString(), label: slot3Start.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
-    ],
-    message: "Spoštovani Jure,\n\nv skladu z vašo željo vam predlagamo naslednje razpoložljive termine za sestanek. Prosimo, da izberete termin, ki vam najbolj ustreza, in nam sporočite svojo odločitev.\n\nZ lepimi pozdravi",
-    service_requested: "Posvetovanje",
-    duration_minutes: 60,
-    status: "pending",
-    expires_at: new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString(),
-    is_demo: true,
-  });
+    await Promise.all([
+      base44.asServiceRole.entities.KnowledgeBase.create({
+        business_id,
+        title: "Naše storitve",
+        content: `Pri ${business.name} ponujamo: ${services}. Za info pišite na ${email} ali pokličite ${phone}. Termini in cene se prilagajajo. Z veseljem vam pripravimo personaliziran predlog.`,
+        category: "Storitve",
+        active: true,
+        is_demo: true,
+      }),
+      base44.asServiceRole.entities.KnowledgeBase.create({
+        business_id,
+        title: "Rezervacija termina",
+        content: `Termin lahko rezervirate na 3 načine: 1) Kliknete spodaj na Rezerviraj termin. 2) Pokličete ${phone}. 3) Pišete na ${email} s preferenco. Delovni čas pon-pet od ${hoursStart} do ${hoursEnd}. Potrditev v isti delovni dan.`,
+        category: "Termini",
+        active: true,
+        is_demo: true,
+      }),
+      base44.asServiceRole.entities.KnowledgeBase.create({
+        business_id,
+        title: "Pogosta vprašanja",
+        content: `Ali ponujate brezplačno posvetovanje? Da, prvi razgovor je brezplačen. Kako poteka prvo srečanje? Spoznamo potrebe, predstavimo storitve, določimo naslednje korake. Ali izdajate račune? Da, s pravilno izdanim računom (z DDV kjer relevantno). Kako prekličem termin? Brezplačno do 24 ur pred rezervacijo. Kakšen rok za odgovor? V naslednjih delovnih dneh, običajno isti dan.`,
+        category: "FAQ",
+        active: true,
+        is_demo: true,
+      }),
+      base44.asServiceRole.entities.KnowledgeBase.create({
+        business_id,
+        title: "Kontaktni podatki",
+        content: `Naslov: ${address}. Telefon: ${phone}. Email: ${email}. Spletna stran: ${website}. Delovni čas: pon-pet, ${hoursStart}-${hoursEnd}.`,
+        category: "Kontakt",
+        active: true,
+        is_demo: true,
+      }),
+    ]);
 
-  // 1 ConfirmedBooking for tomorrow
-  const tomorrowAt10 = new Date(tomorrow); tomorrowAt10.setHours(10, 0, 0, 0);
-  await db.entities.ConfirmedBooking.create({
-    business_id,
-    lead_id: leads[4].id,
-    booked_at: tomorrowAt10.toISOString(),
-    duration_minutes: 60,
-    notes: "Stranka je prosila za posvetovanje glede novih storitev. Pripravite prospekt.",
-    status: "confirmed",
-    is_demo: true,
-  });
-
-  // 2 KnowledgeBase articles
-  await Promise.all([
-    db.entities.KnowledgeBase.create({
-      business_id,
-      title: "Naše storitve",
-      content: "Nudimo širok nabor storitev prilagojenih vašim potrebam:\n\n• Osnovno svetovanje (60 min) – 50 €\n• Poglobljeno posvetovanje (90 min) – 80 €\n• Mesečno vzdrževanje – od 150 €/mes\n• Skupinski paketi – po dogovoru\n\nVse storitve izvajamo v naših prostorih ali na daljavo. Za rezervacijo termina nas kontaktirajte po telefonu ali e-pošti.",
-      category: "storitve",
-      active: true,
-      is_demo: true,
-    }),
-    db.entities.KnowledgeBase.create({
-      business_id,
-      title: "Pogosta vprašanja",
-      content: "**Kako rezerviram termin?**\nTermin lahko rezervirate po telefonu, e-pošti ali prek spletnega obrazca na naši strani.\n\n**Kako dolgo traja sestanek?**\nStandardni sestanek traja 60 minut. Daljše sesije so na voljo po dogovoru.\n\n**Kakšne so možnosti plačila?**\nSprejemamo gotovino, kartice in bančno nakazilo.\n\n**Ali nudite popuste?**\nZa stalne stranke nudimo 10% popust na vse storitve. Za podjetja in večje naročile se cene dogovorimo individualno.\n\n**Kje se nahajate?**\nNaše pisarne so v centru Ljubljane. Točen naslov prejmete ob potrditvi termina.",
-      category: "faq",
-      active: true,
-      is_demo: true,
-    }),
-  ]);
-
-  return Response.json({ success: true, leads_created: leads.length });
+    return Response.json({
+      success: true,
+      leads_created: createdLeads.length,
+      drafts_attempted: 3,
+      kb_records: 4,
+      message: "Demo podatki ustvarjeni z AI drafti in bazo znanja",
+    });
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
 });

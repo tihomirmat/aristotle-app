@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Mic } from "lucide-react";
+import { seedDemoData } from "@/functions/seedDemoData";
 import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
+import TerminiTab from "@/components/nastavitve/TerminiTab";
 import { toast as sonnerToast } from "sonner";
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -123,107 +125,9 @@ export default function Nastavitve() {
 
   const handleSeedDemo = async () => {
     setDemoLoading('seed');
-
-    // 1. Ustvari leade
-    const createdLeads = await Promise.all(
-      DEMO_LEADS.map((l) =>
-        base44.entities.Lead.create({
-          ...l,
-          tags: l.tags || [],
-          business_id: business.id,
-          consent_email: true,
-          is_demo: true,
-        })
-      )
-    );
-
-    // Poišči leade po imenu za reference
-    const ana = createdLeads.find((l) => l.name === "Ana Novak");
-    const marko = createdLeads.find((l) => l.name === "Marko Horvat");
-    const petra = createdLeads.find((l) => l.name === "Petra Kovač");
-    const maja = createdLeads.find((l) => l.name === "Maja Vidmar");
-    const luka = createdLeads.find((l) => l.name === "Luka Hribar");
-
-    // 2. Ustvari draft sporočila
-    const now = new Date();
-    await Promise.all([
-      base44.entities.DraftMessage.create({
-        business_id: business.id,
-        lead_id: ana?.id,
-        pillar: "reactivation",
-        channel: "email",
-        subject: "Pogrešali smo vas, Ana",
-        body: "Spoštovana Ana, že nekaj časa vas v Studio Fit Ljubljana nismo videli in vas iskreno pogrešamo. Razumemo, da življenje včasih prinese drugačno rutino — vendar smo radi videli, kako vam je napredovanje šlo. Če razmišljate o vrnitvi, smo vam pripravljeni pomagati pri ponovnem zagonu. Z veseljem se slišimo. Lep pozdrav, Studio Fit Ljubljana",
-        status: "pending",
-        quality_score: 9,
-        ai_reasoning: "Mehak prvi pristop, brez prodajnih trikov",
-        is_demo: true,
-      }),
-      base44.entities.DraftMessage.create({
-        business_id: business.id,
-        lead_id: marko?.id,
-        pillar: "review_request",
-        channel: "email",
-        subject: "Hvala za zaupanje, Marko",
-        body: "Spoštovani Marko, hvala, da ste obiskali Studio Fit. Upamo, da vam je bilo všeč. Smo majhna ekipa in vsako iskreno mnenje stranke nam pomaga. Če lahko namenite eno minuto, bi nam vaša Google ocena veliko pomenila. Oddate jo lahko tukaj: https://g.page/r/abc Hvala, Studio Fit Ljubljana",
-        status: "pending",
-        quality_score: 8,
-        ai_reasoning: "Iskrena zahvala in jasna prošnja za review",
-        is_demo: true,
-      }),
-      base44.entities.DraftMessage.create({
-        business_id: business.id,
-        lead_id: petra?.id,
-        pillar: "web_form_lead",
-        channel: "email",
-        subject: "Hvala za povpraševanje, Petra",
-        body: "Spoštovana Petra, hvala za vaše povpraševanje. V naslednjih urah vam pripravim urnik, ki bo prilagojen vašim ciljem. Najlažje me dosežete na +386 40 555 111 ali kar odgovorite na to sporočilo. Lep pozdrav, Studio Fit Ljubljana",
-        status: "pending",
-        quality_score: 9,
-        ai_reasoning: "Hiter prvi odgovor s konkretnim naslednjim korakom",
-        is_demo: true,
-      }),
-    ]);
-
-    // 3. Ustvari booking proposal za Maja Vidmar
-    const nextWeek = new Date(now);
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    const slot1 = new Date(now); slot1.setDate(slot1.getDate() + 7); slot1.setHours(9, 0, 0, 0);
-    const slot2 = new Date(now); slot2.setDate(slot2.getDate() + 8); slot2.setHours(11, 0, 0, 0);
-    const slot3 = new Date(now); slot3.setDate(slot3.getDate() + 9); slot3.setHours(14, 0, 0, 0);
-
-    await base44.entities.BookingProposal.create({
-      business_id: business.id,
-      lead_id: maja?.id,
-      service_requested: "Uvodni trening",
-      duration_minutes: 60,
-      status: "pending",
-      expires_at: nextWeek.toISOString(),
-      proposed_slots: [
-        { start_datetime: slot1.toISOString(), end_datetime: new Date(slot1.getTime() + 60 * 60000).toISOString(), label: slot1.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
-        { start_datetime: slot2.toISOString(), end_datetime: new Date(slot2.getTime() + 60 * 60000).toISOString(), label: slot2.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
-        { start_datetime: slot3.toISOString(), end_datetime: new Date(slot3.getTime() + 60 * 60000).toISOString(), label: slot3.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
-      ],
-      is_demo: true,
-    });
-
-    // 4. Ustvari confirmed booking za Luka Hribar
-    const bookedAt = new Date(now);
-    bookedAt.setDate(bookedAt.getDate() + 2);
-    bookedAt.setHours(10, 0, 0, 0);
-
-    await base44.entities.ConfirmedBooking.create({
-      business_id: business.id,
-      lead_id: luka?.id,
-      booked_at: bookedAt.toISOString(),
-      duration_minutes: 60,
-      notes: "Osebni trening",
-      status: "confirmed",
-      is_demo: true,
-    });
-
+    await seedDemoData({ business_id: business.id });
     setDemoLoading(null);
-    sonnerToast.success("Demo podatki ustvarjeni (10 strank, 3 drafti, 2 rezervaciji)");
+    sonnerToast.success("Demo podatki ustvarjeni z AI drafti in bazo znanja");
     window.location.href = "/";
   };
 
@@ -423,49 +327,7 @@ export default function Nastavitve() {
 
         {/* TERMINI */}
         <TabsContent value="termini">
-          <div className="max-w-lg space-y-4">
-            <div className="flex items-center justify-between bg-card border rounded-xl p-4 shadow-sm">
-              <div>
-                <p className="font-medium">Aktiviraj rezervacije</p>
-                <p className="text-sm text-muted-foreground">Dovoli AI asistentu predlagati termine.</p>
-              </div>
-              <Switch checked={bookingForm.booking_enabled} onCheckedChange={(v) => setBookingForm({ ...bookingForm, booking_enabled: v })} />
-            </div>
-            {bookingForm.booking_enabled && (
-              <>
-                <div className="flex items-center justify-between bg-card border rounded-xl p-4 shadow-sm">
-                  <div>
-                    <p className="font-medium">Samodejni način</p>
-                    <p className="text-sm text-muted-foreground">Asistent potrdi termine brez vašega pregleda.</p>
-                  </div>
-                  <Switch checked={bookingForm.booking_auto_mode} onCheckedChange={(v) => setBookingForm({ ...bookingForm, booking_auto_mode: v })} />
-                </div>
-                <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
-                  <h3 className="font-semibold">Delovni čas terminov</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2"><Label>Začetek</Label><Input type="time" value={bookingForm.booking_hours_start} onChange={(e) => setBookingForm({ ...bookingForm, booking_hours_start: e.target.value })} /></div>
-                    <div className="space-y-2"><Label>Konec</Label><Input type="time" value={bookingForm.booking_hours_end} onChange={(e) => setBookingForm({ ...bookingForm, booking_hours_end: e.target.value })} /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2"><Label>Vmesni čas (min)</Label><Input type="number" value={bookingForm.booking_buffer_minutes} onChange={(e) => setBookingForm({ ...bookingForm, booking_buffer_minutes: parseInt(e.target.value) })} /></div>
-                    <div className="space-y-2"><Label>Trajanje (min)</Label><Input type="number" value={bookingForm.booking_default_duration_minutes} onChange={(e) => setBookingForm({ ...bookingForm, booking_default_duration_minutes: parseInt(e.target.value) })} /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2"><Label>Max. vnaprej (dni)</Label><Input type="number" value={bookingForm.booking_max_advance_days} onChange={(e) => setBookingForm({ ...bookingForm, booking_max_advance_days: parseInt(e.target.value) })} /></div>
-                    <div className="space-y-2"><Label>Min. vnaprej (ure)</Label><Input type="number" value={bookingForm.booking_min_advance_hours} onChange={(e) => setBookingForm({ ...bookingForm, booking_min_advance_hours: parseInt(e.target.value) })} /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2"><Label>Št. predlogov</Label><Input type="number" value={bookingForm.booking_proposals_count} onChange={(e) => setBookingForm({ ...bookingForm, booking_proposals_count: parseInt(e.target.value) })} /></div>
-                    <div className="space-y-2"><Label>Odzivno okno (ure)</Label><Input type="number" value={bookingForm.booking_response_window_hours} onChange={(e) => setBookingForm({ ...bookingForm, booking_response_window_hours: parseInt(e.target.value) })} /></div>
-                  </div>
-                </div>
-              </>
-            )}
-            <Button onClick={() => saveMutation.mutate(bookingForm)} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Shrani nastavitve terminov
-            </Button>
-          </div>
+          <TerminiTab business={business} />
         </TabsContent>
 
         {/* BILLING */}

@@ -290,13 +290,9 @@
       "type": "string",
       "default": "primary"
     },
-    "is_demo": {
-      "type": "boolean",
-      "default": false
-    },
     "brand_voice": {
       "type": "string",
-      "description": "Opis glasu blagovne znamke, stila pisanja in vrednot podjetja (do 2000 znakov)."
+      "maxLength": 2000
     },
     "tone_preset": {
       "type": "string",
@@ -311,6 +307,7 @@
     },
     "example_good_messages": {
       "type": "array",
+      "maxItems": 5,
       "items": {
         "type": "object",
         "properties": {
@@ -324,11 +321,11 @@
             "type": "string"
           }
         }
-      },
-      "maxItems": 5
+      }
     },
     "example_bad_messages": {
       "type": "array",
+      "maxItems": 5,
       "items": {
         "type": "object",
         "properties": {
@@ -342,12 +339,68 @@
             "type": "string"
           }
         }
-      },
-      "maxItems": 5
+      }
     },
     "email_signature": {
+      "type": "string"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    },
+    "widget_primary_color": {
       "type": "string",
-      "description": "E-po\u0161tni podpis, ki se doda na konec vsakega sporo\u010dila."
+      "default": "#10b981"
+    },
+    "widget_welcome_message": {
+      "type": "string",
+      "default": "Pozdravljeni! Z veseljem vam pomagamo. Kako vam lahko pomagam?"
+    },
+    "widget_position": {
+      "type": "string",
+      "enum": [
+        "bottom-right",
+        "bottom-left"
+      ],
+      "default": "bottom-right"
+    },
+    "widget_title": {
+      "type": "string"
+    },
+    "lead_form_title": {
+      "type": "string",
+      "default": "Po\u0161ljite povpra\u0161evanje"
+    },
+    "lead_form_button_text": {
+      "type": "string",
+      "default": "Po\u0161lji povpra\u0161evanje"
+    },
+    "lead_form_success_message": {
+      "type": "string",
+      "default": "Hvala! Kontaktirali vas bomo v najkraj\u0161em mo\u017enem \u010dasu."
+    },
+    "lead_form_consent_text": {
+      "type": "string"
+    },
+    "lead_form_primary_color": {
+      "type": "string",
+      "default": "#10b981"
+    },
+    "lead_form_show_phone": {
+      "type": "boolean",
+      "default": true
+    },
+    "lead_form_show_service": {
+      "type": "boolean",
+      "default": false
+    },
+    "review_requests_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "review_request_delay_hours": {
+      "type": "number",
+      "default": 24
     }
   },
   "required": [

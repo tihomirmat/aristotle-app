@@ -14,6 +14,7 @@ import { Search, UserPlus, Loader2, Users, ChevronDown, Upload, Download } from 
 import { toast } from "sonner";
 import { format } from "date-fns";
 import CustomerImportModal from "@/components/stranke/CustomerImportModal";
+import GenerateDraftButton from "@/components/stranke/GenerateDraftButton";
 
 const STATUS_LABELS = { new: "Novo", contacted: "Kontaktiran/a", replied: "Odgovoril/a", converted: "Pretvorjen/a", unsubscribed: "Odjavljen/a" };
 const STATUS_COLORS = { new: "bg-blue-100 text-blue-700", contacted: "bg-amber-100 text-amber-700", replied: "bg-emerald-100 text-emerald-700", converted: "bg-violet-100 text-violet-700", unsubscribed: "bg-gray-100 text-gray-500" };
@@ -118,6 +119,7 @@ export default function Stranke() {
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Vir</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Zadnji stik</th>
+                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Akcija</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -136,6 +138,9 @@ export default function Stranke() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs hidden lg:table-cell">
                     {lead.last_contacted_at ? format(new Date(lead.last_contacted_at), "d. M. yyyy") : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <GenerateDraftButton lead={lead} businessId={business?.id} />
                   </td>
                 </tr>
               ))}
