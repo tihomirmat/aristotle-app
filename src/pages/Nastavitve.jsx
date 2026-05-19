@@ -123,7 +123,9 @@ export default function Nastavitve() {
 
   const handleSeedDemo = async () => {
     setDemoLoading('seed');
-    await Promise.all(
+
+    // 1. Ustvari leade
+    const createdLeads = await Promise.all(
       DEMO_LEADS.map((l) =>
         base44.entities.Lead.create({
           ...l,
@@ -134,8 +136,94 @@ export default function Nastavitve() {
         })
       )
     );
+
+    // Poišči leade po imenu za reference
+    const ana = createdLeads.find((l) => l.name === "Ana Novak");
+    const marko = createdLeads.find((l) => l.name === "Marko Horvat");
+    const petra = createdLeads.find((l) => l.name === "Petra Kovač");
+    const maja = createdLeads.find((l) => l.name === "Maja Vidmar");
+    const luka = createdLeads.find((l) => l.name === "Luka Hribar");
+
+    // 2. Ustvari draft sporočila
+    const now = new Date();
+    await Promise.all([
+      base44.entities.DraftMessage.create({
+        business_id: business.id,
+        lead_id: ana?.id,
+        pillar: "reactivation",
+        channel: "email",
+        subject: "Pogrešali smo vas, Ana",
+        body: "Spoštovana Ana, že nekaj časa vas v Studio Fit Ljubljana nismo videli in vas iskreno pogrešamo. Razumemo, da življenje včasih prinese drugačno rutino — vendar smo radi videli, kako vam je napredovanje šlo. Če razmišljate o vrnitvi, smo vam pripravljeni pomagati pri ponovnem zagonu. Z veseljem se slišimo. Lep pozdrav, Studio Fit Ljubljana",
+        status: "pending",
+        quality_score: 9,
+        ai_reasoning: "Mehak prvi pristop, brez prodajnih trikov",
+        is_demo: true,
+      }),
+      base44.entities.DraftMessage.create({
+        business_id: business.id,
+        lead_id: marko?.id,
+        pillar: "review_request",
+        channel: "email",
+        subject: "Hvala za zaupanje, Marko",
+        body: "Spoštovani Marko, hvala, da ste obiskali Studio Fit. Upamo, da vam je bilo všeč. Smo majhna ekipa in vsako iskreno mnenje stranke nam pomaga. Če lahko namenite eno minuto, bi nam vaša Google ocena veliko pomenila. Oddate jo lahko tukaj: https://g.page/r/abc Hvala, Studio Fit Ljubljana",
+        status: "pending",
+        quality_score: 8,
+        ai_reasoning: "Iskrena zahvala in jasna prošnja za review",
+        is_demo: true,
+      }),
+      base44.entities.DraftMessage.create({
+        business_id: business.id,
+        lead_id: petra?.id,
+        pillar: "web_form_lead",
+        channel: "email",
+        subject: "Hvala za povpraševanje, Petra",
+        body: "Spoštovana Petra, hvala za vaše povpraševanje. V naslednjih urah vam pripravim urnik, ki bo prilagojen vašim ciljem. Najlažje me dosežete na +386 40 555 111 ali kar odgovorite na to sporočilo. Lep pozdrav, Studio Fit Ljubljana",
+        status: "pending",
+        quality_score: 9,
+        ai_reasoning: "Hiter prvi odgovor s konkretnim naslednjim korakom",
+        is_demo: true,
+      }),
+    ]);
+
+    // 3. Ustvari booking proposal za Maja Vidmar
+    const nextWeek = new Date(now);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const slot1 = new Date(now); slot1.setDate(slot1.getDate() + 7); slot1.setHours(9, 0, 0, 0);
+    const slot2 = new Date(now); slot2.setDate(slot2.getDate() + 8); slot2.setHours(11, 0, 0, 0);
+    const slot3 = new Date(now); slot3.setDate(slot3.getDate() + 9); slot3.setHours(14, 0, 0, 0);
+
+    await base44.entities.BookingProposal.create({
+      business_id: business.id,
+      lead_id: maja?.id,
+      service_requested: "Uvodni trening",
+      duration_minutes: 60,
+      status: "pending",
+      expires_at: nextWeek.toISOString(),
+      proposed_slots: [
+        { start_datetime: slot1.toISOString(), end_datetime: new Date(slot1.getTime() + 60 * 60000).toISOString(), label: slot1.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
+        { start_datetime: slot2.toISOString(), end_datetime: new Date(slot2.getTime() + 60 * 60000).toISOString(), label: slot2.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
+        { start_datetime: slot3.toISOString(), end_datetime: new Date(slot3.getTime() + 60 * 60000).toISOString(), label: slot3.toLocaleDateString("sl-SI", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) },
+      ],
+      is_demo: true,
+    });
+
+    // 4. Ustvari confirmed booking za Luka Hribar
+    const bookedAt = new Date(now);
+    bookedAt.setDate(bookedAt.getDate() + 2);
+    bookedAt.setHours(10, 0, 0, 0);
+
+    await base44.entities.ConfirmedBooking.create({
+      business_id: business.id,
+      lead_id: luka?.id,
+      booked_at: bookedAt.toISOString(),
+      duration_minutes: 60,
+      notes: "Osebni trening",
+      status: "confirmed",
+      is_demo: true,
+    });
+
     setDemoLoading(null);
-    sonnerToast.success("Demo podatki ustvarjeni (10 strank)");
+    sonnerToast.success("Demo podatki ustvarjeni (10 strank, 3 drafti, 2 rezervaciji)");
     window.location.href = "/";
   };
 
