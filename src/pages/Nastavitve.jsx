@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Database } from "lucide-react";
+import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Mic } from "lucide-react";
+import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
 import { toast as sonnerToast } from "sonner";
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -168,6 +169,7 @@ export default function Nastavitve() {
       <Tabs defaultValue={defaultTab}>
         <TabsList className="mb-6 flex-wrap h-auto gap-1">
           <TabsTrigger value="profil" className="gap-2"><User className="w-4 h-4" /> Profil</TabsTrigger>
+          <TabsTrigger value="glas" className="gap-2"><Mic className="w-4 h-4" /> Glas znamke</TabsTrigger>
           <TabsTrigger value="integracije" className="gap-2"><Mail className="w-4 h-4" /> Integracije</TabsTrigger>
           <TabsTrigger value="termini" className="gap-2"><Calendar className="w-4 h-4" /> Termini</TabsTrigger>
           <TabsTrigger value="billing" className="gap-2"><CreditCard className="w-4 h-4" /> Naročnina</TabsTrigger>
@@ -252,6 +254,11 @@ export default function Nastavitve() {
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        {/* GLAS ZNAMKE */}
+        <TabsContent value="glas">
+          <GlasZnamkeTab business={business} />
         </TabsContent>
 
         {/* INTEGRACIJE */}
