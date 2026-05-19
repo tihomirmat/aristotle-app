@@ -6,12 +6,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Sunrise, MessageSquare, Calendar, Send, Loader2, Bot } from "lucide-react";
+import { Sunrise, MessageSquare, Calendar, Send, Loader2, Bot, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
+import { generateBriefing } from "@/functions/generateBriefing";
 
 function BriefingTab({ business }) {
   const today = format(new Date(), "yyyy-MM-dd");
+  const queryClient = useQueryClient();
+  const [generating, setGenerating] = useState(false);
+
   const { data: briefings = [], isLoading } = useQuery({
     queryKey: ["briefings", business?.id],
     queryFn: () => base44.entities.AssistantBriefing.filter({ business_id: business.id }),
@@ -19,6 +23,17 @@ function BriefingTab({ business }) {
   });
 
   const todaysBriefing = briefings.find((b) => b.date === today);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      await generateBriefing({ business_id: business.id });
+      queryClient.invalidateQueries({ queryKey: ["briefings", business?.id] });
+    } catch (err) {
+      console.error(err);
+    }
+    setGenerating(false);
+  };
 
   if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
@@ -28,15 +43,35 @@ function BriefingTab({ business }) {
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <Sunrise className="w-12 h-12 text-muted-foreground/40 mb-4" />
           <p className="font-medium text-muted-foreground">Jutro poročilo za danes še ni pripravljeno.</p>
-          <p className="text-sm text-muted-foreground mt-1">Vsak dan zjutraj bo AI pripravil povzetek za vas.</p>
+          <p className="text-sm text-muted-foreground mt-1 mb-5">Kliknite gumb za generiranje ali počakajte na jutranjo avtomatizacijo.</p>
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+          >
+            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sunrise className="w-4 h-4" />}
+            Generiraj jutranjo poročilo
+          </button>
         </div>
       ) : (
-        <div className="bg-card border rounded-xl p-6 shadow-sm prose prose-sm max-w-none">
-          <div className="flex items-center gap-2 mb-4 not-prose">
-            <Sunrise className="w-5 h-5 text-amber-500" />
-            <span className="font-semibold">Jutro poročilo — {format(new Date(todaysBriefing.date), "d. M. yyyy")}</span>
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Sunrise className="w-5 h-5 text-amber-500" />
+              <span className="font-semibold">Jutro poročilo — {format(new Date(todaysBriefing.date), "d. M. yyyy")}</span>
+            </div>
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium hover:bg-muted disabled:opacity-50"
+            >
+              {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              Osveži
+            </button>
           </div>
-          <ReactMarkdown>{todaysBriefing.content}</ReactMarkdown>
+          <div className="bg-card border rounded-xl p-6 shadow-sm prose prose-sm max-w-none">
+            <ReactMarkdown>{todaysBriefing.content}</ReactMarkdown>
+          </div>
         </div>
       )}
     </div>

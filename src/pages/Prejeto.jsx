@@ -11,6 +11,7 @@ import { CheckCircle2, X, Pencil, Mail, Loader2, Inbox, Sparkles } from "lucide-
 import { format } from "date-fns";
 import DemoMessageModal from "@/components/prejeto/DemoMessageModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import GenerateDraftButton from "@/components/prejeto/GenerateDraftButton";
 
 const PILLAR_LABELS = {
   reactivation: "Reaktivacija",
@@ -118,7 +119,8 @@ export default function Prejeto() {
           </div>
         </div>
       ) : (
-        <><div className="flex justify-end mb-4">
+        <><div className="flex justify-end gap-2 mb-4">
+          <GenerateDraftButton />
           <Button variant="outline" size="sm" onClick={() => setShowHowAI(true)}>
             <Sparkles className="w-4 h-4 mr-2" /> Kako AI ustvarja sporočila
           </Button>

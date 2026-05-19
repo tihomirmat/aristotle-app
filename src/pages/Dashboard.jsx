@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Lock, Mail, Star, Globe, MessageSquare, Bot, BarChart3, ArrowRight, Users, UserPlus, Calendar, TrendingUp } from "lucide-react";
+import ReactivationPanel from "@/components/dashboard/ReactivationPanel";
 
 const PILLARS = [
   { key: "pillar_reactivation", label: "Reaktivacija strank", desc: "Avtomatska reaktivacija neaktivnih strank po e-pošti.", icon: Mail, color: "bg-blue-500", href: "/prejeto", stat_label: "sporočil ta teden", plans: ["starter","growth","scale"] },
@@ -74,9 +75,12 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Pregled</h1>
-        <p className="text-muted-foreground mt-1">Dobrodošli. Tukaj je pregled vašega sistema.</p>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Pregled</h1>
+          <p className="text-muted-foreground mt-1">Dobrodošli. Tukaj je pregled vašega sistema.</p>
+        </div>
+        <ReactivationPanel />
       </div>
 
       {/* KPI KARTICE */}
