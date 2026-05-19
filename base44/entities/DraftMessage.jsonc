@@ -61,6 +61,64 @@
     "is_demo": {
       "type": "boolean",
       "default": false
+    },
+    "quality_score": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "AI ocena kakovosti sporo\u010dila (1\u201310)"
+    },
+    "ai_reasoning": {
+      "type": "string",
+      "description": "Razlaga AI zakaj je sporo\u010dilo generirano na tak na\u010din"
+    },
+    "feedback_action": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "edited",
+        "skipped"
+      ],
+      "description": "Dejanje uporabnika po pregledu osnutka"
+    },
+    "feedback_reason": {
+      "type": "string",
+      "description": "Opcijsko besedilo razloga za feedback"
+    },
+    "edited_subject": {
+      "type": "string",
+      "description": "Zadeva, ki jo je uporabnik uredil pred po\u0161iljanjem"
+    },
+    "edited_body": {
+      "type": "string",
+      "description": "Vsebina, ki jo je uporabnik uredil pred po\u0161iljanjem"
+    },
+    "feedback_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u010cas ko je uporabnik podal feedback"
+    },
+    "subject_variant_a": {
+      "type": "string",
+      "description": "A/B testna razli\u010dica zadeve A"
+    },
+    "subject_variant_b": {
+      "type": "string",
+      "description": "A/B testna razli\u010dica zadeve B"
+    },
+    "subject_variant_used": {
+      "type": "string",
+      "description": "Katera razli\u010dica zadeve je bila dejansko poslana (a/b)"
+    },
+    "email_opened": {
+      "type": "boolean",
+      "default": false,
+      "description": "Ali je prejemnik odprl e-po\u0161to"
+    },
+    "email_opened_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u010cas prvega odprtja e-po\u0161te"
     }
   },
   "required": [

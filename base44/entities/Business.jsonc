@@ -290,9 +290,13 @@
       "type": "string",
       "default": "primary"
     },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    },
     "brand_voice": {
       "type": "string",
-      "maxLength": 2000
+      "description": "Opis glasu blagovne znamke, stila pisanja in vrednot podjetja (do 2000 znakov)."
     },
     "tone_preset": {
       "type": "string",
@@ -307,7 +311,6 @@
     },
     "example_good_messages": {
       "type": "array",
-      "maxItems": 5,
       "items": {
         "type": "object",
         "properties": {
@@ -321,11 +324,11 @@
             "type": "string"
           }
         }
-      }
+      },
+      "maxItems": 5
     },
     "example_bad_messages": {
       "type": "array",
-      "maxItems": 5,
       "items": {
         "type": "object",
         "properties": {
@@ -339,14 +342,12 @@
             "type": "string"
           }
         }
-      }
+      },
+      "maxItems": 5
     },
     "email_signature": {
-      "type": "string"
-    },
-    "is_demo": {
-      "type": "boolean",
-      "default": false
+      "type": "string",
+      "description": "E-po\u0161tni podpis, ki se doda na konec vsakega sporo\u010dila."
     }
   },
   "required": [
