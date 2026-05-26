@@ -13,7 +13,7 @@ import ReactivationPanel from "@/components/dashboard/ReactivationPanel";
 const PILLARS = [
   { key: "pillar_reactivation", label: "Reaktivacija strank", desc: "Avtomatska reaktivacija neaktivnih strank po e-pošti.", icon: Mail, color: "bg-blue-500", href: "/prejeto", stat_label: "sporočil ta teden", plans: ["starter","growth","scale"] },
   { key: "pillar_reviews", label: "Ocene & napotitve", desc: "Avtomatske prošnje za Google ocene in napotitve.", icon: Star, color: "bg-amber-500", href: "/ocene", stat_label: "prošenj ta teden", plans: ["starter","growth","scale"] },
-  { key: "pillar_leads", label: "Pridobivanje strank", desc: "Avtomatska nega potencialnih strank iz spletnega obrazca.", icon: Globe, color: "bg-emerald-500", href: "/stranke", stat_label: "novih strank ta teden", plans: ["starter","growth","scale"] },
+  { key: "pillar_leads", label: "Pridobivanje & CRM", desc: "Webhook, embed forma in upravljanje leadov. Brezplačen modul.", icon: Globe, color: "bg-emerald-500", href: "/pridobivanje", stat_label: "novih strank ta teden", plans: ["starter","growth","scale"], always_on: true },
   { key: "pillar_chatbot", label: "Klepetalni pomočnik", desc: "AI klepetalni widget na vašem spletnem mestu.", icon: MessageSquare, color: "bg-violet-500", href: "/klepet", stat_label: "pogovorov ta teden", plans: ["starter","growth","scale"] },
   { key: "pillar_assistant", label: "Osebni asistent", desc: "AI asistent za upravljanje terminov in dnevnih nalog.", icon: Bot, color: "bg-rose-500", href: "/asistent", stat_label: "akcij ta teden", plans: ["growth","scale"], min_plan: "growth" },
   { key: "pillar_digest", label: "Tedenski povzetek", desc: "Avtomatski tedenski poročili vsak ponedeljek.", icon: BarChart3, color: "bg-indigo-500", href: "/asistent", stat_label: "poročil", plans: ["scale"], min_plan: "scale" },
@@ -116,7 +116,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {PILLARS.map((pillar) => {
-          const enabled = business?.[pillar.key] || false;
+          const enabled = pillar.always_on ? true : (business?.[pillar.key] || false);
           const canUse = !pillar.min_plan || planGte(plan, pillar.min_plan);
           const Icon = pillar.icon;
 
@@ -138,8 +138,11 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
-                  {canUse && business?.id && (
+                  {canUse && business?.id && !pillar.always_on && (
                     <Switch checked={enabled} onCheckedChange={(v) => toggleMutation.mutate({ key: pillar.key, val: v })} />
+                  )}
+                  {pillar.always_on && (
+                    <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Brezplačno</Badge>
                   )}
                 </div>
               </CardHeader>

@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Code2, Eye, Copy, Check, Loader2, UserPlus, Send, Zap } from "lucide-react";
+import { Users, Code2, Loader2, Send, Zap, Webhook, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { generateDraft } from "@/functions/generateDraft";
 import GenerateDraftButton from "@/components/stranke/GenerateDraftButton";
+import WebhookTab from "@/components/pridobivanje/WebhookTab";
 import { format } from "date-fns";
 
 const STATUS_LABELS = { new: "Novo", contacted: "Kontaktiran/a", replied: "Odgovoril/a", converted: "Pretvorjen/a", unsubscribed: "Odjavljen/a" };
@@ -120,6 +121,9 @@ export default function Pridobivanje() {
           <TabsTrigger value="obrazec" className="gap-2">
             <Code2 className="w-4 h-4" /> Spletni obrazec
           </TabsTrigger>
+          <TabsTrigger value="webhook" className="gap-2">
+            <Webhook className="w-4 h-4" /> Webhook & API
+          </TabsTrigger>
         </TabsList>
 
         {/* TAB 1: Stranke iz obrazca */}
@@ -179,6 +183,11 @@ export default function Pridobivanje() {
               </div>
             </>
           )}
+        </TabsContent>
+
+        {/* TAB 3: Webhook & API */}
+        <TabsContent value="webhook">
+          <WebhookTab />
         </TabsContent>
 
         {/* TAB 2: Spletni obrazec */}
