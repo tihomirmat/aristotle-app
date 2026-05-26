@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Star, ExternalLink, Mail, TrendingUp, Zap, Send, Loader2, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Star, ExternalLink, Mail, TrendingUp, Zap, Send, Loader2, AlertCircle, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -94,6 +95,22 @@ export default function Ocene() {
   };
 
   const delayHours = business?.review_request_delay_hours || 24;
+  const [reviewLinkInput, setReviewLinkInput] = useState("");
+  const [savingLink, setSavingLink] = useState(false);
+
+  const handleSaveReviewLink = async () => {
+    const url = reviewLinkInput.trim();
+    if (!url.startsWith("https://")) {
+      toast.error("URL mora začeti z https://");
+      return;
+    }
+    setSavingLink(true);
+    await base44.entities.Business.update(business.id, { google_review_link: url });
+    queryClient.invalidateQueries({ queryKey: ["business"] });
+    toast.success("Google ocena povezava shranjena!");
+    setSavingLink(false);
+    setReviewLinkInput("");
+  };
 
   return (
     <div>
@@ -124,11 +141,20 @@ export default function Ocene() {
             <div className="space-y-3">
               <div className="flex items-start gap-2 text-amber-600 bg-amber-50 rounded-lg p-3">
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                <p className="text-sm">Dodajte Google ocena povezavo v nastavitvah (format: https://g.page/r/...).</p>
+                <p className="text-sm">Dodajte Google ocena povezavo (format: https://g.page/r/...).</p>
               </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/nastavitve">Nastavitve →</Link>
-              </Button>
+              <div className="flex gap-2">
+                <Input
+                  value={reviewLinkInput}
+                  onChange={(e) => setReviewLinkInput(e.target.value)}
+                  placeholder="https://g.page/r/..."
+                  className="text-sm"
+                />
+                <Button size="sm" onClick={handleSaveReviewLink} disabled={savingLink || !reviewLinkInput.trim()} className="shrink-0 gap-1.5">
+                  {savingLink ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Shrani
+                </Button>
+              </div>
             </div>
           )}
         </div>
