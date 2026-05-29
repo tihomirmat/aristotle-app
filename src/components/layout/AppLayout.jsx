@@ -2,10 +2,13 @@ import React, { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import UserMenu from "./UserMenu";
+import TrialExpiredModal from "@/components/TrialExpiredModal";
+import { useBusiness } from "@/lib/business-context";
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const { business } = useBusiness();
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -13,6 +16,7 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background font-inter">
+      <TrialExpiredModal business={business} />
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <main className={`transition-all duration-300 min-h-screen ${collapsed ? "ml-[68px]" : "ml-[240px]"}`}>
         {/* Sticky header */}

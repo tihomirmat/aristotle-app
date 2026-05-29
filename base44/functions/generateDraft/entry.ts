@@ -48,8 +48,37 @@ Deno.serve(async (req) => {
     if (!business) return Response.json({ error: 'Podjetje ni najdeno' }, { status: 404 });
     if (!lead) return Response.json({ error: 'Stranka ni najdena' }, { status: 404 });
 
+    // ─── TRIAL GATE: per-business credit cap ─────────────────────────────────
+    if (business.subscription_status === 'trialing') {
+      const used = business.trial_cost_used_eur || 0;
+      const cap = business.trial_cost_cap_eur || 0.45;
+      if (used >= cap) {
+        return Response.json(
+          { error: 'Brezplačni krediti za preizkus so porabljeni. Aktivirajte naročnino za nadaljevanje.', code: 'TRIAL_CREDITS_EXHAUSTED' },
+          { status: 402 }
+        );
+      }
+      // Global monthly org budget (only blocks trialing)
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      const allLogs = await base44.asServiceRole.entities.UsageLog.filter({ is_demo: false });
+      const monthTotal = allLogs
+        .filter((l) => l.date >= monthStart && l.date <= monthEnd)
+        .reduce((s, l) => s + (l.cost_eur || 0), 0);
+      const MONTHLY_BUDGET = parseFloat(Deno.env.get('MONTHLY_LLM_BUDGET_EUR') || '100');
+      if (monthTotal >= MONTHLY_BUDGET) {
+        return Response.json(
+          { error: 'Sistem je trenutno zaseden. Poskusite znova čez nekaj minut.', code: 'MONTHLY_TRIAL_BUDGET_REACHED' },
+          { status: 503 }
+        );
+      }
+    }
+
+    // ─── MODEL SELECTION — force haiku during trial ───────────────────────────
     const modelMap = { haiku: 'claude-haiku-4-5', sonnet: 'claude-sonnet-4-5', opus: 'claude-opus-4-5' };
-    const primaryModel = modelMap[business.anthropic_model] || 'claude-sonnet-4-5';
+    const effectiveModelKey = business.subscription_status === 'trialing' ? 'haiku' : (business.anthropic_model || 'haiku');
+    const primaryModel = modelMap[effectiveModelKey] || 'claude-haiku-4-5';
 
     // ─── Plast 3: Tenant brand voice ─────────────────────────────────────────
     const brandVoiceLayer = [
@@ -149,28 +178,41 @@ Deno.serve(async (req) => {
       scheduled_at: new Date().toISOString(),
     });
 
-    // ─── Beleži UsageLog ─────────────────────────────────────────────────────
+    // ─── Beleži UsageLog + trial cost increment ───────────────────────────────
     const today = new Date().toISOString().split('T')[0];
+    const totalCost = cost1 + cost2;
     await Promise.all([
       base44.asServiceRole.entities.UsageLog.create({
         business_id,
         date: today,
         pillar,
+        feature: pillar,
         model: primaryModel,
         input_tokens: tokensIn1,
         output_tokens: tokensOut1,
         cost_eur: cost1,
+        is_demo: false,
       }),
       base44.asServiceRole.entities.UsageLog.create({
         business_id,
         date: today,
         pillar: pillar + '_review',
+        feature: pillar,
+        subfeature: 'review',
         model: 'claude-haiku-4-5',
         input_tokens: tokensIn2,
         output_tokens: tokensOut2,
         cost_eur: cost2,
+        is_demo: false,
       }),
     ]);
+
+    // Increment trial cost if trialing
+    if (business.subscription_status === 'trialing' && totalCost > 0) {
+      await base44.asServiceRole.entities.Business.update(business_id, {
+        trial_cost_used_eur: (business.trial_cost_used_eur || 0) + totalCost,
+      });
+    }
 
     return Response.json({ success: true, draft, quality_score: qualityScore, approved: reviewData.approved, issues: reviewData.issues_found });
   } catch (error) {

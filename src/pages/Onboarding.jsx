@@ -53,6 +53,9 @@ export default function Onboarding() {
     setSaving(true);
     const user = await base44.auth.me();
     const industryVal = form.industry_template === "other2" ? "other" : (form.industry_template || "other");
+    // Trial end = now + 14 days
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
     const business = await base44.entities.Business.create({
       name: form.name,
       industry_template: industryVal,
@@ -66,14 +69,21 @@ export default function Onboarding() {
       onboarding_complete: true,
       draft_mode: true,
       locale: "sl",
-      plan: "starter",
       subscription_status: "trialing",
+      billing_mode: "trial",
+      trial_ends_at: trialEndsAt,
+      trial_cost_cap_eur: 0.45,
+      trial_cost_used_eur: 0,
+      trial_sends_remaining: 20,
+      trial_model_lock: "haiku",
+      anthropic_model: "haiku",
+      trial_emails_sent: [],
       pillar_reactivation: true,
       pillar_reviews: true,
       pillar_leads: true,
       pillar_chatbot: true,
-      pillar_assistant: false,
-      pillar_digest: false,
+      pillar_assistant: true,
+      pillar_digest: true,
       review_requests_enabled: true,
       review_request_delay_hours: 24,
     });

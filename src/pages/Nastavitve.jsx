@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Mic } from "lucide-react";
+import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Mic, Info } from "lucide-react";
 import BillingTab from "@/components/nastavitve/BillingTab";
 import { seedDemoData } from "@/functions/seedDemoData";
 import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
@@ -106,6 +106,7 @@ export default function Nastavitve() {
     },
   });
 
+  const isTrialing = business?.subscription_status === "trialing";
   const isHealthOk = business?.email_last_health_check_status === "ok";
   const [demoLoading, setDemoLoading] = useState(null); // 'seed' | 'clear' | null
 
@@ -319,6 +320,50 @@ export default function Nastavitve() {
                 {business?.google_calendar_connected
                   ? <Badge className="bg-emerald-100 text-emerald-700 border-0">Povezano</Badge>
                   : <Badge variant="outline" className="text-muted-foreground">Ni povezano</Badge>}
+              </div>
+            </div>
+
+            {/* AI model & Draft mode */}
+            <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
+              <h3 className="font-semibold">AI nastavitve</h3>
+              <div className="space-y-2">
+                <Label>AI model</Label>
+                <Select
+                  value={business?.anthropic_model || "haiku"}
+                  disabled={isTrialing}
+                  onValueChange={(v) => saveMutation.mutate({ anthropic_model: v })}
+                >
+                  <SelectTrigger className={isTrialing ? "opacity-50 cursor-not-allowed" : ""}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="haiku">Haiku (hitrost)</SelectItem>
+                    <SelectItem value="sonnet">Sonnet (ravnovesje)</SelectItem>
+                    <SelectItem value="opus">Opus (kakovost)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {isTrialing && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 shrink-0" />
+                    Med preizkusom se vedno uporablja model Haiku.
+                  </p>
+                )}
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-medium text-sm">Osnutek način</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {isTrialing
+                      ? "Avtomatsko pošiljanje je na voljo po aktivaciji naročnine."
+                      : "Ko izklopite, sistem pošilja sporočila avtomatsko brez odobritve."}
+                  </p>
+                </div>
+                <Switch
+                  checked={business?.draft_mode ?? true}
+                  disabled={isTrialing}
+                  onCheckedChange={(v) => !isTrialing && saveMutation.mutate({ draft_mode: v })}
+                  className={isTrialing ? "opacity-50 cursor-not-allowed" : ""}
+                />
               </div>
             </div>
           </div>
