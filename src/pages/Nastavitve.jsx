@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Mic } from "lucide-react";
+import BillingTab from "@/components/nastavitve/BillingTab";
 import { seedDemoData } from "@/functions/seedDemoData";
 import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
 import TerminiTab from "@/components/nastavitve/TerminiTab";
@@ -20,8 +21,6 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const INDUSTRY_LABELS = { gym: "Fitnes / Gym", dental_medspa: "Zobozdravstvo / Med Spa", home_services: "Domače storitve", restaurant: "Restavracija / Café", salon_barber: "Salon / Frizerstvo", auto: "Avto storitve", other: "Drugo" };
-const PLAN_LABELS = { free: "Brezplačno", starter: "Starter", growth: "Growth", scale: "Scale" };
-const PLAN_COLORS = { free: "bg-gray-100 text-gray-600", starter: "bg-blue-100 text-blue-700", growth: "bg-violet-100 text-violet-700", scale: "bg-amber-100 text-amber-700" };
 
 export default function Nastavitve() {
   const { business } = useBusiness();
@@ -332,39 +331,7 @@ export default function Nastavitve() {
 
         {/* BILLING */}
         <TabsContent value="billing">
-          <div className="max-w-lg space-y-4">
-            <div className="bg-card border rounded-xl p-5 shadow-sm">
-              <h3 className="font-semibold mb-3">Trenutni načrt</h3>
-              <div className="flex items-center gap-3">
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${PLAN_COLORS[business?.plan] || "bg-gray-100 text-gray-600"}`}>
-                  {PLAN_LABELS[business?.plan] || "—"}
-                </span>
-                <span className={`text-sm ${business?.subscription_status === "active" ? "text-emerald-600" : "text-amber-600"}`}>
-                  {business?.subscription_status === "active" ? "Aktivna naročnina" : business?.subscription_status === "trialing" ? "Preizkusno obdobje" : "Neaktivno"}
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3">
-              {[
-                { plan: "starter", price: "49 €/mes", features: ["Reaktivacija, ocene, lead nurturing", "Do 500 strank", "E-poštno pošiljanje"] },
-                { plan: "growth", price: "99 €/mes", features: ["Vse iz Starter", "Osebni AI asistent", "Rezervacije terminov"] },
-                { plan: "scale", price: "199 €/mes", features: ["Vse iz Growth", "Tedenski digest", "Neomejene stranke"] },
-              ].map((p) => (
-                <div key={p.plan} className={`border rounded-xl p-4 ${business?.plan === p.plan ? "border-primary bg-accent" : "bg-card"}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold capitalize">{PLAN_LABELS[p.plan]}</span>
-                    <span className="font-semibold">{p.price}</span>
-                  </div>
-                  <ul className="space-y-1">
-                    {p.features.map((f, i) => <li key={i} className="text-xs text-muted-foreground flex items-center gap-1.5">✓ {f}</li>)}
-                  </ul>
-                  {business?.plan !== p.plan && (
-                    <Button size="sm" variant="outline" className="mt-3 w-full">Nadgradi na {PLAN_LABELS[p.plan]}</Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          <BillingTab business={business} />
         </TabsContent>
       </Tabs>
     </div>

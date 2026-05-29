@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Lock, Mail, Star, Globe, MessageSquare, Bot, BarChart3, ArrowRight, Users, UserPlus, Calendar, TrendingUp } from "lucide-react";
 import ReactivationPanel from "@/components/dashboard/ReactivationPanel";
+import { hasModule } from "@/lib/entitlements";
 
 const PILLARS = [
   { key: "pillar_reactivation", label: "Reaktivacija strank", desc: "Avtomatska reaktivacija neaktivnih strank po e-pošti.", icon: Mail, color: "bg-blue-500", href: "/prejeto", stat_label: "sporočil ta teden", plans: ["starter","growth","scale"] },
@@ -19,11 +20,7 @@ const PILLARS = [
   { key: "pillar_digest", label: "Tedenski povzetek", desc: "Avtomatski tedenski poročili vsak ponedeljek.", icon: BarChart3, color: "bg-indigo-500", href: "/asistent", stat_label: "poročil", plans: ["scale"], min_plan: "scale" },
 ];
 
-const PLAN_ORDER = ["free", "starter", "growth", "scale"];
 
-function planGte(userPlan, minPlan) {
-  return PLAN_ORDER.indexOf(userPlan) >= PLAN_ORDER.indexOf(minPlan);
-}
 
 export default function Dashboard() {
   const { business } = useBusiness();
@@ -51,8 +48,6 @@ export default function Dashboard() {
     mutationFn: ({ key, val }) => base44.entities.Business.update(business.id, { [key]: val }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["business"] }),
   });
-
-  const plan = business?.plan || "starter";
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -116,12 +111,11 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {PILLARS.map((pillar) => {
-          const enabled = pillar.always_on ? true : (business?.[pillar.key] || false);
-          const canUse = !pillar.min_plan || planGte(plan, pillar.min_plan);
+          const enabled = pillar.always_on ? true : hasModule(business, pillar.key);
           const Icon = pillar.icon;
 
           return (
-            <Card key={pillar.key} className={`border-0 shadow-sm transition-opacity ${!enabled && canUse ? "opacity-60" : ""}`}>
+            <Card key={pillar.key} className={`border-0 shadow-sm transition-opacity ${!enabled ? "opacity-60" : ""}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -130,17 +124,8 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <CardTitle className="text-sm font-semibold">{pillar.label}</CardTitle>
-                      {!canUse && (
-                        <Badge variant="outline" className="text-xs mt-0.5 border-amber-300 text-amber-600">
-                          <Lock className="w-2.5 h-2.5 mr-1" />
-                          {pillar.min_plan === "growth" ? "Growth+" : "Scale"}
-                        </Badge>
-                      )}
                     </div>
                   </div>
-                  {canUse && business?.id && !pillar.always_on && (
-                    <Switch checked={enabled} onCheckedChange={(v) => toggleMutation.mutate({ key: pillar.key, val: v })} />
-                  )}
                   {pillar.always_on && (
                     <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Brezplačno</Badge>
                   )}
@@ -148,17 +133,13 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground mb-4">{pillar.desc}</p>
-                {!canUse ? (
-                  <Button size="sm" variant="outline" className="w-full border-amber-300 text-amber-700 hover:bg-amber-50" asChild>
-                    <Link to="/nastavitve?tab=billing">Nadgradi načrt</Link>
-                  </Button>
-                ) : enabled ? (
+                {enabled ? (
                   <Button size="sm" variant="outline" className="w-full" asChild>
                     <Link to={pillar.href}>Odpri <ArrowRight className="w-3.5 h-3.5 ml-1" /></Link>
                   </Button>
                 ) : (
-                  <Button size="sm" variant="ghost" className="w-full text-muted-foreground" onClick={() => toggleMutation.mutate({ key: pillar.key, val: true })}>
-                    Aktiviraj
+                  <Button size="sm" variant="outline" className="w-full border-amber-300 text-amber-700 hover:bg-amber-50" asChild>
+                    <Link to="/nastavitve?tab=billing">Aktiviraj modul</Link>
                   </Button>
                 )}
               </CardContent>
