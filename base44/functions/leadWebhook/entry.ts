@@ -41,19 +41,19 @@ Deno.serve(async (req) => {
     }
 
     // Validate business exists
-    const businesses = await base44.asServiceRole.entities.Business.filter({ id: business_id });
+    const businesses = await base44.entities.Business.filter({ id: business_id });
     if (!businesses || businesses.length === 0) {
       return Response.json({ error: "Business not found" }, { status: 400, headers: corsHeaders });
     }
 
     // Check if lead already exists (by email + business)
-    const existing = await base44.asServiceRole.entities.Lead.filter({ business_id, email });
+    const existing = await base44.entities.Lead.filter({ business_id, email });
     if (existing.length > 0) {
       return Response.json({ success: true, lead_id: existing[0].id, duplicate: true }, { headers: corsHeaders });
     }
 
     // Create lead
-    const lead = await base44.asServiceRole.entities.Lead.create({
+    const lead = await base44.entities.Lead.create({
       business_id,
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -61,16 +61,16 @@ Deno.serve(async (req) => {
       notes: message?.trim() || "",
       source: source || "form",
       status: "new",
-      consent_email: true,
+      consent_email: body.consent_email ?? true,
     });
 
-    // Trigger AI draft via generateDraft function
-    await base44.asServiceRole.functions.invoke('generateDraft', {
+    // Trigger AI draft via generateDraft function (fire and forget)
+    base44.functions.invoke('generateDraft', {
       business_id,
       lead_id: lead.id,
       pillar: 'web_form_lead',
       sequence_step: 1,
-    });
+    }).catch(() => {});
 
     return Response.json({ success: true, lead_id: lead.id }, { headers: corsHeaders });
   } catch (error) {
