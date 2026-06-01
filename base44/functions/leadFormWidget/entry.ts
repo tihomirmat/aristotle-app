@@ -16,17 +16,17 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const qsBusinessId = url.searchParams.get("business_id") || "";
 
-  // Use APP_URL if set, otherwise derive from request host
-  const appBaseUrl = Deno.env.get("APP_URL") || (url.protocol + "//" + url.host);
-  const configEndpoint = appBaseUrl + "/api/functions/getLeadFormConfig";
-  const submitEndpoint = appBaseUrl + "/api/functions/leadWebhook";
-
   // Build the widget JS as plain string concatenation — NO template literals
   // so Deno never tries to interpolate embedded JS expressions.
   var js = "(function() {\n";
   js += "  'use strict';\n";
-  js += "  var CONFIG_URL = '" + configEndpoint + "';\n";
-  js += "  var SUBMIT_URL = '" + submitEndpoint + "';\n";
+  js += "  var BASE_URL = (function() {\n";
+  js += "    var s = document.currentScript;\n";
+  js += "    if (s && s.src) { var u = new URL(s.src); return u.protocol + '//' + u.host; }\n";
+  js += "    return 'https://aristotle-smart-growth.base44.app';\n";
+  js += "  })();\n";
+  js += "  var CONFIG_URL = BASE_URL + '/api/functions/getLeadFormConfig';\n";
+  js += "  var SUBMIT_URL = BASE_URL + '/api/functions/leadWebhook';\n";
   js += "  var QS_BUSINESS_ID = '" + qsBusinessId.replace(/'/g, "") + "';\n";
   js += "\n";
   js += "  // Prefer data-business-id on the script tag, fallback to query-string value baked in\n";
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
     headers: {
       ...corsHeaders,
       "Content-Type": "application/javascript; charset=utf-8",
-      "Cache-Control": "public, max-age=300",
+      "Cache-Control": "public, max-age=60",
     },
   });
 });
