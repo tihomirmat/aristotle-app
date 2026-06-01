@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // Public webhook endpoint — no user auth required
 // POST /leadWebhook
@@ -22,7 +22,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const base44 = createClient({ appId: Deno.env.get("BASE44_APP_ID") });
+    // Use createClientFromRequest so asServiceRole is auto-configured by Base44 runtime
+    const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
 
     const { business_id, name, email, phone, message, source, secret } = body;
@@ -41,19 +42,19 @@ Deno.serve(async (req) => {
     }
 
     // Validate business exists
-    const businesses = await base44.entities.Business.filter({ id: business_id });
+    const businesses = await base44.asServiceRole.entities.Business.filter({ id: business_id });
     if (!businesses || businesses.length === 0) {
       return Response.json({ error: "Business not found" }, { status: 400, headers: corsHeaders });
     }
 
     // Check if lead already exists (by email + business)
-    const existing = await base44.entities.Lead.filter({ business_id, email });
+    const existing = await base44.asServiceRole.entities.Lead.filter({ business_id, email });
     if (existing.length > 0) {
       return Response.json({ success: true, lead_id: existing[0].id, duplicate: true }, { headers: corsHeaders });
     }
 
     // Create lead
-    const lead = await base44.entities.Lead.create({
+    const lead = await base44.asServiceRole.entities.Lead.create({
       business_id,
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -65,7 +66,7 @@ Deno.serve(async (req) => {
     });
 
     // Trigger AI draft via generateDraft function (fire and forget)
-    base44.functions.invoke('generateDraft', {
+    base44.asServiceRole.functions.invoke('generateDraft', {
       business_id,
       lead_id: lead.id,
       pillar: 'web_form_lead',
