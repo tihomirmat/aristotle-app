@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClient } from 'npm:@base44/sdk@0.8.25';
 
 // Public webhook endpoint — no user auth required
 // POST /leadWebhook
@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const base44 = createClientFromRequest(req);
+    const base44 = createClient({ appId: Deno.env.get("BASE44_APP_ID") });
     const body = await req.json().catch(() => ({}));
 
     const { business_id, name, email, phone, message, source, secret } = body;
@@ -38,6 +38,12 @@ Deno.serve(async (req) => {
     }
     if (!name || !email) {
       return Response.json({ error: "name and email are required" }, { status: 400, headers: corsHeaders });
+    }
+
+    // Validate business exists
+    const businesses = await base44.asServiceRole.entities.Business.filter({ id: business_id });
+    if (!businesses || businesses.length === 0) {
+      return Response.json({ error: "Business not found" }, { status: 400, headers: corsHeaders });
     }
 
     // Check if lead already exists (by email + business)
@@ -68,6 +74,9 @@ Deno.serve(async (req) => {
 
     return Response.json({ success: true, lead_id: lead.id }, { headers: corsHeaders });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500, headers: corsHeaders });
+    return Response.json(
+      { error: "Internal server error", details: error.message, status: error.status || 500 },
+      { status: 500, headers: corsHeaders }
+    );
   }
 });
