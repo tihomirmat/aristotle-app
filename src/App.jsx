@@ -20,6 +20,7 @@ import Nastavitve from '@/pages/Nastavitve';
 import AdminBusinesses from '@/pages/admin/Businesses';
 import AdminUsage from '@/pages/admin/Usage';
 import Pridobivanje from '@/pages/Pridobivanje';
+import Racuni from '@/pages/Racuni';
 
 const AppRoutes = () => {
   const { business, isLoading } = useBusiness();
@@ -52,6 +53,7 @@ const AppRoutes = () => {
         <Route path="/ocene" element={<Ocene />} />
         <Route path="/nastavitve" element={<Nastavitve />} />
         <Route path="/pridobivanje" element={<Pridobivanje />} />
+        <Route path="/racuni" element={<Racuni />} />
         <Route path="/admin/businesses" element={<AdminBusinesses />} />
         <Route path="/admin/usage" element={<AdminUsage />} />
       </Route>

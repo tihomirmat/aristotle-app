@@ -1,0 +1,52 @@
+{
+  "name": "InvoicePackage",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "period_month": {
+      "type": "number"
+    },
+    "period_year": {
+      "type": "number"
+    },
+    "invoice_count": {
+      "type": "number",
+      "default": 0
+    },
+    "zip_file_url": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "accountant_email": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "business_id",
+    "period_month",
+    "period_year"
+  ],
+  "rls": {
+    "read": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "create": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "update": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "delete": {
+      "role": "admin",
+      "or_owner": true
+    }
+  }
+}

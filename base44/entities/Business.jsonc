@@ -404,41 +404,34 @@
     },
     "trial_ends_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "Hard end of free trial (set to now+14d on signup)"
+      "format": "date-time"
     },
     "trial_cost_cap_eur": {
       "type": "number",
-      "default": 0.45,
-      "description": "Total LLM cost budget for the trial in EUR"
+      "default": 0.45
     },
     "trial_cost_used_eur": {
       "type": "number",
-      "default": 0,
-      "description": "Running EUR cost of trial AI generation"
+      "default": 0
     },
     "trial_model_lock": {
       "type": "string",
       "enum": [
         "haiku"
       ],
-      "default": "haiku",
-      "description": "Forces Haiku for trial generations (Sonnet/Opus disabled during trial)"
+      "default": "haiku"
     },
     "trial_sends_remaining": {
       "type": "number",
-      "default": 20,
-      "description": "Number of real outbound emails allowed during trial"
+      "default": 20
     },
     "integration_fee_paid": {
       "type": "boolean",
-      "default": false,
-      "description": "True after first paid invoice incl. 199\u20ac fee OR true if waived via bundle"
+      "default": false
     },
     "bundle_active": {
       "type": "boolean",
-      "default": false,
-      "description": "True when customer purchased the 399\u20ac all-modules bundle"
+      "default": false
     },
     "billing_mode": {
       "type": "string",
@@ -447,8 +440,7 @@
         "alacarte",
         "bundle"
       ],
-      "default": "trial",
-      "description": "Replaces semantic role of old plan enum"
+      "default": "trial"
     },
     "trial_emails_sent": {
       "type": "array",
@@ -460,8 +452,20 @@
           "day14"
         ]
       },
-      "default": [],
-      "description": "Which reminder emails have already gone out"
+      "default": []
+    },
+    "invoice_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable monthly invoice package to accountant"
+    },
+    "invoice_inbound_token": {
+      "type": "string",
+      "description": "Unique token for the inbound invoice email address (inv-<token>@mail.base44.app)"
+    },
+    "accountant_email": {
+      "type": "string",
+      "description": "Accountant email address for monthly invoice packages"
     }
   },
   "required": [

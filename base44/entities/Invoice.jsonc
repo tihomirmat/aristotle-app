@@ -1,0 +1,55 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "source_email_from": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "received_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "captured",
+        "packaged",
+        "sent"
+      ],
+      "default": "captured"
+    }
+  },
+  "required": [
+    "business_id"
+  ],
+  "rls": {
+    "read": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "create": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "update": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "delete": {
+      "role": "admin",
+      "or_owner": true
+    }
+  }
+}

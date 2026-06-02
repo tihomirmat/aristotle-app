@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Mic, Info } from "lucide-react";
+import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Mic, Info, FileText, Copy, Check } from "lucide-react";
 import BillingTab from "@/components/nastavitve/BillingTab";
 import { seedDemoData } from "@/functions/seedDemoData";
 import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
@@ -109,6 +109,24 @@ export default function Nastavitve() {
   const isTrialing = business?.subscription_status === "trialing";
   const isHealthOk = business?.email_last_health_check_status === "ok";
   const [demoLoading, setDemoLoading] = useState(null); // 'seed' | 'clear' | null
+  const [copiedToken, setCopiedToken] = useState(false);
+
+  const invoiceAddress = business?.invoice_inbound_token
+    ? `inv-${business.invoice_inbound_token}@mail.base44.app`
+    : null;
+
+  const handleCopyInvoiceAddress = () => {
+    if (invoiceAddress) {
+      navigator.clipboard.writeText(invoiceAddress);
+      setCopiedToken(true);
+      setTimeout(() => setCopiedToken(false), 2000);
+    }
+  };
+
+  const generateToken = () => {
+    const token = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+    saveMutation.mutate({ invoice_inbound_token: token });
+  };
 
   const DEMO_LEADS = [
     { name: "Ana Novak", email: "ana.novak@example.si", phone: "+386 40 111 222", status: "new", source: "form" },
@@ -165,6 +183,7 @@ export default function Nastavitve() {
           <TabsTrigger value="integracije" className="gap-2"><Mail className="w-4 h-4" /> Integracije</TabsTrigger>
           <TabsTrigger value="termini" className="gap-2"><Calendar className="w-4 h-4" /> Termini</TabsTrigger>
           <TabsTrigger value="billing" className="gap-2"><CreditCard className="w-4 h-4" /> Naročnina</TabsTrigger>
+          <TabsTrigger value="racuni" className="gap-2"><FileText className="w-4 h-4" /> Računi</TabsTrigger>
         </TabsList>
 
         {/* PROFIL */}
@@ -377,6 +396,62 @@ export default function Nastavitve() {
         {/* BILLING */}
         <TabsContent value="billing">
           <BillingTab business={business} />
+        </TabsContent>
+
+        {/* RAČUNI */}
+        <TabsContent value="racuni">
+          <div className="max-w-lg space-y-5">
+            {/* Enable toggle */}
+            <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold">Mesečni paket računov za računovodjo</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Sistem vsak 1. v mesecu samodejno zbere vse prejete račune in jih pošlje na e-naslov računovodje.
+                  </p>
+                </div>
+                <Switch
+                  checked={business?.invoice_enabled ?? false}
+                  onCheckedChange={(v) => saveMutation.mutate({ invoice_enabled: v })}
+                />
+              </div>
+
+              {business?.invoice_enabled && (
+                <div className="space-y-3 pt-3 border-t">
+                  <div className="space-y-2">
+                    <Label>E-naslov računovodje</Label>
+                    <Input
+                      type="email"
+                      placeholder="racunovodja@primer.si"
+                      defaultValue={business?.accountant_email || ""}
+                      onBlur={(e) => saveMutation.mutate({ accountant_email: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Inbound address */}
+            <div className="bg-card border rounded-xl p-5 shadow-sm space-y-3">
+              <h3 className="font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /> Naslov za posredovanje računov</h3>
+              <p className="text-sm text-muted-foreground">
+                Nastavite pravilo za posredovanje ali povejte dobaviteljem, naj CC-jajo ta naslov, ko vam pošiljajo račune. Sistem bo samodejno shranil vse PDF-je in slike iz prilog.
+              </p>
+              {invoiceAddress ? (
+                <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-4 py-2.5 text-sm font-mono">
+                  <span className="flex-1 break-all">{invoiceAddress}</span>
+                  <Button size="sm" variant="ghost" onClick={handleCopyInvoiceAddress} className="shrink-0">
+                    {copiedToken ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={generateToken} disabled={saveMutation.isPending}>
+                  {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Ustvari naslov za prejemanje
+                </Button>
+              )}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
