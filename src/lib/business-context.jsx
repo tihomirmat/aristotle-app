@@ -16,7 +16,7 @@ export function BusinessProvider({ children }) {
     enabled: !!user,
   });
 
-  const business = businesses[0] || null;
+  const business = [...businesses].sort((a, b) => new Date(a.created_date) - new Date(b.created_date))[0] || null;
 
   return (
     <BusinessContext.Provider value={{ business, user, isLoading }}>

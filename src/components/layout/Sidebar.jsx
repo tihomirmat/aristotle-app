@@ -6,6 +6,7 @@ import {
   Building2, BarChart3, Lock
 } from "lucide-react";
 import { useBusiness } from "@/lib/business-context";
+import { hasModule } from "@/lib/entitlements";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,9 +20,6 @@ export default function Sidebar({ collapsed, setCollapsed }) {
   const business = ctx?.business;
   const user = ctx?.user;
   const isAdmin = user?.role === "admin";
-  const plan = business?.plan || "starter";
-  const PLAN_ORDER = ["free", "starter", "growth", "scale"];
-  const planGte = (min) => PLAN_ORDER.indexOf(plan) >= PLAN_ORDER.indexOf(min);
   const [lockedDialog, setLockedDialog] = useState(null); // { label, desc }
 
   const { data: pendingDrafts = [] } = useQuery({
@@ -36,9 +34,9 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     { path: "/", label: "Pregled", icon: LayoutDashboard, locked: false },
     { path: "/prejeto", label: "Prejeto", icon: Inbox, locked: false, badge: pendingCount > 0 ? pendingCount : null },
     { path: "/stranke", label: "Stranke", icon: Users, locked: false },
-    { path: "/klepet", label: "Klepetalni pomočnik", icon: MessageSquare, locked: !business?.pillar_chatbot, lockDesc: "Aktivirajte klepetalni pomočnik v Pregledu." },
-    { path: "/asistent", label: "Asistent", icon: Bot, locked: !business?.pillar_assistant || !planGte("growth"), lockDesc: "Aktivirajte osebni asistent v Pregledu (zahteva Growth načrt)." },
-    { path: "/ocene", label: "Ocene & napotitve", icon: Star, locked: !business?.pillar_reviews, lockDesc: "Aktivirajte module za ocene v Pregledu." },
+    { path: "/klepet", label: "Klepetalni pomočnik", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "Aktivirajte klepetalni pomočnik v Pregledu." },
+    { path: "/asistent", label: "Asistent", icon: Bot, locked: !hasModule(business, "pillar_assistant"), lockDesc: "Aktivirajte osebni asistent v Pregledu." },
+    { path: "/ocene", label: "Ocene & napotitve", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Aktivirajte module za ocene v Pregledu." },
     { path: "/nastavitve", label: "Nastavitve", icon: Settings, locked: false },
   ];
 
