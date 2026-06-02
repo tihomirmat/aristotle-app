@@ -401,9 +401,88 @@
     "review_request_delay_hours": {
       "type": "number",
       "default": 24
+    },
+    "trial_ends_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Hard end of free trial (set to now+14d on signup)"
+    },
+    "trial_cost_cap_eur": {
+      "type": "number",
+      "default": 0.45,
+      "description": "Total LLM cost budget for the trial in EUR"
+    },
+    "trial_cost_used_eur": {
+      "type": "number",
+      "default": 0,
+      "description": "Running EUR cost of trial AI generation"
+    },
+    "trial_model_lock": {
+      "type": "string",
+      "enum": [
+        "haiku"
+      ],
+      "default": "haiku",
+      "description": "Forces Haiku for trial generations (Sonnet/Opus disabled during trial)"
+    },
+    "trial_sends_remaining": {
+      "type": "number",
+      "default": 20,
+      "description": "Number of real outbound emails allowed during trial"
+    },
+    "integration_fee_paid": {
+      "type": "boolean",
+      "default": false,
+      "description": "True after first paid invoice incl. 199\u20ac fee OR true if waived via bundle"
+    },
+    "bundle_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when customer purchased the 399\u20ac all-modules bundle"
+    },
+    "billing_mode": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "alacarte",
+        "bundle"
+      ],
+      "default": "trial",
+      "description": "Replaces semantic role of old plan enum"
+    },
+    "trial_emails_sent": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "day10",
+          "day12",
+          "day14"
+        ]
+      },
+      "default": [],
+      "description": "Which reminder emails have already gone out"
     }
   },
   "required": [
     "name"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "create": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "update": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "delete": {
+      "role": "admin",
+      "or_owner": true
+    }
+  }
 }

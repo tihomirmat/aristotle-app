@@ -64,5 +64,23 @@
   "required": [
     "business_id",
     "name"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "create": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "update": {
+      "role": "admin",
+      "or_owner": true
+    },
+    "delete": {
+      "role": "admin",
+      "or_owner": true
+    }
+  }
 }

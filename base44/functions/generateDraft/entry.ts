@@ -160,7 +160,9 @@ Deno.serve(async (req) => {
     const cost2 = (tokensIn2 * 0.00000025) + (tokensOut2 * 0.00000125);
 
     const qualityScore = reviewData.quality_score || 7;
-    const draftStatus = qualityScore < 6 ? 'flagged_for_review' : 'pending';
+    // If draft_mode is OFF, auto-approve high-quality drafts (skip manual review)
+    const autoApprove = business.draft_mode === false && qualityScore >= 6;
+    const draftStatus = qualityScore < 6 ? 'flagged_for_review' : (autoApprove ? 'approved' : 'pending');
 
     // ─── Shrani DraftMessage ─────────────────────────────────────────────────
     const draft = await base44.asServiceRole.entities.DraftMessage.create({
