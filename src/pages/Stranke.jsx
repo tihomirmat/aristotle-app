@@ -80,6 +80,7 @@ export default function Stranke() {
   };
 
   if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (!business) return <div className="flex justify-center py-20 text-muted-foreground text-sm">Nalagam podatke podjetja…</div>;
 
   return (
     <div>

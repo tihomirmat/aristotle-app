@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Sunrise, MessageSquare, Calendar, Send, Loader2, Bot, RefreshCw } from "lucide-react";
+import { Sunrise, MessageSquare, Calendar, Send, Loader2, Bot, RefreshCw, AlertTriangle } from "lucide-react";
+import StatusBanner from "@/components/ui/StatusBanner";
 import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import { generateBriefing } from "@/functions/generateBriefing";
@@ -237,6 +238,7 @@ function BookingsTab({ business }) {
 
 export default function Asistent() {
   const { business, user } = useBusiness();
+  const calendarConnected = business?.google_calendar_connected;
 
   return (
     <div>
@@ -244,6 +246,9 @@ export default function Asistent() {
         <h1 className="text-2xl font-bold">Asistent</h1>
         <p className="text-muted-foreground mt-1">Vaš osebni AI asistent za upravljanje terminov in komunikacije.</p>
       </div>
+      {!calendarConnected && (
+        <StatusBanner variant="info" message="Google Koledar ni povezan — predlogi terminov ne delujejo. Povežite ga v Nastavitvah → Integracije." action={{ label: "Nastavi", href: "/nastavitve?tab=integracije" }} />
+      )}
       <Tabs defaultValue="briefing">
         <TabsList className="mb-6">
           <TabsTrigger value="briefing" className="flex items-center gap-2"><Sunrise className="w-4 h-4" /> Jutro</TabsTrigger>

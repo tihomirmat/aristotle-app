@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, X, Pencil, Mail, Loader2, Inbox, Sparkles } from "lucide-react";
+import { CheckCircle2, X, Pencil, Mail, Loader2, Inbox, Sparkles, AlertTriangle } from "lucide-react";
+import StatusBanner from "@/components/ui/StatusBanner";
 import { format } from "date-fns";
 import DemoMessageModal from "@/components/prejeto/DemoMessageModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -66,6 +67,9 @@ export default function Prejeto() {
 
   if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
+  const trialSendsOut = business?.subscription_status === "trialing" && (business?.trial_sends_remaining ?? 20) <= 0;
+  const noEmailProvider = !business?.email_provider && !business?.gmail_access_token && !business?.outlook_access_token && !business?.smtp_host;
+
   return (
     <div>
       <div className="mb-6">
@@ -73,6 +77,12 @@ export default function Prejeto() {
         <p className="text-muted-foreground mt-1">Sporočila, ki čakajo na vašo odobritev pred pošiljanjem.</p>
       </div>
 
+      {trialSendsOut && (
+        <StatusBanner variant="warning" message="Porabili ste vse brezplačne pošiljke preizkusa. Odobritev bo shranjena, a sporočila ne bodo poslana, dokler ne aktivirate naročnine." action={{ label: "Aktiviraj", href: "/nastavitve?tab=billing" }} />
+      )}
+      {noEmailProvider && (
+        <StatusBanner variant="info" message="E-pošta ni nastavljena — sporočila se ne morejo pošiljati. Povežite Gmail, Outlook ali SMTP v Nastavitvah." action={{ label: "Nastavi", href: "/nastavitve?tab=integracije" }} />
+      )}
       <DemoMessageModal open={showDemo} onOpenChange={setShowDemo} />
 
       <Dialog open={showHowAI} onOpenChange={setShowHowAI}>

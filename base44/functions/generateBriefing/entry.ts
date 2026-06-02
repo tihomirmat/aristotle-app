@@ -66,6 +66,7 @@ Navodila:
       date: today,
       content: result,
       generated_at: new Date().toISOString(),
+      created_by: business.created_by,
     });
 
     return Response.json({ success: true, briefing });

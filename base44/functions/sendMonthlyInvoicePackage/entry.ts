@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
           zip_file_url: zipUrl,
           sent_at: sentAt,
           accountant_email: business.accountant_email,
+          created_by: business.created_by,
         }),
       ]);
 

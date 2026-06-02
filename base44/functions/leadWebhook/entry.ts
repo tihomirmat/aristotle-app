@@ -53,7 +53,8 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, lead_id: existing[0].id, duplicate: true }, { headers: corsHeaders });
     }
 
-    // Create lead
+    // Create lead — set created_by to business owner so RLS passes
+    const businessOwner = businesses[0].created_by;
     const lead = await base44.asServiceRole.entities.Lead.create({
       business_id,
       name: name.trim(),
@@ -63,6 +64,7 @@ Deno.serve(async (req) => {
       source: source || "form",
       status: "new",
       consent_email: body.consent_email ?? true,
+      created_by: businessOwner,
     });
 
     // Trigger AI draft via generateDraft function (fire and forget)

@@ -85,6 +85,7 @@ Vrni JSON z:
       status: 'pending',
       ai_model_used: 'haiku',
       scheduled_at: new Date().toISOString(),
+      created_by: business.created_by,
     });
 
     return Response.json({ success: true, draft });

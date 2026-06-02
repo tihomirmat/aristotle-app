@@ -71,6 +71,7 @@ Vrni JSON z subject in body.`,
         status: 'pending',
         ai_model_used: 'haiku',
         scheduled_at: new Date().toISOString(),
+        created_by: business.created_by,
       });
       created++;
     }

@@ -97,6 +97,7 @@ Pomočnik:`;
         status: shouldEscalate ? 'escalated' : 'active',
         escalated: shouldEscalate,
         started_at: new Date().toISOString(),
+        created_by: business.created_by, // attribute to business owner so RLS passes
       });
     }
 

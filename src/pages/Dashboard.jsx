@@ -10,6 +10,7 @@ import { Mail, Star, Globe, MessageSquare, Bot, BarChart3, ArrowRight, Users, Us
 import ReactivationPanel from "@/components/dashboard/ReactivationPanel";
 import { hasModule } from "@/lib/entitlements";
 import TrialBanner from "@/components/dashboard/TrialBanner";
+import StatusBanner from "@/components/ui/StatusBanner";
 
 const PILLARS = [
   { key: "pillar_reactivation", label: "Reaktivacija strank", desc: "Avtomatska reaktivacija neaktivnih strank po e-pošti.", icon: Mail, color: "bg-blue-500", href: "/prejeto", stat_label: "sporočil ta teden", plans: ["starter","growth","scale"] },
@@ -68,9 +69,23 @@ export default function Dashboard() {
     { label: "Rezervacije ta teden", value: bookingsThisWeek, icon: Calendar, color: "text-violet-600", bg: "bg-violet-50", delta: null },
   ];
 
+  // Trial exhaustion banners
+  const trialSendsOut = business?.subscription_status === "trialing" && (business?.trial_sends_remaining ?? 20) <= 0;
+  const trialCostOut = business?.subscription_status === "trialing" && (business?.trial_cost_used_eur ?? 0) >= (business?.trial_cost_cap_eur ?? 0.45);
+  const noEmailProvider = !business?.email_provider && !business?.gmail_access_token && !business?.outlook_access_token && !business?.smtp_host;
+
   return (
     <div>
       <TrialBanner business={business} />
+      {trialSendsOut && (
+        <StatusBanner variant="warning" message="Porabili ste vse brezplačne pošiljke preizkusa (20). Aktivirajte naročnino za nadaljevanje pošiljanja." action={{ label: "Aktiviraj", href: "/nastavitve?tab=billing" }} />
+      )}
+      {trialCostOut && !trialSendsOut && (
+        <StatusBanner variant="warning" message="AI kredit za preizkus je porabljen. Aktivirajte naročnino za generiranje novih osnutkov." action={{ label: "Aktiviraj", href: "/nastavitve?tab=billing" }} />
+      )}
+      {noEmailProvider && business?.onboarding_complete && (
+        <StatusBanner variant="info" message="E-pošta ni nastavljena. Povežite Gmail, Outlook ali SMTP, da bo sistem lahko pošiljal sporočila." action={{ label: "Nastavi", href: "/nastavitve?tab=integracije" }} />
+      )}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Pregled</h1>

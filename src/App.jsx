@@ -23,7 +23,7 @@ import Pridobivanje from '@/pages/Pridobivanje';
 import Racuni from '@/pages/Racuni';
 
 const AppRoutes = () => {
-  const { business, isLoading } = useBusiness();
+  const { business, isLoading, noBusinessYet } = useBusiness();
 
   if (isLoading) {
     return (
@@ -33,7 +33,8 @@ const AppRoutes = () => {
     );
   }
 
-  if (!business || !business.onboarding_complete) {
+  // No business at all (new user) or onboarding not finished → always go to onboarding
+  if (noBusinessYet || (business && !business.onboarding_complete)) {
     return (
       <Routes>
         <Route path="/onboarding" element={<Onboarding />} />
