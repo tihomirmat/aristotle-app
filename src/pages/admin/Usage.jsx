@@ -2,7 +2,6 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Loader2 } from "lucide-react";
-import { format } from "date-fns";
 
 export default function AdminUsage() {
   const { data: logs = [], isLoading } = useQuery({

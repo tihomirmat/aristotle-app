@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Star, Globe, MessageSquare, Bot, Package, CheckCircle, AlertCircle, Clock, Plus, Minus, Sparkles } from "lucide-react";
+import { Mail, Star, Globe, MessageSquare, Bot, Package, CheckCircle, AlertCircle, Clock, Plus, Sparkles } from "lucide-react";
 import { differenceInDays, addMonths, format } from "date-fns";
 import { toast } from "sonner";
 

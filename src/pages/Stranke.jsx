@@ -51,6 +51,34 @@ export default function Stranke() {
     return matchSearch && matchStatus;
   });
 
+  const handleExportCsv = () => {
+    if (filtered.length === 0) {
+      toast.error("Ni strank za izvoz.");
+      return;
+    }
+    const escape = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+    const headers = ["Ime", "E-pošta", "Telefon", "Status", "Vir", "Soglasje", "Zadnji stik", "Opombe"];
+    const rows = filtered.map((l) => [
+      l.name,
+      l.email,
+      l.phone,
+      STATUS_LABELS[l.status] || l.status,
+      SOURCE_LABELS[l.source] || l.source,
+      l.consent_email ? "Da" : "Ne",
+      l.last_contacted_at ? format(new Date(l.last_contacted_at), "yyyy-MM-dd") : "",
+      l.notes,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `stranke-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Izvoženih ${filtered.length} strank`);
+  };
+
   if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   return (
@@ -71,7 +99,7 @@ export default function Stranke() {
               <DropdownMenuItem onClick={() => setShowImport(true)}>
                 <Upload className="w-4 h-4 mr-2" /> Uvozi CSV
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportCsv}>
                 <Download className="w-4 h-4 mr-2" /> Izvozi CSV
               </DropdownMenuItem>
             </DropdownMenuContent>

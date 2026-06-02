@@ -2,7 +2,7 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { AlertTriangle, Clock } from "lucide-react";
 
 export default function ConversationDetail({ conversation, onClose }) {
   if (!conversation) return null;
