@@ -431,18 +431,39 @@ export default function Nastavitve() {
               )}
             </div>
 
-            {/* Inbound address */}
-            <div className="bg-card border rounded-xl p-5 shadow-sm space-y-3">
-              <h3 className="font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /> Naslov za posredovanje računov</h3>
+            {/* Inbound address + webhook setup */}
+            <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
+              <h3 className="font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /> Avtomatski zajem računov (e-pošta)</h3>
               <p className="text-sm text-muted-foreground">
-                Nastavite pravilo za posredovanje ali povejte dobaviteljem, naj CC-jajo ta naslov, ko vam pošiljajo račune. Sistem bo samodejno shranil vse PDF-je in slike iz prilog.
+                Nastavite posredovanje e-pošte na spodnji webhook URL, da sistem samodejno zajame PDF/slike iz prilog. Brez tega nastavite račune ročno na strani Računi.
               </p>
+
               {invoiceAddress ? (
-                <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-4 py-2.5 text-sm font-mono">
-                  <span className="flex-1 break-all">{invoiceAddress}</span>
-                  <Button size="sm" variant="ghost" onClick={handleCopyInvoiceAddress} className="shrink-0">
-                    {copiedToken ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                  </Button>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Vaš naslov za prejemanje (CC dobaviteljem):</p>
+                    <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-3 py-2 text-xs font-mono">
+                      <span className="flex-1 break-all">{invoiceAddress}</span>
+                      <Button size="sm" variant="ghost" className="h-6 px-2 shrink-0" onClick={handleCopyInvoiceAddress}>
+                        {copiedToken ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Webhook URL (usmerite Mailgun Route ali Resend inbound sem):</p>
+                    <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-3 py-2 text-xs font-mono break-all">
+                      <span className="flex-1">https://api.base44.app/api/apps/69fb8760fa0b118b8a291e26/functions/inboundInvoiceEmail</span>
+                    </div>
+                  </div>
+                  <div className="bg-muted/40 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium text-foreground">Navodila za Mailgun:</p>
+                    <p>1. V Mailgun odprite <em>Receiving → Routes → Create Route</em></p>
+                    <p>2. Filter: <code className="bg-muted px-1 rounded">match_recipient("{invoiceAddress}")</code></p>
+                    <p>3. Action: <code className="bg-muted px-1 rounded">forward("webhook URL zgoraj")</code> + <code className="bg-muted px-1 rounded">store()</code></p>
+                    <p className="font-medium text-foreground mt-2">Navodila za Resend:</p>
+                    <p>1. V Resend odprite <em>Inbound → Add endpoint</em> in vnesite webhook URL</p>
+                    <p>2. Nastavite svojo domeno, da pošilja e-pošto do <code className="bg-muted px-1 rounded">{invoiceAddress}</code></p>
+                  </div>
                 </div>
               ) : (
                 <Button variant="outline" size="sm" onClick={generateToken} disabled={saveMutation.isPending}>

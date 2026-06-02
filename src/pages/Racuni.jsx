@@ -1,12 +1,13 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState, useRef, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useBusiness } from "@/lib/business-context";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Package, Download, Inbox, Copy, Check } from "lucide-react";
+import { FileText, Package, Download, Upload, Loader2, Send, X } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { sendMonthlyInvoicePackage } from "@/functions/sendMonthlyInvoicePackage";
 
 function monthKey(d) {
   const dt = new Date(d);
@@ -23,14 +24,16 @@ const STATUS_COLORS = {
   sent: "bg-emerald-100 text-emerald-700",
 };
 
+const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/jpg", "image/tiff", "image/webp", "image/gif"];
+
 export default function Racuni() {
   const { business } = useBusiness();
+  const queryClient = useQueryClient();
   const [monthFilter, setMonthFilter] = useState("all");
-  const [copied, setCopied] = useState(false);
-
-  const inboundAddress = business?.invoice_inbound_token
-    ? `inv-${business.invoice_inbound_token}@mail.base44.app`
-    : null;
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState([]); // { name, progress }
+  const [sendingPackage, setSendingPackage] = useState(false);
+  const fileInputRef = useRef(null);
 
   const { data: invoices = [], isLoading: loadingInvoices } = useQuery({
     queryKey: ["invoices", business?.id],
@@ -44,49 +47,146 @@ export default function Racuni() {
     enabled: !!business?.id,
   });
 
-  // Build month options from captured invoices
   const months = [...new Set(invoices.map(inv => monthKey(inv.received_date || inv.created_date)))].sort().reverse();
 
   const filtered = monthFilter === "all"
-    ? invoices
-    : invoices.filter(inv => monthKey(inv.received_date || inv.created_date) === monthFilter);
+    ? [...invoices].sort((a, b) => new Date(b.received_date || b.created_date) - new Date(a.received_date || a.created_date))
+    : invoices
+        .filter(inv => monthKey(inv.received_date || inv.created_date) === monthFilter)
+        .sort((a, b) => new Date(b.received_date || b.created_date) - new Date(a.received_date || a.created_date));
 
   const sortedPackages = [...packages].sort((a, b) =>
     (b.period_year * 100 + b.period_month) - (a.period_year * 100 + a.period_month)
   );
 
-  const handleCopy = () => {
-    if (inboundAddress) {
-      navigator.clipboard.writeText(inboundAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  const deleteInvoice = useMutation({
+    mutationFn: (id) => base44.entities.Invoice.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] }),
+  });
+
+  const uploadFiles = useCallback(async (files) => {
+    if (!business?.id) return;
+    const allowed = Array.from(files).filter(f =>
+      ALLOWED_TYPES.some(t => f.type.startsWith(t.split("/")[0]) && f.name.match(/\.(pdf|png|jpe?g|tiff?|webp|gif)$/i))
+    );
+    if (allowed.length === 0) {
+      toast.error("Izberite PDF ali slikovne datoteke.");
+      return;
     }
+
+    setUploadingFiles(allowed.map(f => ({ name: f.name })));
+
+    const now = new Date().toISOString();
+    let successCount = 0;
+
+    for (const file of allowed) {
+      try {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        await base44.entities.Invoice.create({
+          business_id: business.id,
+          source_email_from: "manual upload",
+          subject: file.name,
+          received_date: now,
+          file_url,
+          file_name: file.name,
+          status: "captured",
+        });
+        successCount++;
+      } catch (e) {
+        toast.error(`Napaka pri nalaganju ${file.name}: ${e.message}`);
+      }
+    }
+
+    setUploadingFiles([]);
+    if (successCount > 0) {
+      toast.success(`${successCount} ${successCount === 1 ? "račun dodan" : "računov dodanih"}`);
+      queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] });
+    }
+  }, [business?.id, queryClient]);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setDragOver(false);
+    uploadFiles(e.dataTransfer.files);
+  }, [uploadFiles]);
+
+  const handleSendPackageNow = async () => {
+    if (!business?.id) return;
+    if (!business?.accountant_email) {
+      toast.error("Najprej nastavite e-naslov računovodje v Nastavitvah → Računi.");
+      return;
+    }
+    setSendingPackage(true);
+    try {
+      const res = await sendMonthlyInvoicePackage({ business_id: business.id });
+      const result = res?.data?.results?.[0];
+      if (result?.sent) {
+        toast.success(`Paket poslan računovodji (${result.invoice_count} računov).`);
+        queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] });
+        queryClient.invalidateQueries({ queryKey: ["invoice-packages", business?.id] });
+      } else if (result?.skipped) {
+        toast.info(`Ni računov za pošiljanje: ${result.reason}`);
+      } else {
+        toast.error("Napaka pri pošiljanju paketa.");
+      }
+    } catch (e) {
+      toast.error("Napaka: " + e.message);
+    }
+    setSendingPackage(false);
   };
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Računi</h1>
-        <p className="text-muted-foreground mt-1">Prejeti računi dobaviteljev in mesečni paketi za računovodjo.</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold">Računi</h1>
+          <p className="text-muted-foreground mt-1">Prejeti računi dobaviteljev in mesečni paketi za računovodjo.</p>
+        </div>
+        {business?.invoice_enabled && (
+          <Button variant="outline" onClick={handleSendPackageNow} disabled={sendingPackage} className="gap-2 shrink-0">
+            {sendingPackage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            Pošlji paket zdaj
+          </Button>
+        )}
       </div>
 
-      {/* Inbound address */}
-      {inboundAddress && (
-        <div className="bg-card border rounded-xl p-5 shadow-sm">
-          <h2 className="font-semibold mb-1 flex items-center gap-2"><Inbox className="w-4 h-4 text-primary" /> Naslov za posredovanje računov</h2>
-          <p className="text-sm text-muted-foreground mb-3">
-            Nastavite pravilo za posredovanje ali povejte dobaviteljem, naj CC-jajo ta naslov, ko vam pošiljajo račun.
-          </p>
-          <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-4 py-2.5 text-sm font-mono">
-            <span className="flex-1 break-all">{inboundAddress}</span>
-            <Button size="sm" variant="ghost" onClick={handleCopy} className="shrink-0">
-              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-            </Button>
-          </div>
+      {/* Manual upload */}
+      <div>
+        <h2 className="font-semibold flex items-center gap-2 mb-3"><Upload className="w-4 h-4 text-primary" /> Dodaj račune</h2>
+        <div
+          className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${dragOver ? "border-primary bg-accent/30" : "border-border hover:border-primary/50 hover:bg-muted/30"}`}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.webp,.gif"
+            className="hidden"
+            onChange={(e) => uploadFiles(e.target.files)}
+          />
+          {uploadingFiles.length > 0 ? (
+            <div className="space-y-2">
+              <Loader2 className="w-7 h-7 animate-spin text-primary mx-auto mb-2" />
+              <p className="text-sm font-medium">Nalagam {uploadingFiles.length} {uploadingFiles.length === 1 ? "datoteko" : "datoteke"}…</p>
+              {uploadingFiles.map((f, i) => (
+                <p key={i} className="text-xs text-muted-foreground">{f.name}</p>
+              ))}
+            </div>
+          ) : (
+            <>
+              <Upload className="w-8 h-8 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="font-medium text-sm">Povlecite PDF-je ali slike sem</p>
+              <p className="text-xs text-muted-foreground mt-1">ali kliknite za izbiro datotek · PDF, PNG, JPG, TIFF, WEBP</p>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Captured invoices */}
+      {/* Invoice list */}
       <div>
         <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
           <h2 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Prejeti računi</h2>
@@ -102,20 +202,19 @@ export default function Racuni() {
         </div>
 
         {loadingInvoices ? (
-          <div className="text-sm text-muted-foreground py-8 text-center">Nalagam...</div>
+          <div className="text-sm text-muted-foreground py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
         ) : filtered.length === 0 ? (
           <div className="text-sm text-muted-foreground py-12 text-center border rounded-xl bg-card">
             <FileText className="w-8 h-8 mx-auto mb-3 text-muted-foreground/40" />
-            <p className="font-medium">Ni prejetih računov.</p>
-            <p className="mt-1">Posredujte e-pošto z računom na zgornji naslov.</p>
+            <p className="font-medium">Ni računov.</p>
+            <p className="mt-1">Naložite datoteke zgoraj ali nastavite posredovanje e-pošte v Nastavitvah.</p>
           </div>
         ) : (
           <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/30">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Pošiljatelj</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Zadeva</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Vir</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Datoteka</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Datum</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
@@ -125,9 +224,10 @@ export default function Racuni() {
               <tbody className="divide-y">
                 {filtered.map(inv => (
                   <tr key={inv.id} className="hover:bg-muted/20">
-                    <td className="px-4 py-3 text-xs text-muted-foreground max-w-[160px] truncate">{inv.source_email_from || "—"}</td>
-                    <td className="px-4 py-3 max-w-[200px] truncate">{inv.subject || "—"}</td>
-                    <td className="px-4 py-3 max-w-[160px] truncate text-xs">{inv.file_name || "—"}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground max-w-[180px] truncate" title={inv.source_email_from}>
+                      {inv.source_email_from || "—"}
+                    </td>
+                    <td className="px-4 py-3 max-w-[200px] truncate text-xs" title={inv.file_name}>{inv.file_name || "—"}</td>
                     <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                       {inv.received_date ? format(new Date(inv.received_date), "d. M. yyyy") : "—"}
                     </td>
@@ -136,11 +236,19 @@ export default function Racuni() {
                         {inv.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right flex items-center justify-end gap-1">
                       {inv.file_url && (
                         <a href={inv.file_url} target="_blank" rel="noopener noreferrer">
                           <Button size="sm" variant="ghost" className="h-7 px-2"><Download className="w-3.5 h-3.5" /></Button>
                         </a>
+                      )}
+                      {inv.status === "captured" && (
+                        <Button
+                          size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteInvoice.mutate(inv.id)}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
                       )}
                     </td>
                   </tr>
@@ -155,10 +263,10 @@ export default function Racuni() {
       <div>
         <h2 className="font-semibold flex items-center gap-2 mb-4"><Package className="w-4 h-4 text-primary" /> Mesečni paketi računovodje</h2>
         {loadingPackages ? (
-          <div className="text-sm text-muted-foreground py-4 text-center">Nalagam...</div>
+          <div className="py-4 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>
         ) : sortedPackages.length === 0 ? (
           <div className="text-sm text-muted-foreground py-8 text-center border rounded-xl bg-card">
-            Še ni poslanih paketov. Paket se pošlje samodejno 1. v mesecu.
+            Še ni poslanih paketov. Paket se pošlje samodejno 1. v mesecu ali ročno z gumbom zgoraj.
           </div>
         ) : (
           <div className="space-y-3">
@@ -169,7 +277,7 @@ export default function Racuni() {
                     {new Date(pkg.period_year, pkg.period_month - 1, 1).toLocaleString("sl-SI", { month: "long", year: "numeric" })}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {pkg.invoice_count} računov · Računovodja: {pkg.accountant_email} · Poslano {pkg.sent_at ? format(new Date(pkg.sent_at), "d. M. yyyy HH:mm") : "—"}
+                    {pkg.invoice_count} računov · {pkg.accountant_email} · {pkg.sent_at ? format(new Date(pkg.sent_at), "d. M. yyyy HH:mm") : "—"}
                   </p>
                 </div>
                 {pkg.zip_file_url && (
