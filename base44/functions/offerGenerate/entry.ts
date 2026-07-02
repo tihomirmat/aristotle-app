@@ -112,6 +112,21 @@ Deno.serve(async (req) => {
     const isTrialing = business.subscription_status === 'trialing';
     const hasByok = business.offers_byok_provider && business.offers_byok_verified_at;
 
+    // Gate 1: module entitlement (trial opens all modules; otherwise pillar_offers must be true)
+    const trialStillValid = isTrialing && business.trial_ends_at && new Date(business.trial_ends_at) > new Date();
+    if (!trialStillValid && business.pillar_offers !== true) {
+      return Response.json({ error: 'Modul Generator ponudb ni aktiven.', code: 'MODULE_LOCKED' }, { status: 403 });
+    }
+
+    // Gate 2 (trial only): per-business trial credit cap
+    if (isTrialing) {
+      const usedTrial = business.trial_cost_used_eur || 0;
+      const capTrial = business.trial_cost_cap_eur || 0.45;
+      if (usedTrial >= capTrial) {
+        return Response.json({ error: 'Brezplačni krediti za preizkus so porabljeni. Aktivirajte naročnino za nadaljevanje.', code: 'TRIAL_CREDITS_EXHAUSTED' }, { status: 402 });
+      }
+    }
+
     if (kind === 'full' && !isTrialing && !hasByok && (business.offers_free_generations_used || 0) >= 5) {
       return Response.json({ error: 'Brezplačna kvota 5 ponudb je porabljena.', code: 'OFFERS_FREE_QUOTA_REACHED' }, { status: 402 });
     }
@@ -120,6 +135,21 @@ Deno.serve(async (req) => {
     }
 
     let { provider, model } = pickModel(business, kind);
+
+    // Gate 3: global monthly LLM budget guard — platform credits only, never BYOK
+    if (provider === 'platform_anthropic') {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      const allLogs = await base44.asServiceRole.entities.UsageLog.filter({ is_demo: false });
+      const monthTotal = allLogs
+        .filter((l) => l.date >= monthStart && l.date <= monthEnd)
+        .reduce((s, l) => s + (l.cost_eur || 0), 0);
+      const MONTHLY_BUDGET = parseFloat(Deno.env.get('MONTHLY_LLM_BUDGET_EUR') || '100');
+      if (monthTotal >= MONTHLY_BUDGET) {
+        return Response.json({ error: 'Sistem je trenutno zaseden. Poskusite znova čez nekaj minut.', code: 'MONTHLY_TRIAL_BUDGET_REACHED' }, { status: 503 });
+      }
+    }
 
     // Load template if provided
     let template = null;
