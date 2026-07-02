@@ -72,6 +72,7 @@ Vrni JSON z subject in body.`,
         ai_model_used: 'haiku',
         scheduled_at: new Date().toISOString(),
         created_by: business.created_by,
+        owner_email: business.owner_email || business.created_by,
       });
       created++;
     }
