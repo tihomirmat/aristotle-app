@@ -5,18 +5,20 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'npm:docx@8.5
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 
+const PLATFORM_MODELS = ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-4-5'];
+
 function pickModel(business, kind) {
   if (business.subscription_status === 'trialing') {
-    return { provider: 'platform_anthropic', model: 'claude-opus-4-7' };
+    return { provider: 'platform_anthropic', model: PLATFORM_MODELS[0] };
   }
   if (business.offers_byok_provider && business.offers_byok_verified_at) {
     return { provider: 'byok_' + business.offers_byok_provider, model: business.offers_byok_model };
   }
   if (kind === 'full' && (business.offers_free_generations_used || 0) < 5) {
-    return { provider: 'platform_anthropic', model: 'claude-opus-4-7' };
+    return { provider: 'platform_anthropic', model: PLATFORM_MODELS[0] };
   }
   if (kind === 'improvement' && (business.offers_free_improvements_used || 0) < 10) {
-    return { provider: 'platform_anthropic', model: 'claude-opus-4-7' };
+    return { provider: 'platform_anthropic', model: PLATFORM_MODELS[0] };
   }
   throw new Error('BYOK_REQUIRED');
 }
@@ -27,13 +29,26 @@ async function callLLM(business, provider, model, systemPrompt, userMsg) {
       ? Deno.env.get('ANTHROPIC_API_KEY')
       : await decryptBYOK(business.offers_byok_key_encrypted);
     const client = new Anthropic({ apiKey });
-    const res = await client.messages.create({
-      model,
-      max_tokens: 6000,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMsg }],
-    });
-    return { text: res.content[0].text, tokensIn: res.usage?.input_tokens || 0, tokensOut: res.usage?.output_tokens || 0 };
+    // For platform calls, fall back through known models if one is unsupported
+    const candidates = provider === 'platform_anthropic'
+      ? [model, ...PLATFORM_MODELS.filter((m) => m !== model)]
+      : [model];
+    let lastErr = null;
+    for (const m of candidates) {
+      try {
+        const res = await client.messages.create({
+          model: m,
+          max_tokens: 6000,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userMsg }],
+        });
+        return { text: res.content[0].text, tokensIn: res.usage?.input_tokens || 0, tokensOut: res.usage?.output_tokens || 0, modelUsed: m };
+      } catch (e) {
+        lastErr = e;
+        if (!/model|not_found|invalid/i.test(e.message)) throw e;
+      }
+    }
+    throw lastErr || new Error('LLM klic ni uspel');
   }
   if (provider === 'byok_openai') {
     const apiKey = await decryptBYOK(business.offers_byok_key_encrypted);
@@ -235,7 +250,8 @@ VRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.`;
       business_context: { name: business.name, services: business.services, phone: business.phone },
     });
 
-    const { text, tokensIn, tokensOut } = await callLLM(business, provider, model, systemPrompt, userMsg);
+    const { text, tokensIn, tokensOut, modelUsed } = await callLLM(business, provider, model, systemPrompt, userMsg);
+    if (modelUsed) model = modelUsed;
 
     let result = { output_markdown: text, improvements_suggested: [] };
     try {
