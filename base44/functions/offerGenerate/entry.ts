@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
+import { jsPDF } from 'npm:jspdf@2.5.2';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'npm:docx@8.5.0';
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 
@@ -91,6 +93,59 @@ function markdownToHtml(markdown, vars) {
   html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
   html = html.replace(/\n\n/g, '</p><p>');
   return `<html><body style="font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 40px;color:#333;line-height:1.6"><p>${html}</p></body></html>`;
+}
+
+// ── Render markdown to PDF (jsPDF, pure JS) ──
+function renderPdf(markdown) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageH = 297, marginX = 20, marginTop = 20, marginBottom = 20, maxW = 170;
+  let y = marginTop;
+  const ensure = (h) => { if (y + h > pageH - marginBottom) { doc.addPage(); y = marginTop; } };
+  const lines = markdown.split('\n');
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (!line.trim()) { y += 3; continue; }
+    let text = line, size = 11, style = 'normal', extra = 2;
+    if (line.startsWith('### ')) { text = line.slice(4); size = 12; style = 'bold'; extra = 3; }
+    else if (line.startsWith('## ')) { text = line.slice(3); size = 14; style = 'bold'; extra = 4; }
+    else if (line.startsWith('# ')) { text = line.slice(2); size = 17; style = 'bold'; extra = 5; }
+    else if (line.startsWith('- ') || line.startsWith('* ')) { text = '• ' + line.slice(2); }
+    text = text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/\|/g, '  ');
+    doc.setFontSize(size);
+    doc.setFont('helvetica', style);
+    const wrapped = doc.splitTextToSize(text, maxW);
+    for (const w of wrapped) {
+      ensure(size * 0.45);
+      doc.text(w, marginX, y);
+      y += size * 0.45;
+    }
+    y += extra;
+  }
+  return new Uint8Array(doc.output('arraybuffer'));
+}
+
+// ── Render markdown to DOCX (docx npm, pure JS) ──
+async function renderDocx(markdown) {
+  const children = [];
+  for (const raw of markdown.split('\n')) {
+    const line = raw.trimEnd();
+    if (!line.trim()) continue;
+    const clean = (s) => s.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
+    if (line.startsWith('# ')) children.push(new Paragraph({ text: clean(line.slice(2)), heading: HeadingLevel.HEADING_1 }));
+    else if (line.startsWith('## ')) children.push(new Paragraph({ text: clean(line.slice(3)), heading: HeadingLevel.HEADING_2 }));
+    else if (line.startsWith('### ')) children.push(new Paragraph({ text: clean(line.slice(4)), heading: HeadingLevel.HEADING_3 }));
+    else if (line.startsWith('- ') || line.startsWith('* ')) children.push(new Paragraph({ text: clean(line.slice(2)), bullet: { level: 0 } }));
+    else children.push(new Paragraph({ children: [new TextRun(clean(line.replace(/\|/g, '  ')))] }));
+  }
+  const doc = new Document({ sections: [{ children }] });
+  const blob = await Packer.toBuffer(doc);
+  return new Uint8Array(blob);
+}
+
+async function uploadBytes(base44, bytes, filename, mimeType) {
+  const blob = new File([bytes], filename, { type: mimeType });
+  const result = await base44.asServiceRole.integrations.Core.UploadFile({ file: blob });
+  return result?.file_url || null;
 }
 
 Deno.serve(async (req) => {
@@ -192,6 +247,19 @@ VRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.`;
     const isPlatform = provider === 'platform_anthropic';
     const costEur = isPlatform ? (tokensIn * 0.000015) + (tokensOut * 0.000075) : 0;
 
+    // Render PDF + DOCX and upload to storage (non-fatal on failure)
+    let outputPdfUrl = null, outputDocxUrl = null;
+    const finalMarkdown = result.output_markdown || text;
+    try {
+      const stamp = Date.now();
+      const pdfBytes = renderPdf(finalMarkdown);
+      outputPdfUrl = await uploadBytes(base44, pdfBytes, `ponudba-${stamp}.pdf`, 'application/pdf');
+      const docxBytes = await renderDocx(finalMarkdown);
+      outputDocxUrl = await uploadBytes(base44, docxBytes, `ponudba-${stamp}.docx`, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    } catch (renderErr) {
+      console.error('Render PDF/DOCX failed:', renderErr.message);
+    }
+
     // Create OfferGeneration record
     const generation = await base44.asServiceRole.entities.OfferGeneration.create({
       business_id,
@@ -200,7 +268,9 @@ VRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.`;
       input_method,
       inputs_json: resolved_vars || {},
       resolved_vars_json: mergedVars,
-      output_markdown: result.output_markdown || text,
+      output_markdown: finalMarkdown,
+      output_pdf_url: outputPdfUrl,
+      output_docx_url: outputDocxUrl,
       improvements_suggested: result.improvements_suggested || [],
       model_used: model,
       provider_used: provider,
@@ -251,7 +321,7 @@ VRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.`;
       });
     }
 
-    return Response.json({ success: true, generation_id: generation.id, output_markdown: result.output_markdown || text, improvements_suggested: result.improvements_suggested || [] });
+    return Response.json({ success: true, generation_id: generation.id, output_markdown: finalMarkdown, output_pdf_url: outputPdfUrl, output_docx_url: outputDocxUrl, improvements_suggested: result.improvements_suggested || [] });
   } catch (error) {
     const code = error.message === 'BYOK_REQUIRED' ? 'BYOK_REQUIRED' : undefined;
     return Response.json({ error: error.message, code }, { status: code ? 402 : 500 });
