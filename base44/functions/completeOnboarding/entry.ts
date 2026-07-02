@@ -54,7 +54,8 @@ Deno.serve(async (req) => {
       pillar_offers: true,
       review_requests_enabled: true,
       review_request_delay_hours: 24,
-      created_by: user.email, // owner attribution for RLS
+      created_by: user.email,
+      owner_email: user.email, // owner visibility via RLS data.owner_email
     });
 
     // Auto-seed Knowledge Base
@@ -65,7 +66,7 @@ Deno.serve(async (req) => {
     const email = user.email || 'še ni vneseno';
     const kb = (title, content, category) =>
       base44.asServiceRole.entities.KnowledgeBase.create({
-        business_id: business.id, title, content, category, active: true, created_by: user.email,
+        business_id: business.id, title, content, category, active: true, created_by: user.email, owner_email: user.email,
       });
     await Promise.all([
       kb('Naše storitve', `Pri ${form.name} ponujamo: ${services}. Za info pišite na ${email} ali pokličite ${phone}. Termini in cene se prilagajajo. Z veseljem vam pripravimo personaliziran predlog.`, 'Storitve'),
