@@ -178,6 +178,7 @@ Deno.serve(async (req) => {
         file_name: att.filename,
         status: "captured",
         created_by: business.created_by,
+        owner_email: business.owner_email || business.created_by,
       });
       created.push(inv.id);
     } catch (e) {
