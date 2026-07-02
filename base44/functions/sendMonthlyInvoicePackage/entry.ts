@@ -107,6 +107,7 @@ Deno.serve(async (req) => {
           sent_at: sentAt,
           accountant_email: business.accountant_email,
           created_by: business.created_by,
+          owner_email: business.owner_email || business.created_by,
         }),
       ]);
 
