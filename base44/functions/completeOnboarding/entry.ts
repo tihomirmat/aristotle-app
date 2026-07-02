@@ -15,7 +15,11 @@ Deno.serve(async (req) => {
     if (!form.gdpr_confirmed) return Response.json({ error: 'GDPR soglasje je obvezno' }, { status: 400 });
 
     // Guard: one business per user (avoid duplicates on double-click/retry)
-    const existing = await base44.asServiceRole.entities.Business.filter({ created_by: user.email, is_demo: false });
+    const [byOwner, byCreator] = await Promise.all([
+      base44.asServiceRole.entities.Business.filter({ owner_email: user.email, is_demo: false }),
+      base44.asServiceRole.entities.Business.filter({ created_by: user.email, is_demo: false }),
+    ]);
+    const existing = [...byOwner, ...byCreator.filter(b => !byOwner.some(o => o.id === b.id))];
     if (existing.length > 0 && existing.some(b => b.onboarding_complete)) {
       return Response.json({ success: true, business_id: existing[0].id, already_exists: true });
     }
