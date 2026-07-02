@@ -280,6 +280,7 @@ VRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.`;
       status: 'completed',
       parent_id: parent_id || null,
       created_by: business.created_by,
+      owner_email: business.owner_email || business.created_by,
     });
 
     // Update counters and costs
@@ -307,6 +308,7 @@ VRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.`;
       cost_eur: costEur,
       is_demo: false,
       created_by: business.created_by,
+      owner_email: business.owner_email || business.created_by,
     });
 
     // BYOK audit log
@@ -318,6 +320,7 @@ VRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.`;
         endpoint: 'generate_offer',
         success: true,
         created_by: business.created_by,
+      owner_email: business.owner_email || business.created_by,
       });
     }
 
