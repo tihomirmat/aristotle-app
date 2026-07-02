@@ -1,0 +1,96 @@
+{
+  "name": "OfferTemplate",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "service",
+        "product",
+        "saas",
+        "custom"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "scanned",
+        "manual",
+        "cloned"
+      ]
+    },
+    "source_file_id": {
+      "type": "string"
+    },
+    "body_markdown": {
+      "type": "string"
+    },
+    "body_styles": {
+      "type": "object"
+    },
+    "variables": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "business_id",
+    "name",
+    "kind"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": true,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

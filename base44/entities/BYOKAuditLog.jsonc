@@ -1,0 +1,45 @@
+{
+  "name": "BYOKAuditLog",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "success": {
+      "type": "boolean"
+    },
+    "error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "business_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
