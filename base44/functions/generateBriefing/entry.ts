@@ -67,6 +67,7 @@ Navodila:
       content: result,
       generated_at: new Date().toISOString(),
       created_by: business.created_by,
+      owner_email: business.owner_email || business.created_by,
     });
 
     return Response.json({ success: true, briefing });
