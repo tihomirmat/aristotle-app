@@ -44,6 +44,9 @@
       "type": "boolean",
       "default": false
     },
+    "owner_email": {
+      "type": "string"
+    },
     "is_demo": {
       "type": "boolean",
       "default": false
@@ -61,17 +64,37 @@
           "created_by_id": "{{user.id}}"
         },
         {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
           "user_condition": {
             "role": "admin"
           }
         }
       ]
     },
-    "create": true,
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
     "update": {
       "$or": [
         {
           "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
         },
         {
           "user_condition": {
@@ -84,6 +107,15 @@
       "$or": [
         {
           "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
         },
         {
           "user_condition": {
