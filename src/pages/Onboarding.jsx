@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Zap, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { completeOnboarding } from "@/functions/completeOnboarding";
 
 const INDUSTRY_OPTIONS = [
   { value: "gym", label: "Fitness / wellness" },
@@ -51,43 +52,25 @@ export default function Onboarding() {
   const handleFinish = async () => {
     if (!form.gdpr_confirmed) return;
     setSaving(true);
-    const user = await base44.auth.me();
-    const industryVal = form.industry_template === "other2" ? "other" : (form.industry_template || "other");
-    // Trial end = now + 14 days
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    try {
+      const user = await base44.auth.me();
+      const res = await completeOnboarding({ form });
+      const data = res?.data ?? res;
+      if (data?.error) throw new Error(data.error);
 
-    const business = await base44.entities.Business.create({
-      name: form.name,
-      industry_template: industryVal,
-      phone: form.phone,
-      address: form.address,
-      website: form.website,
-      hours: form.hours,
-      services: form.services,
-      current_offer: form.current_offer,
-      google_review_link: form.google_review_link,
-      onboarding_complete: true,
-      draft_mode: true,
-      locale: "sl",
-      subscription_status: "trialing",
-      billing_mode: "trial",
-      trial_ends_at: trialEndsAt,
-      trial_cost_cap_eur: 0.45,
-      trial_cost_used_eur: 0,
-      trial_sends_remaining: 20,
-      trial_model_lock: "haiku",
-      anthropic_model: "haiku",
-      trial_emails_sent: [],
-      pillar_reactivation: true,
-      pillar_reviews: true,
-      pillar_leads: true,
-      pillar_chatbot: true,
-      pillar_assistant: true,
-      pillar_digest: true,
-      pillar_offers: true,
-      review_requests_enabled: true,
-      review_request_delay_hours: 24,
-    });
+      await queryClient.invalidateQueries({ queryKey: ["business", user.email] });
+      toast.success("Aplikacija je pripravljena! Baza znanja je nastavljena.");
+      window.location.href = "/";
+    } catch (err) {
+      toast.error("Napaka pri zaključku: " + (err.message || "Poskusite znova."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* legacy client-side creation moved to backend function completeOnboarding
+  const _legacyFinish = async () => {
+    const user = await base44.auth.me();
 
     // Auto-seed Knowledge Base
     const phone = form.phone || "še ni vneseno";
