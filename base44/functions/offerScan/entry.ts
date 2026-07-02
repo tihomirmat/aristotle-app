@@ -46,12 +46,25 @@ IZHOD JSON (brez markdown ograj):
 
     const userMsg = `Analiziraj to ponudbo in ustvari template:\n\n${text_content.substring(0, 8000)}`;
 
-    const response = await anthropic.messages.create({
-      model: 'claude-opus-4-7',
-      max_tokens: 4000,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMsg }],
-    });
+    // Try best model first, fall back if the platform doesn't support it
+    const MODELS = ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-4-5'];
+    let response = null, usedModel = MODELS[0], lastErr = null;
+    for (const m of MODELS) {
+      try {
+        response = await anthropic.messages.create({
+          model: m,
+          max_tokens: 4000,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userMsg }],
+        });
+        usedModel = m;
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (!/model|not_found|invalid/i.test(e.message)) throw e;
+      }
+    }
+    if (!response) throw lastErr || new Error('LLM klic ni uspel');
 
     const rawText = response.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
     let result = {};
@@ -70,7 +83,7 @@ IZHOD JSON (brez markdown ograj):
       pillar: 'offers',
       feature: 'offers',
       subfeature: 'scan',
-      model: 'claude-opus-4-7',
+      model: usedModel,
       input_tokens: tokensIn,
       output_tokens: tokensOut,
       cost_eur: costEur,
