@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
       const mediaType = file_type?.toLowerCase() === 'png' ? 'image/png' : 'image/jpeg';
 
       const response = await anthropic.messages.create({
-        model: 'claude-opus-4-7',
+        model: 'claude-opus-4-5',
         max_tokens: 2000,
         messages: [{
           role: 'user',
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     if (file_type === 'paste' || file_type === 'transcript') {
       const textContent = file_url; // for paste, file_url contains the text
       const response = await anthropic.messages.create({
-        model: 'claude-opus-4-7',
+        model: 'claude-opus-4-5',
         max_tokens: 2000,
         system: 'Ekstrahiraj vrednosti iz besedila za podane spremenljivke. Vrni JSON objekt. ZGOLJ JSON brez markdown ograj.',
         messages: [{ role: 'user', content: `Spremenljivke: ${JSON.stringify(variables || [])}\n\nBesedilo:\n${textContent.substring(0, 4000)}` }],
