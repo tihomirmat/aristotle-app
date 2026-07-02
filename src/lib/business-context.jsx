@@ -12,7 +12,15 @@ export function BusinessProvider({ children }) {
 
   const { data: businesses = [], isLoading: bizLoading } = useQuery({
     queryKey: ["business", user?.email],
-    queryFn: () => base44.entities.Business.filter({ created_by: user?.email }),
+    queryFn: async () => {
+      // Match both legacy (created_by) and new (owner_email) ownership attribution.
+      const [byCreator, byOwner] = await Promise.all([
+        base44.entities.Business.filter({ created_by: user?.email }),
+        base44.entities.Business.filter({ owner_email: user?.email }),
+      ]);
+      const seen = new Set();
+      return [...byCreator, ...byOwner].filter((b) => (seen.has(b.id) ? false : (seen.add(b.id), true)));
+    },
     enabled: !!user,
   });
 
