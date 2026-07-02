@@ -21,6 +21,11 @@ import AdminBusinesses from '@/pages/admin/Businesses';
 import AdminUsage from '@/pages/admin/Usage';
 import Pridobivanje from '@/pages/Pridobivanje';
 import Racuni from '@/pages/Racuni';
+import Ponudbe from '@/pages/Ponudbe';
+import PonudbeSkener from '@/pages/PonudbeSkener';
+import PonudbeNova from '@/pages/PonudbeNova';
+import PonudbeTemplate from '@/pages/PonudbeTemplate';
+import PonudbeNastavitve from '@/pages/PonudbeNastavitve';
 
 const AppRoutes = () => {
   const { business, isLoading, noBusinessYet } = useBusiness();
@@ -55,6 +60,11 @@ const AppRoutes = () => {
         <Route path="/nastavitve" element={<Nastavitve />} />
         <Route path="/pridobivanje" element={<Pridobivanje />} />
         <Route path="/racuni" element={<Racuni />} />
+        <Route path="/ponudbe" element={<Ponudbe />} />
+        <Route path="/ponudbe/skener" element={<PonudbeSkener />} />
+        <Route path="/ponudbe/nova" element={<PonudbeNova />} />
+        <Route path="/ponudbe/templati/:id" element={<PonudbeTemplate />} />
+        <Route path="/ponudbe/nastavitve" element={<PonudbeNastavitve />} />
         <Route path="/admin/businesses" element={<AdminBusinesses />} />
         <Route path="/admin/usage" element={<AdminUsage />} />
       </Route>
