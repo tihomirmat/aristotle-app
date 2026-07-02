@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Star, Globe, MessageSquare, Bot, Package, CheckCircle, AlertCircle, Clock, Plus, Sparkles } from "lucide-react";
+import { Mail, Star, Globe, MessageSquare, Bot, Package, CheckCircle, AlertCircle, Clock, Plus, Sparkles, FileSignature } from "lucide-react";
 import { differenceInDays, addMonths, format } from "date-fns";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ const MODULES = [
   { key: "pillar_leads", label: "Pridobivanje strank", desc: "Avtomatska nega potencialnih strank iz spletnega obrazca.", icon: Globe, color: "bg-emerald-500" },
   { key: "pillar_chatbot", label: "Klepetalni pomočnik", desc: "AI klepetalni widget na vašem spletnem mestu.", icon: MessageSquare, color: "bg-violet-500" },
   { key: "pillar_assistant", label: "Osebni asistent", desc: "AI asistent za upravljanje terminov, dnevnih nalog in tedenskih poročil.", icon: Bot, color: "bg-rose-500" },
+  { key: "pillar_offers", label: "Generator ponudb", desc: "AI generator ponudb iz obstoječih predlog. Skeniranje obstoječe ponudbe, OCR, transkripti, izvoz v PDF/DOCX.", icon: FileSignature, color: "bg-cyan-600" },
 ];
 
 export default function BillingTab({ business }) {
@@ -48,7 +49,7 @@ export default function BillingTab({ business }) {
     const next = new Set(selected);
     if (next.has(key)) { next.delete(key); } else { next.add(key); }
     setSelected(next);
-    if (next.size < 5) setIsBundle(false);
+    if (next.size < 6) setIsBundle(false);
   };
 
   const selectBundle = () => {
@@ -221,7 +222,7 @@ export default function BillingTab({ business }) {
                 <div>
                   <p className="font-bold text-base">Vsi moduli — Paket</p>
                   <div className="flex flex-wrap gap-1.5 mt-1">
-                    <Badge className="bg-violet-100 text-violet-700 border-0 text-xs">Prihranite 96 €/mes</Badge>
+                    <Badge className="bg-violet-100 text-violet-700 border-0 text-xs">Prihranite 195 €/mes</Badge>
                     <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Brez stroška namestitve</Badge>
                   </div>
                 </div>
@@ -237,7 +238,7 @@ export default function BillingTab({ business }) {
               </div>
             </div>
             <p className="text-sm text-muted-foreground mt-3">
-              Vseh 5 modulov v enem paketu. Idealno za podjetja, ki želijo polno AI rast.
+              Vseh 6 modulov v enem paketu. Idealno za podjetja, ki želijo polno AI rast.
             </p>
             <div className="flex items-center justify-between mt-3">
               <span className="text-2xl font-bold">399 €<span className="text-sm font-normal text-muted-foreground">/mes</span></span>
