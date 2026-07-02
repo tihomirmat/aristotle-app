@@ -178,7 +178,8 @@ Deno.serve(async (req) => {
       ai_reasoning: draftData.ai_reasoning || '',
       reviewer_notes: reviewData.reviewer_notes || '',
       scheduled_at: new Date().toISOString(),
-      created_by: business.created_by, // attribute to business owner so RLS passes
+      created_by: business.created_by,
+      owner_email: business.owner_email || business.created_by, // owner visibility via RLS data.owner_email
     });
 
     // ─── Beleži UsageLog + trial cost increment ───────────────────────────────
