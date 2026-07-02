@@ -25,6 +25,7 @@ const ALL_PILLARS = [
   "pillar_leads",
   "pillar_chatbot",
   "pillar_assistant",
+  "pillar_offers",
 ];
 
 export default function AdminBusinesses() {
