@@ -20,4 +20,5 @@ export const PILLAR_KEYS = [
   "pillar_leads",
   "pillar_chatbot",
   "pillar_assistant",
+  "pillar_offers",
 ];
