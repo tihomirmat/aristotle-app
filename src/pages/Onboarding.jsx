@@ -84,6 +84,7 @@ export default function Onboarding() {
       pillar_chatbot: true,
       pillar_assistant: true,
       pillar_digest: true,
+      pillar_offers: true,
       review_requests_enabled: true,
       review_request_delay_hours: 24,
     });
