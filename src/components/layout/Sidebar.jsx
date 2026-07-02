@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Inbox, Users, MessageSquare, Bot,
   Star, Settings, ChevronLeft, ChevronRight, Zap,
-  Building2, BarChart3, Lock, FileText
+  Building2, BarChart3, Lock, FileText, FileSignature
 } from "lucide-react";
 import { useBusiness } from "@/lib/business-context";
 import { hasModule } from "@/lib/entitlements";
@@ -37,6 +37,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     { path: "/klepet", label: "Klepetalni pomočnik", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "Aktivirajte klepetalni pomočnik v Pregledu." },
     { path: "/asistent", label: "Asistent", icon: Bot, locked: !hasModule(business, "pillar_assistant"), lockDesc: "Aktivirajte osebni asistent v Pregledu." },
     { path: "/ocene", label: "Ocene & napotitve", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Aktivirajte module za ocene v Pregledu." },
+    { path: "/ponudbe", label: "Generator ponudb", icon: FileSignature, locked: !hasModule(business, "pillar_offers"), lockDesc: "Aktivirajte modul Generator ponudb v Naročnini." },
     { path: "/racuni", label: "Računi", icon: FileText, locked: false },
     { path: "/nastavitve", label: "Nastavitve", icon: Settings, locked: false },
   ];
