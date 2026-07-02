@@ -113,6 +113,7 @@ export default function Onboarding() {
     toast.success("Aplikacija je pripravljena! Baza znanja je nastavljena.");
     window.location.href = "/";
   };
+  */
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
