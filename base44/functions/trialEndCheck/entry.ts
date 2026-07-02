@@ -12,6 +12,7 @@ const PILLAR_KEYS = [
   "pillar_chatbot",
   "pillar_assistant",
   "pillar_digest",
+  "pillar_offers",
 ];
 
 Deno.serve(async (req) => {
