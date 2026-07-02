@@ -55,13 +55,15 @@ Deno.serve(async (req) => {
     if (business.subscription_status === 'trialing') {
       const remaining = business.trial_sends_remaining ?? 20;
       if (remaining <= 0) {
-        await base44.asServiceRole.entities.DraftMessage.update(draftId, { status: 'failed', reviewer_notes: 'Trial send limit reached (0 sends remaining).' });
-        return Response.json({ skipped: true, reason: 'trial_sends_exhausted' });
+        await base44.asServiceRole.entities.DraftMessage.update(draftId, { status: 'failed', reviewer_notes: 'Dosegli ste mejo poslanih sporočil v preizkusu (20). Aktivirajte naročnino za nadaljevanje.' });
+        return Response.json({
+          skipped: true,
+          reason: 'trial_sends_exhausted',
+          code: 'TRIAL_SENDS_EXHAUSTED',
+          error: 'Dosegli ste mejo poslanih sporočil v preizkusu (20). Aktivirajte naročnino za nadaljevanje.',
+        }, { status: 402 });
       }
-      // Decrement
-      await base44.asServiceRole.entities.Business.update(business.id, {
-        trial_sends_remaining: remaining - 1,
-      });
+      // NOTE: decrement happens after a successful send (see below), per Faza 5 spec.
     }
 
     // ─── Build email body (add signature + unsubscribe footer) ────────────────
@@ -127,6 +129,12 @@ Deno.serve(async (req) => {
 
     // ─── Mark sent ────────────────────────────────────────────────────────────
     const now = new Date().toISOString();
+    // Decrement trial send counter only on successful send
+    if (business.subscription_status === 'trialing') {
+      await base44.asServiceRole.entities.Business.update(business.id, {
+        trial_sends_remaining: Math.max(0, (business.trial_sends_remaining ?? 20) - 1),
+      });
+    }
     await Promise.all([
       base44.asServiceRole.entities.DraftMessage.update(draftId, {
         status: 'sent',
