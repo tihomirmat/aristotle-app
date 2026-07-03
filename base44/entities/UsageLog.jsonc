@@ -12,6 +12,12 @@
     "pillar": {
       "type": "string"
     },
+    "feature": {
+      "type": "string"
+    },
+    "subfeature": {
+      "type": "string"
+    },
     "model": {
       "type": "string"
     },
@@ -38,16 +44,24 @@
   ],
   "rls": {
     "read": {
-      "role": "admin"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "create": {
-      "role": "admin"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "update": {
-      "role": "admin"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "delete": {
-      "role": "admin"
+      "user_condition": {
+        "role": "admin"
+      }
     }
   }
 }
