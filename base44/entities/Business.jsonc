@@ -91,6 +91,9 @@
       "type": "string",
       "format": "date-time"
     },
+    "owner_email": {
+      "type": "string"
+    },
     "pillar_reactivation": {
       "type": "boolean",
       "default": false
@@ -114,6 +117,43 @@
     "pillar_digest": {
       "type": "boolean",
       "default": false
+    },
+    "pillar_offers": {
+      "type": "boolean",
+      "default": false
+    },
+    "offers_free_generations_used": {
+      "type": "number",
+      "default": 0
+    },
+    "offers_free_improvements_used": {
+      "type": "number",
+      "default": 0
+    },
+    "offers_byok_provider": {
+      "type": "string",
+      "enum": [
+        "anthropic",
+        "openai",
+        "google"
+      ]
+    },
+    "offers_byok_key_encrypted": {
+      "type": "string"
+    },
+    "offers_byok_model": {
+      "type": "string"
+    },
+    "offers_byok_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "offers_byok_last_error": {
+      "type": "string"
+    },
+    "offers_global_vars": {
+      "type": "object",
+      "default": {}
     },
     "anthropic_model": {
       "type": "string",
@@ -456,16 +496,13 @@
     },
     "invoice_enabled": {
       "type": "boolean",
-      "default": false,
-      "description": "Enable monthly invoice package to accountant"
+      "default": false
     },
     "invoice_inbound_token": {
-      "type": "string",
-      "description": "Unique token for the inbound invoice email address (inv-<token>@mail.base44.app)"
+      "type": "string"
     },
     "accountant_email": {
-      "type": "string",
-      "description": "Accountant email address for monthly invoice packages"
+      "type": "string"
     }
   },
   "required": [
@@ -473,20 +510,70 @@
   ],
   "rls": {
     "read": {
-      "role": "admin",
-      "or_owner": true
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     },
     "create": {
-      "role": "admin",
-      "or_owner": true
+      "created_by_id": "{{user.id}}"
     },
     "update": {
-      "role": "admin",
-      "or_owner": true
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     },
     "delete": {
-      "role": "admin",
-      "or_owner": true
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     }
   }
 }
