@@ -91,9 +91,6 @@
       "type": "string",
       "format": "date-time"
     },
-    "owner_email": {
-      "type": "string"
-    },
     "pillar_reactivation": {
       "type": "boolean",
       "default": false
@@ -121,39 +118,6 @@
     "pillar_offers": {
       "type": "boolean",
       "default": false
-    },
-    "offers_free_generations_used": {
-      "type": "number",
-      "default": 0
-    },
-    "offers_free_improvements_used": {
-      "type": "number",
-      "default": 0
-    },
-    "offers_byok_provider": {
-      "type": "string",
-      "enum": [
-        "anthropic",
-        "openai",
-        "google"
-      ]
-    },
-    "offers_byok_key_encrypted": {
-      "type": "string"
-    },
-    "offers_byok_model": {
-      "type": "string"
-    },
-    "offers_byok_verified_at": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "offers_byok_last_error": {
-      "type": "string"
-    },
-    "offers_global_vars": {
-      "type": "object",
-      "default": {}
     },
     "anthropic_model": {
       "type": "string",
@@ -503,6 +467,38 @@
     },
     "accountant_email": {
       "type": "string"
+    },
+    "offers_free_generations_used": {
+      "type": "number",
+      "default": 0
+    },
+    "offers_free_improvements_used": {
+      "type": "number",
+      "default": 0
+    },
+    "offers_byok_provider": {
+      "type": "string",
+      "enum": [
+        "anthropic",
+        "openai",
+        "google"
+      ]
+    },
+    "offers_byok_key_encrypted": {
+      "type": "string"
+    },
+    "offers_byok_model": {
+      "type": "string"
+    },
+    "offers_byok_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "offers_byok_last_error": {
+      "type": "string"
+    },
+    "offers_global_vars": {
+      "type": "object"
     }
   },
   "required": [
@@ -515,37 +511,17 @@
           "created_by_id": "{{user.id}}"
         },
         {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "owner_email": "{{user.email}}"
-        },
-        {
-          "data.owner_email": "{{user.email}}"
-        },
-        {
           "user_condition": {
             "role": "admin"
           }
         }
       ]
     },
-    "create": {
-      "created_by_id": "{{user.id}}"
-    },
+    "create": true,
     "update": {
       "$or": [
         {
           "created_by_id": "{{user.id}}"
-        },
-        {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "owner_email": "{{user.email}}"
-        },
-        {
-          "data.owner_email": "{{user.email}}"
         },
         {
           "user_condition": {
@@ -558,15 +534,6 @@
       "$or": [
         {
           "created_by_id": "{{user.id}}"
-        },
-        {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "owner_email": "{{user.email}}"
-        },
-        {
-          "data.owner_email": "{{user.email}}"
         },
         {
           "user_condition": {
