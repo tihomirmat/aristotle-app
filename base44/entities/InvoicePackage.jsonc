@@ -24,6 +24,9 @@
     },
     "accountant_email": {
       "type": "string"
+    },
+    "owner_email": {
+      "type": "string"
     }
   },
   "required": [
@@ -33,20 +36,70 @@
   ],
   "rls": {
     "read": {
-      "role": "admin",
-      "or_owner": true
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     },
     "create": {
-      "role": "admin",
-      "or_owner": true
+      "created_by_id": "{{user.id}}"
     },
     "update": {
-      "role": "admin",
-      "or_owner": true
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     },
     "delete": {
-      "role": "admin",
-      "or_owner": true
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     }
   }
 }
