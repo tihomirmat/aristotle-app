@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Inbox, Users, MessageSquare, Bot,
   Star, Settings, ChevronLeft, ChevronRight, Zap,
-  Building2, BarChart3, Lock, FileText, FileSignature
+  Building2, BarChart3, Lock, FileText, FileSignature, Globe
 } from "lucide-react";
 import { useBusiness } from "@/lib/business-context";
 import { hasModule } from "@/lib/entitlements";
@@ -34,9 +34,10 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     { path: "/", label: "Pregled", icon: LayoutDashboard, locked: false },
     { path: "/prejeto", label: "Prejeto", icon: Inbox, locked: false, badge: pendingCount > 0 ? pendingCount : null },
     { path: "/stranke", label: "Stranke", icon: Users, locked: false },
-    { path: "/klepet", label: "Klepetalni pomočnik", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "Aktivirajte klepetalni pomočnik v Pregledu." },
-    { path: "/asistent", label: "Asistent", icon: Bot, locked: !hasModule(business, "pillar_assistant"), lockDesc: "Aktivirajte osebni asistent v Pregledu." },
-    { path: "/ocene", label: "Ocene & napotitve", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Aktivirajte module za ocene v Pregledu." },
+    { path: "/pridobivanje", label: "Pridobivanje strank", icon: Globe, locked: !hasModule(business, "pillar_leads"), lockDesc: "Aktivirajte modul Pridobivanje strank v Naročnini." },
+    { path: "/klepet", label: "Klepetalni pomočnik", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "Aktivirajte modul Klepetalni pomočnik v Naročnini." },
+    { path: "/asistent", label: "Asistent", icon: Bot, locked: !hasModule(business, "pillar_assistant"), lockDesc: "Aktivirajte modul Osebni asistent v Naročnini." },
+    { path: "/ocene", label: "Ocene & napotitve", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Aktivirajte modul Ocene & napotitve v Naročnini." },
     { path: "/ponudbe", label: "Generator ponudb", icon: FileSignature, locked: !hasModule(business, "pillar_offers"), lockDesc: "Aktivirajte modul Generator ponudb v Naročnini." },
     { path: "/racuni", label: "Računi", icon: FileText, locked: false },
     { path: "/nastavitve", label: "Nastavitve", icon: Settings, locked: false },
@@ -120,7 +121,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
             </DialogHeader>
             <p className="text-sm text-muted-foreground mt-1">{lockedDialog.desc}</p>
             <div className="flex gap-2 mt-4">
-              <Button onClick={() => { setLockedDialog(null); navigate("/"); }}>Aktiviraj v Pregledu</Button>
+              <Button onClick={() => { setLockedDialog(null); navigate("/nastavitve?tab=billing"); }}>Odpri Naročnino</Button>
               <Button variant="outline" onClick={() => setLockedDialog(null)}>Zapri</Button>
             </div>
           </DialogContent>
