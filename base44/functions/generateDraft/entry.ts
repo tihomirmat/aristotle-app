@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
         name: business.name,
         industry_template: business.industry_template,
         phone: business.phone || null,
-        email: business.email || null,
+        email: business.smtp_from_email || business.gmail_email || business.outlook_email || null, // javni kontaktni e-naslov podjetja (če je nastavljen)
         services: business.services,
         current_offer: business.current_offer,
         google_review_link: business.google_review_link,
