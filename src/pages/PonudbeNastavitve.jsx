@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { offerBYOK } from "@/functions/offerBYOK";
 import { format } from "date-fns";
 
+import { fnError } from "@/lib/fn-error";
 const PROVIDERS = [
   { key: "anthropic", label: "Anthropic", models: ["claude-opus-4-7", "claude-sonnet-4-6"] },
   { key: "openai", label: "OpenAI", models: ["gpt-5", "gpt-5-mini"] },
@@ -62,7 +63,7 @@ export default function PonudbeNastavitve() {
       return base44.entities.Business.update(business.id, { offers_global_vars: obj });
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["business"] }); toast.success("Globalne spremenljivke so shranjene!"); },
-    onError: (err) => toast.error("Napaka: " + err.message),
+    onError: (err) => toast.error("Napaka: " + fnError(err)),
   });
 
   const handleSaveBYOK = async () => {
@@ -76,7 +77,7 @@ export default function PonudbeNastavitve() {
       setByokKey("");
       toast.success(`Ključ je shranjen (zadnje 4 znake: ****${res.data?.last4})`);
     } catch (err) {
-      toast.error("Napaka: " + err.message);
+      toast.error("Napaka: " + fnError(err));
     } finally {
       setByokLoading(false);
     }
@@ -91,7 +92,7 @@ export default function PonudbeNastavitve() {
       toast.success("Povezava je uspešna!");
     } catch (err) {
       queryClient.invalidateQueries({ queryKey: ["business"] });
-      toast.error("Napaka: " + err.message);
+      toast.error("Napaka: " + fnError(err));
     } finally {
       setTestLoading(false);
     }
@@ -104,7 +105,7 @@ export default function PonudbeNastavitve() {
       setByokKey("");
       toast.success("BYOK ključ je bil odstranjen");
     } catch (err) {
-      toast.error("Napaka: " + err.message);
+      toast.error("Napaka: " + fnError(err));
     }
   };
 
