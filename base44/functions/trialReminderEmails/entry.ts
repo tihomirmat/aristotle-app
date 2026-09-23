@@ -115,7 +115,7 @@ Ekipa AI Aristotle`;
           to: ownerEmail,
           from_name: "Ekipa AI Aristotle",
           subject: "Še 4 dni vašega preizkusa AI Aristotle",
-          body,
+          body: emailHtml({ title: "Še 4 dni vašega preizkusa AI Aristotle", bodyHtml: textToHtml(body.replace(/\n+Aktiviraj naročnino → [^\n]+\n/, "\n")), cta: { label: "Aktiviraj naročnino", url: ACTIVATION_LINK } }),
         });
 
         await base44.asServiceRole.entities.Business.update(biz.id, {
@@ -149,7 +149,7 @@ Ekipa AI Aristotle`;
           to: ownerEmail,
           from_name: "Ekipa AI Aristotle",
           subject: "Še 2 dni — vaši AI osnutki čakajo na odločitev",
-          body,
+          body: emailHtml({ title: "Še 2 dni — vaši AI osnutki čakajo na odločitev", bodyHtml: textToHtml(body.replace(/\n+Izberi module → [^\n]+\n/, "\n")), cta: { label: "Izberi module", url: ACTIVATION_LINK } }),
         });
 
         await base44.asServiceRole.entities.Business.update(biz.id, {
@@ -191,7 +191,7 @@ Ekipa AI Aristotle`;
           to: ownerEmail,
           from_name: "Ekipa AI Aristotle",
           subject: "Danes se konča vaš preizkus AI Aristotle",
-          body,
+          body: emailHtml({ title: "Danes se konča vaš preizkus AI Aristotle", bodyHtml: textToHtml(body.replace(/\n+Aktiviraj naročnino → [^\n]+\n/, "\n")), cta: { label: "Aktiviraj naročnino", url: ACTIVATION_LINK } }),
         });
 
         await base44.asServiceRole.entities.Business.update(biz.id, {
