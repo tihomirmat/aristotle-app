@@ -1,11 +1,22 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, LogOut } from "lucide-react";
 
 export default function TrialExpiredModal({ business }) {
+  const location = useLocation();
   if (!business || business.subscription_status !== "past_due") return null;
+
+  // Na strani Nastavitve (kjer je Naročnina) ne blokiramo — sicer stranka ne more izbrati modulov.
+  if (location.pathname.startsWith("/nastavitve")) {
+    return (
+      <div className="sticky top-0 z-[60] bg-red-50 border-b border-red-200 text-red-800 text-sm px-6 py-2.5 flex items-center gap-2">
+        <AlertCircle className="w-4 h-4 shrink-0" />
+        <span>Vaše preizkusno obdobje je končano. Izberite module v zavihku <Link to="/nastavitve?tab=billing" className="underline font-medium">Naročnina</Link>, da nadaljujete.</span>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[999] bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">
