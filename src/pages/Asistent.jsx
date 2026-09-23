@@ -12,6 +12,8 @@ import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import { generateBriefing } from "@/functions/generateBriefing";
 
+import { fnError } from "@/lib/fn-error";
+import { toast } from "sonner";
 function BriefingTab({ business }) {
   const today = format(new Date(), "yyyy-MM-dd");
   const queryClient = useQueryClient();
@@ -31,7 +33,7 @@ function BriefingTab({ business }) {
       await generateBriefing({ business_id: business.id });
       queryClient.invalidateQueries({ queryKey: ["briefings", business?.id] });
     } catch (err) {
-      console.error(err);
+      toast.error("Napaka pri pripravi povzetka: " + fnError(err));
     }
     setGenerating(false);
   };
