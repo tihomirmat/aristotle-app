@@ -3,6 +3,42 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
 
+// ─── Skupna avtorizacija / entitlements (kopija v vsaki funkciji — Base44 funkcije nimajo skupnih modulov) ───
+const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
+const isInternalCall = (body) => !!INTERNAL_SECRET && body?.internal_secret === INTERNAL_SECRET;
+const ownsBusiness = (user, business) => {
+  if (!user || !business) return false;
+  if (user.role === 'admin') return true;
+  return business.created_by_id === user.id
+    || (!!user.email && business.created_by === user.email)
+    || (!!user.email && !!business.owner_email && business.owner_email === user.email);
+};
+const isTrialActive = (b) => b?.subscription_status === 'trialing' && !!b.trial_ends_at && new Date(b.trial_ends_at) > new Date();
+const isTrialExpired = (b) => b?.subscription_status === 'trialing' && !!b.trial_ends_at && new Date(b.trial_ends_at) <= new Date();
+// Enako kot src/lib/entitlements.js: aktiven trial odpre vse module, sicer mora biti pillar_* = true
+const hasModule = (b, pillarKey) => !!b && (isTrialActive(b) || b[pillarKey] === true);
+
+// Kateri modul (pillar_*) mora biti aktiven za posamezen tip osnutka
+const PILLAR_MODULE = {
+  reactivation: 'pillar_reactivation',
+  review_request: 'pillar_reviews',
+  referral_ask: 'pillar_reviews',
+  web_form_lead: 'pillar_leads',
+  chatbot_handoff: 'pillar_leads',
+  booking_proposal: 'pillar_leads',
+};
+
+// Cene v EUR na 1M tokenov (list price USD × ~0,92). Preveri ob menjavi modelov.
+const PRICE_EUR_PER_MTOK = {
+  'claude-haiku-4-5':  { in: 0.92, out: 4.60 },
+  'claude-sonnet-4-5': { in: 2.76, out: 13.80 },
+  'claude-opus-4-5':   { in: 4.60, out: 23.00 },
+};
+const costEur = (model, tokensIn, tokensOut) => {
+  const p = PRICE_EUR_PER_MTOK[model] || PRICE_EUR_PER_MTOK['claude-sonnet-4-5'];
+  return (tokensIn * p.in + tokensOut * p.out) / 1_000_000;
+};
+
 // ─── Plast 1: ARISTOTLE PERSONA ───────────────────────────────────────────────
 const ARISTOTLE_PERSONA = `Ti si AI Aristotle, digitalni asistent za male podjetnike v Sloveniji. Pravila: spoštljivo vikanje povsod (vi, vam, vas, vaš). Topel, profesionalen, brez prodajnih trikov. Brez Nujno!, Samo še danes!, Ne zamudite!. Brez VELIKIH ČRK v telesu. Brez emojijev v formalnih panogah (dental_medspa, auto, home_services, marketing_services). Max 1 emoji v sproščenih panogah (gym, restaurant, salon_barber). Telo pod 120 besedami. Brez anglicizmov (Hej→Pozdravljeni). Pozdrav: Spoštovani {ime} (moški) ali Spoštovana {ime} (ženska). Zaključek: Lep pozdrav, {business.name}. Nikoli ne navajaj cen razen če current_offer pove ceno. Nikoli ne dodaj odjavne povezave v body — backend doda v footer.`;
 
@@ -29,14 +65,24 @@ const QUALITY_REVIEWER_PROMPT = `Pregled v 7 točkah: 1)slovnica (sklanjatve, vi
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
     const body = await req.json().catch(() => ({}));
+
+    // Avtentikacija: (a) interni klic iz druge backend funkcije (leadWebhook, onNewFormLead, ...) z INTERNAL_FUNCTION_SECRET
+    //                (b) prijavljen uporabnik, ki mora biti lastnik podjetja (ali admin)
+    const internal = isInternalCall(body);
+    let user = null;
+    if (!internal) {
+      user = await base44.auth.me().catch(() => null);
+      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { business_id, lead_id, pillar, sequence_step = 1, available_slots } = body;
 
     if (!pillar || !lead_id || !business_id) {
       return Response.json({ error: 'Manjkajoči parametri: pillar, lead_id, business_id' }, { status: 400 });
+    }
+    if (!PILLAR_PROMPTS[pillar]) {
+      return Response.json({ error: 'Neznan tip osnutka (pillar).' }, { status: 400 });
     }
 
     const [businesses, leads] = await Promise.all([
@@ -47,6 +93,31 @@ Deno.serve(async (req) => {
     const lead = leads[0];
     if (!business) return Response.json({ error: 'Podjetje ni najdeno' }, { status: 404 });
     if (!lead) return Response.json({ error: 'Stranka ni najdena' }, { status: 404 });
+
+    // ─── AVTORIZACIJA: lastništvo podjetja + stranka mora pripadati istemu podjetju (IDOR) ───
+    if (!internal && !ownsBusiness(user, business)) {
+      return Response.json({ error: 'Nimate dostopa do tega podjetja.', code: 'FORBIDDEN' }, { status: 403 });
+    }
+    if (lead.business_id !== business.id) {
+      return Response.json({ error: 'Stranka ne pripada temu podjetju.', code: 'FORBIDDEN' }, { status: 403 });
+    }
+
+    // ─── ENTITLEMENT GATE: modul mora biti aktiven (aktiven trial ali kupljen modul) ───
+    if (isTrialExpired(business)) {
+      return Response.json({ error: 'Vaše preizkusno obdobje je končano. Aktivirajte naročnino za nadaljevanje.', code: 'TRIAL_EXPIRED' }, { status: 402 });
+    }
+    const requiredModule = PILLAR_MODULE[pillar] || 'pillar_reactivation';
+    if (!hasModule(business, requiredModule)) {
+      return Response.json({ error: 'Ta modul ni aktiven. Aktivirajte ga v Nastavitve → Naročnina.', code: 'MODULE_LOCKED' }, { status: 402 });
+    }
+
+    // ─── DEDUPE: isti lead + pillar + korak v zadnjih 15 min (webhook + workflow sprožita generateDraft dvakrat) ───
+    const recentSince = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const existingDrafts = await base44.asServiceRole.entities.DraftMessage.filter({ business_id, lead_id, pillar });
+    const duplicate = existingDrafts.find((d) => d.created_date >= recentSince && !['failed', 'skipped'].includes(d.status));
+    if (duplicate) {
+      return Response.json({ success: true, draft: duplicate, duplicate: true, quality_score: duplicate.quality_score });
+    }
 
     // ─── TRIAL GATE: per-business credit cap ─────────────────────────────────
     if (business.subscription_status === 'trialing') {
@@ -135,7 +206,7 @@ Deno.serve(async (req) => {
 
     const tokensIn1 = primaryRes.usage?.input_tokens || 0;
     const tokensOut1 = primaryRes.usage?.output_tokens || 0;
-    const cost1 = (tokensIn1 * 0.000003) + (tokensOut1 * 0.000015);
+    const cost1 = costEur(primaryModel, tokensIn1, tokensOut1);
 
     // ─── Klic 2: Quality Reviewer (Haiku) ────────────────────────────────────
     const reviewPayload = {
@@ -157,7 +228,7 @@ Deno.serve(async (req) => {
 
     const tokensIn2 = reviewRes.usage?.input_tokens || 0;
     const tokensOut2 = reviewRes.usage?.output_tokens || 0;
-    const cost2 = (tokensIn2 * 0.00000025) + (tokensOut2 * 0.00000125);
+    const cost2 = costEur('claude-haiku-4-5', tokensIn2, tokensOut2);
 
     const qualityScore = reviewData.quality_score || 7;
     // If draft_mode is OFF, auto-approve high-quality drafts (skip manual review)
@@ -216,6 +287,12 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.Business.update(business_id, {
         trial_cost_used_eur: (business.trial_cost_used_eur || 0) + totalCost,
       });
+    }
+
+    // Samodejno odobreni osnutki (draft_mode = false): workflow "Send Email on Draft Approved" se sproži samo ob UPDATE,
+    // zato pošiljanje sprožimo neposredno (interni klic, ne blokira odgovora).
+    if (draftStatus === 'approved') {
+      base44.asServiceRole.functions.invoke('sendApprovedDraft', { draft_id: draft.id, internal_secret: INTERNAL_SECRET }).catch(() => {});
     }
 
     return Response.json({ success: true, draft, quality_score: qualityScore, approved: reviewData.approved, issues: reviewData.issues_found });
