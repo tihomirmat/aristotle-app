@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Copy, Check, Plus, Trash2, Globe, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 
-const FUNCTION_BASE_URL = "https://api.base44.com/api/apps/69fb8760fa0b118b8a291e26/functions";
+const FUNCTION_BASE_URL = "https://aristotle-smart-growth.base44.app/api/functions"; // preverjeno: api.base44.com vrne 404
 
 const DEFAULT_FIELDS = [
   { id: "name", label: "Ime in priimek", placeholder: "Ime in priimek *", type: "text", required: true, fixed: true, enabled: true },
