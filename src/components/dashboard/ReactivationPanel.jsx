@@ -6,6 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { runReactivation } from "@/functions/runReactivation";
 
+import { fnError } from "@/lib/fn-error";
+import { hasModule } from "@/lib/entitlements";
 export default function ReactivationPanel() {
   const { business } = useBusiness();
   const queryClient = useQueryClient();
@@ -25,12 +27,12 @@ export default function ReactivationPanel() {
         toast.info(data.message || "Ni ustreznih strank za reaktivacijo.");
       }
     } catch (err) {
-      toast.error("Napaka: " + (err?.message || "Neznana napaka"));
+      toast.error("Napaka: " + fnError(err));
     }
     setLoading(false);
   };
 
-  if (!business?.pillar_reactivation) return null;
+  if (!hasModule(business, "pillar_reactivation")) return null;
 
   return (
     <Button size="sm" variant="outline" onClick={handleRun} disabled={loading} className="gap-2">
