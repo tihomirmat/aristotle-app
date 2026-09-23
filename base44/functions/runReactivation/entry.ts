@@ -1,5 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// ─── Skupna avtorizacija / entitlements (kopija v vsaki funkciji — Base44 funkcije nimajo skupnih modulov) ───
+const ownsBusiness = (user, business) => {
+  if (!user || !business) return false;
+  if (user.role === 'admin') return true;
+  return business.created_by_id === user.id
+    || (!!user.email && business.created_by === user.email)
+    || (!!user.email && !!business.owner_email && business.owner_email === user.email);
+};
+const isTrialActive = (b) => b?.subscription_status === 'trialing' && !!b.trial_ends_at && new Date(b.trial_ends_at) > new Date();
+const isTrialExpired = (b) => b?.subscription_status === 'trialing' && !!b.trial_ends_at && new Date(b.trial_ends_at) <= new Date();
+// Enako kot src/lib/entitlements.js: aktiven trial odpre vse module, sicer mora biti pillar_* = true
+const hasModule = (b, pillarKey) => !!b && (isTrialActive(b) || b[pillarKey] === true);
+
 // Zaženi reaktivacijo za vse neaktivne stranke podjetja
 // Ustvari AI osnutke za stranke, ki niso bile kontaktirane 30+ dni
 Deno.serve(async (req) => {
@@ -12,12 +25,12 @@ Deno.serve(async (req) => {
     const { business_id } = body;
     if (!business_id) return Response.json({ error: 'business_id manjka' }, { status: 400 });
 
-    const businesses = await base44.entities.Business.filter({ id: business_id });
+    const businesses = await base44.asServiceRole.entities.Business.filter({ id: business_id });
     const business = businesses[0];
     if (!business) return Response.json({ error: 'Podjetje ni najdeno' }, { status: 404 });
-
-    if (!business.pillar_reactivation) {
-      return Response.json({ error: 'Reaktivacija ni aktivirana' }, { status: 403 });
+    if (!ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.', code: 'FORBIDDEN' }, { status: 403 });
+    if (isTrialExpired(business) || !hasModule(business, 'pillar_reactivation')) {
+      return Response.json({ error: 'Modul Reaktivacija ni aktiven. Aktivirajte ga v Nastavitve → Naročnina.', code: 'MODULE_LOCKED' }, { status: 402 });
     }
 
     const thirtyDaysAgo = new Date();
