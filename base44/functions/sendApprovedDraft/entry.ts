@@ -169,6 +169,14 @@ Deno.serve(async (req) => {
     const unsubUrl = `${APP_URL}/api/apps/${APP_ID}/functions/unsubscribe?lead=${encodeURIComponent(lead.id)}&t=${await unsubscribeToken(lead.id)}`;
     const footer = `\n\n---\nČe teh sporočil ne želite več prejemati, se lahko odjavite tukaj: ${unsubUrl}\nali odgovorite na to sporočilo z besedo »Odjava«.`;
     const fullBody = (draft.body || '') + signature + footer;
+    // HTML različica: glava s podjetjem, besedilo osnutka kot odstavki, odjavna povezava v nogi
+    const fullHtml = emailHtml({
+      brand: business.name,
+      brandSub: business.phone ? String(business.phone) : '',
+      title: '',
+      bodyHtml: textToHtml((draft.body || '') + signature),
+      footerNote: `Če teh sporočil ne želite več prejemati, se lahko <a href="${escHtml(unsubUrl)}" style="color:#6b7280">odjavite tukaj</a> ali odgovorite na to sporočilo z besedo »Odjava«.`,
+    });
 
     // ─── Send via configured provider ────────────────────────────────────────
     // SMTP samo, če je konfiguracija POPOLNA (prej se je pri pol-nastavljenem SMTP osnutek označil kot poslan brez pošiljanja).
@@ -197,6 +205,7 @@ Deno.serve(async (req) => {
         to: lead.email,
         subject: draft.subject || '(brez zadeve)',
         text: fullBody,
+        html: fullHtml,
       }).catch(e => { sendError = e.message; return null; });
     } else {
       // Platform SendEmail (tudi za gmail/outlook, dokler OAuth pošiljanje ni implementirano)
@@ -204,7 +213,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.integrations.Core.SendEmail({
           to: lead.email,
           subject: draft.subject || '(brez zadeve)',
-          body: fullBody,
+          body: fullHtml,
           from_name: business.name,
         });
       } catch (e) {
