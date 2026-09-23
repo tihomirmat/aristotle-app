@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, User, FlaskConical, Trash2, RotateCcw, Mic, Info, FileText, Copy, Check } from "lucide-react";
 import BillingTab from "@/components/nastavitve/BillingTab";
 import { seedDemoData } from "@/functions/seedDemoData";
+import { clearDemoData } from "@/functions/clearDemoData";
+import { fnError } from "@/lib/fn-error";
 import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
 import TerminiTab from "@/components/nastavitve/TerminiTab";
 import { toast as sonnerToast } from "sonner";
@@ -23,7 +25,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 const INDUSTRY_LABELS = { gym: "Fitnes / Gym", dental_medspa: "Zobozdravstvo / Med Spa", home_services: "Domače storitve", restaurant: "Restavracija / Café", salon_barber: "Salon / Frizerstvo", auto: "Avto storitve", other: "Drugo" };
 
 export default function Nastavitve() {
-  const { business } = useBusiness();
+  const { business, user } = useBusiness();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -143,30 +145,32 @@ export default function Nastavitve() {
 
   const handleSeedDemo = async () => {
     setDemoLoading('seed');
-    await seedDemoData({ business_id: business.id });
-    setDemoLoading(null);
-    sonnerToast.success("Demo podatki ustvarjeni z AI drafti in bazo znanja");
-    window.location.href = "/";
+    try {
+      const res = await seedDemoData({ business_id: business.id });
+      if (res?.data?.error) throw new Error(res.data.error);
+      sonnerToast.success("Demo podatki ustvarjeni z AI osnutki in bazo znanja");
+      queryClient.invalidateQueries();
+    } catch (e) {
+      sonnerToast.error("Napaka pri polnjenju demo podatkov: " + fnError(e));
+    } finally {
+      setDemoLoading(null);
+    }
   };
 
+  // Brisanje demo podatkov gre prek backend funkcije, ki briše SAMO zapise tega podjetja
+  // (prej: filter({ is_demo: true }) brez business_id → admin bi zbrisal demo podatke vseh podjetij).
   const handleClearDemo = async () => {
     setDemoLoading('clear');
-    const entities = [
-      base44.entities.Lead,
-      base44.entities.DraftMessage,
-      base44.entities.BookingProposal,
-      base44.entities.ConfirmedBooking,
-      base44.entities.KnowledgeBase,
-      base44.entities.ChatbotConversation,
-    ];
-    await Promise.all(
-      entities.map(async (entity) => {
-        const records = await entity.filter({ is_demo: true });
-        await Promise.all(records.map((r) => entity.delete(r.id)));
-      })
-    );
-    setDemoLoading(null);
-    sonnerToast.success("Demo podatki počiščeni");
+    try {
+      const res = await clearDemoData({ business_id: business.id });
+      if (res?.data?.error) throw new Error(res.data.error);
+      sonnerToast.success(`Demo podatki počiščeni (${res?.data?.deleted ?? 0} zapisov)`);
+      queryClient.invalidateQueries();
+    } catch (e) {
+      sonnerToast.error("Napaka pri brisanju: " + fnError(e));
+    } finally {
+      setDemoLoading(null);
+    }
   };
 
   return (
@@ -229,7 +233,8 @@ export default function Nastavitve() {
               </div>
             )}
 
-            {/* DEMO PODATKI */}
+            {/* DEMO PODATKI — samo admin (porabi AI kredite, ustvari izmišljene stranke) */}
+            {user?.role === "admin" && (
             <div className="border rounded-xl p-5 bg-card shadow-sm mt-6">
               <h3 className="font-semibold mb-1">Demo podatki</h3>
               <p className="text-sm text-muted-foreground mb-4">
@@ -264,6 +269,7 @@ export default function Nastavitve() {
                 </AlertDialog>
               </div>
             </div>
+            )}
           </div>
         </TabsContent>
 
@@ -452,7 +458,7 @@ export default function Nastavitve() {
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Webhook URL (usmerite Mailgun Route ali Resend inbound sem):</p>
                     <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-3 py-2 text-xs font-mono break-all">
-                      <span className="flex-1">https://api.base44.app/api/apps/69fb8760fa0b118b8a291e26/functions/inboundInvoiceEmail</span>
+                      <span className="flex-1">https://aristotle-smart-growth.base44.app/api/functions/inboundInvoiceEmail</span>
                     </div>
                   </div>
                   <div className="bg-muted/40 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
