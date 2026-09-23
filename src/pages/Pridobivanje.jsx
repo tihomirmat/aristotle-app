@@ -16,6 +16,7 @@ import GenerateDraftButton from "@/components/stranke/GenerateDraftButton";
 import WebhookTab from "@/components/pridobivanje/WebhookTab";
 import { format } from "date-fns";
 
+import { fnError } from "@/lib/fn-error";
 const STATUS_LABELS = { new: "Novo", contacted: "Kontaktiran/a", replied: "Odgovoril/a", converted: "Pretvorjen/a", unsubscribed: "Odjavljen/a" };
 const STATUS_COLORS = { new: "bg-blue-100 text-blue-700", contacted: "bg-amber-100 text-amber-700", replied: "bg-emerald-100 text-emerald-700", converted: "bg-violet-100 text-violet-700", unsubscribed: "bg-gray-100 text-gray-500" };
 
@@ -65,9 +66,9 @@ export default function Pridobivanje() {
 
   const formLeads = leads.filter(l => l.source === "form" || l.source === "chatbot");
 
-  const embedCode = `<script src="https://aristotle-smart-growth.base44.app/lead-form.js"
+  const embedCode = `<script src="https://aristotle-smart-growth.base44.app/api/functions/leadFormWidget"
   data-business-id="${business?.id || 'VAŠ_BUSINESS_ID'}"
-  data-color="${formConfig.lead_form_primary_color}"
+  data-color="${String(formConfig.lead_form_primary_color || "#10b981").replace(/[^#0-9a-fA-F]/g, "")}"
   defer></script>
 <div id="aristotle-lead-form"></div>`;
 
@@ -96,7 +97,7 @@ export default function Pridobivanje() {
       queryClient.invalidateQueries({ queryKey: ["leads-form", business?.id] });
       toast.success("Testni lead ustvarjen in draft generiran — preverite Prejeto.");
     } catch (e) {
-      toast.error("Napaka: " + e.message);
+      toast.error("Napaka: " + fnError(e));
     } finally {
       setSendingTest(false);
     }
