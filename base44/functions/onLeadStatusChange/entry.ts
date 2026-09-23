@@ -25,6 +25,8 @@ Deno.serve(async (req) => {
 
     // Preveri pogoje
     if (!business.review_requests_enabled) return Response.json({ skipped: true, reason: 'reviews disabled' });
+    const trialActive = business.subscription_status === 'trialing' && business.trial_ends_at && new Date(business.trial_ends_at) > new Date();
+    if (!trialActive && business.pillar_reviews !== true) return Response.json({ skipped: true, reason: 'pillar_reviews disabled' });
     if (!business.google_review_link) return Response.json({ skipped: true, reason: 'no review link' });
     if (!data.consent_email) return Response.json({ skipped: true, reason: 'no consent' });
     if (data.status === 'unsubscribed') return Response.json({ skipped: true, reason: 'unsubscribed' });
@@ -48,6 +50,7 @@ Deno.serve(async (req) => {
       lead_id: data.id,
       pillar: 'review_request',
       sequence_step: 1,
+      internal_secret: Deno.env.get('INTERNAL_FUNCTION_SECRET') || '',
     });
 
     return Response.json({ success: true, triggered: 'review_request', lead_id: data.id, delay_hours: delayHours });
