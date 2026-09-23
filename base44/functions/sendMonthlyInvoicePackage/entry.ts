@@ -1,6 +1,17 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import JSZip from 'npm:jszip@3.10.1';
 
+// ─── Skupna avtorizacija (kopija v vsaki funkciji — Base44 funkcije nimajo skupnih modulov) ───
+const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
+const isInternalCall = (body) => !!INTERNAL_SECRET && body?.internal_secret === INTERNAL_SECRET;
+const ownsBusiness = (user, business) => {
+  if (!user || !business) return false;
+  if (user.role === 'admin') return true;
+  return business.created_by_id === user.id
+    || (!!user.email && business.created_by === user.email)
+    || (!!user.email && !!business.owner_email && business.owner_email === user.email);
+};
+
 // Scheduled: runs on the 1st of each month.
 // For each business with invoice_enabled + accountant_email:
 //   1. Gather all invoices from the previous calendar month
@@ -12,24 +23,39 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Allow admin-triggered manual runs too
+    // Klici: (a) urnik (workflow — identiteta admina), (b) ročno iz Računi ({ business_id, month?, year? }) — lastnik podjetja ali admin
     const body = await req.json().catch(() => ({}));
     const forceBusiness = body.business_id || null;
+    const user = await base44.auth.me().catch(() => null);
+    const internal = isInternalCall(body);
+    if (!internal && !user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Determine previous calendar month
+    // Obdobje: privzeto prejšnji koledarski mesec; ročni klic lahko poda { month: 1-12, year }
     const now = new Date();
-    const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-    const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    let prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    let prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    if (forceBusiness && Number.isInteger(body.month) && Number.isInteger(body.year) && body.month >= 1 && body.month <= 12) {
+      prevMonth = body.month - 1;
+      prevYear = body.year;
+    }
     const monthStart = new Date(prevYear, prevMonth, 1).toISOString();
     const monthEnd = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59).toISOString();
 
     // Fetch all businesses with invoicing enabled
     const allBusinesses = await base44.asServiceRole.entities.Business.filter({ invoice_enabled: true });
-    const targets = forceBusiness ? allBusinesses.filter(b => b.id === forceBusiness) : allBusinesses;
+    let targets = forceBusiness ? allBusinesses.filter(b => b.id === forceBusiness) : allBusinesses;
+    if (forceBusiness) {
+      if (targets.length === 0) return Response.json({ error: 'Podjetje ni najdeno ali nima vklopljenega modula Računi.' }, { status: 404 });
+      if (!internal && !ownsBusiness(user, targets[0])) return Response.json({ error: 'Nimate dostopa do tega podjetja.', code: 'FORBIDDEN' }, { status: 403 });
+    } else if (!internal && user?.role !== 'admin') {
+      // Zagon za VSA podjetja je dovoljen samo urniku/adminu
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const results = [];
 
     for (const business of targets) {
+      try {
       if (!business.accountant_email) {
         results.push({ business_id: business.id, skipped: true, reason: "no accountant_email" });
         continue;
@@ -45,6 +71,14 @@ Deno.serve(async (req) => {
       if (invoices.length === 0) {
         results.push({ business_id: business.id, skipped: true, reason: "no invoices for period" });
         continue;
+      }
+      // Dedupe: paket za isto obdobje pošljemo samo enkrat (razen ročno s force: true)
+      if (!body.force) {
+        const existingPkgs = await base44.asServiceRole.entities.InvoicePackage.filter({ business_id: business.id, period_month: prevMonth + 1, period_year: prevYear });
+        if (existingPkgs.length > 0) {
+          results.push({ business_id: business.id, skipped: true, reason: "package already sent for period" });
+          continue;
+        }
       }
 
       // Build ZIP
@@ -74,7 +108,9 @@ Deno.serve(async (req) => {
       const emailBody = [
         `Spoštovani,`,
         ``,
-        `V priponki najdete mesečni paket računov za ${business.name} za obdobje ${monthName}.`,
+        `Pripravljen je mesečni paket računov za ${business.name} za obdobje ${monthName}.`,
+        ``,
+        `Prenos paketa (ZIP z vsemi računi): ${zipUrl}`,
         ``,
         `Skupno računov: ${invoices.length}`,
         ``,
@@ -111,7 +147,10 @@ Deno.serve(async (req) => {
         }),
       ]);
 
-      results.push({ business_id: business.id, sent: true, invoice_count: invoices.length });
+      results.push({ business_id: business.id, sent: true, invoice_count: invoices.length, zip_url: zipUrl });
+      } catch (e) {
+        results.push({ business_id: business.id, error: e.message });
+      }
     }
 
     return Response.json({ success: true, results });
