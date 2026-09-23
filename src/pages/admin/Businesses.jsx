@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Loader2, AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { differenceInDays, format } from "date-fns";
 import { toast } from "sonner";
+import { adminActivateSubscription } from "@/functions/adminActivateSubscription";
+
+const MODULE_LABELS = { pillar_reactivation: "Reaktivacija", pillar_reviews: "Ocene", pillar_leads: "Pridobivanje", pillar_chatbot: "Klepet", pillar_assistant: "Asistent", pillar_offers: "Ponudbe" };
 
 const STATUS_COLORS = {
   active: "bg-emerald-100 text-emerald-700",
@@ -38,23 +41,41 @@ export default function AdminBusinesses() {
     queryFn: () => base44.entities.Business.list("-created_date"),
   });
 
+  const { data: requests = [] } = useQuery({
+    queryKey: ["admin-subscription-requests"],
+    queryFn: () => base44.entities.SubscriptionRequest.filter({ status: "pending" }, "-created_date"),
+  });
+
+  const callActivate = async (payload, okMsg) => {
+    try {
+      const res = await adminActivateSubscription(payload);
+      const data = res?.data ?? res;
+      if (data?.error) throw new Error(data.error);
+      await queryClient.invalidateQueries({ queryKey: ["admin-businesses"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-subscription-requests"] });
+      toast.success(okMsg);
+    } catch (e) {
+      toast.error("Napaka: " + (e?.response?.data?.error || e?.data?.error || e.message));
+    }
+  };
+
+  // Ročna aktivacija (brez naročila): vsi moduli, a la carte ali paket
   const handleMarkPaymentSucceeded = async (biz, isBundle) => {
     setSimulating(biz.id);
-    const pillarUpdates = {};
-    ALL_PILLARS.forEach(k => { pillarUpdates[k] = true; });
-    pillarUpdates.pillar_digest = true;
-
-    await base44.entities.Business.update(biz.id, {
-      ...pillarUpdates,
-      subscription_status: "active",
-      billing_mode: isBundle ? "bundle" : "alacarte",
-      bundle_active: isBundle,
-      integration_fee_paid: true,
-    });
-
-    await queryClient.invalidateQueries({ queryKey: ["admin-businesses"] });
+    await callActivate({ business_id: biz.id, bundle: isBundle, modules: ALL_PILLARS }, `${biz.name}: naročnina aktivirana ✓`);
     setSimulating(null);
-    toast.success(`${biz.name}: plačilo simulirano ✓`);
+  };
+
+  const handleActivateRequest = async (r) => {
+    setSimulating(r.id);
+    await callActivate({ request_id: r.id }, `${r.business_name}: naročilo aktivirano, stranka obveščena ✓`);
+    setSimulating(null);
+  };
+
+  const handleRejectRequest = async (r) => {
+    setSimulating(r.id);
+    await callActivate({ request_id: r.id, action: "reject" }, `${r.business_name}: naročilo zavrnjeno`);
+    setSimulating(null);
   };
 
   if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -65,6 +86,31 @@ export default function AdminBusinesses() {
         <h1 className="text-2xl font-bold">All Businesses</h1>
         <p className="text-muted-foreground mt-1">Admin view — all tenants ({businesses.length} total)</p>
       </div>
+
+      {requests.length > 0 && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <h2 className="font-semibold text-amber-900 mb-3">Odprta naročila modulov ({requests.length})</h2>
+          <div className="space-y-2">
+            {requests.map((r) => (
+              <div key={r.id} className="flex flex-col md:flex-row md:items-center gap-2 bg-white border rounded-lg p-3 text-sm">
+                <div className="flex-1">
+                  <p className="font-medium">{r.business_name} <span className="text-muted-foreground font-normal">· {r.owner_email}</span></p>
+                  <p className="text-xs text-muted-foreground">
+                    {r.bundle ? "Paket (vsi moduli)" : (r.modules || []).map((m) => MODULE_LABELS[m] || m).join(", ")} · {r.monthly_total_eur} €/mes
+                    {r.integration_fee_eur ? ` + ${r.integration_fee_eur} € namestitev` : ""} · {r.created_date ? format(new Date(r.created_date), "d. M. yyyy") : ""}
+                  </p>
+                </div>
+                <div className="flex gap-1.5">
+                  <Button size="sm" className="h-7 text-xs" disabled={simulating === r.id} onClick={() => handleActivateRequest(r)}>
+                    {simulating === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3 mr-1" />} Aktiviraj (plačano)
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={simulating === r.id} onClick={() => handleRejectRequest(r)}>Zavrni</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
         <table className="w-full text-sm">
