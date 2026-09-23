@@ -16,9 +16,9 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background font-inter">
-      <TrialExpiredModal business={business} />
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <main className={`transition-all duration-300 min-h-screen ${collapsed ? "ml-[68px]" : "ml-[240px]"}`}>
+        <TrialExpiredModal business={business} />
         {/* Sticky header */}
         <div className={`sticky top-0 z-40 flex justify-end items-center px-6 md:px-8 h-14 bg-background/80 backdrop-blur-sm border-b border-border`}>
           <UserMenu />
