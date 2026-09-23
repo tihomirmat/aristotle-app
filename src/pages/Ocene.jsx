@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { generateDraft } from "@/functions/generateDraft";
 
+import { fnError } from "@/lib/fn-error";
 export default function Ocene() {
   const { business } = useBusiness();
   const queryClient = useQueryClient();
@@ -66,7 +67,7 @@ export default function Ocene() {
       queryClient.invalidateQueries({ queryKey: ["ocene-drafts", business?.id] });
       toast.success(`Prošnja za oceno ustvarjena za ${lead.name}. Preverite Prejeto.`);
     } catch (e) {
-      toast.error("Napaka pri generiranju: " + e.message);
+      toast.error("Napaka pri generiranju: " + fnError(e));
     } finally {
       setGeneratingFor(null);
     }
@@ -88,7 +89,7 @@ export default function Ocene() {
       queryClient.invalidateQueries({ queryKey: ["ocene-drafts", business?.id] });
       toast.success("Testna prošnja ustvarjena. Preverite Prejeto.");
     } catch (e) {
-      toast.error("Napaka: " + e.message);
+      toast.error("Napaka: " + fnError(e));
     } finally {
       setGeneratingFor(null);
     }
@@ -197,16 +198,6 @@ export default function Ocene() {
             <Switch
               checked={!!business?.review_requests_enabled}
               onCheckedChange={(v) => saveSettingsMutation.mutate({ review_requests_enabled: v })}
-            />
-          </div>
-          <div className="flex items-center justify-between py-2 border-b">
-            <div>
-              <p className="text-sm font-medium">Po potrjenem terminu</p>
-              <p className="text-xs text-muted-foreground">Ko ConfirmedBooking.status → completed, čez 24h sproži prošnjo</p>
-            </div>
-            <Switch
-              checked={!!business?.pillar_reviews}
-              onCheckedChange={(v) => saveSettingsMutation.mutate({ pillar_reviews: v })}
             />
           </div>
           <div className="space-y-2 py-2">
