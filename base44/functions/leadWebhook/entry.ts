@@ -68,18 +68,26 @@ Deno.serve(async (req) => {
       owner_email: businessOwner,
     });
 
-    // Trigger AI draft via generateDraft function (fire and forget)
-    base44.asServiceRole.functions.invoke('generateDraft', {
-      business_id,
-      lead_id: lead.id,
-      pillar: 'web_form_lead',
-      sequence_step: 1,
-    }).catch(() => {});
+    // Trigger AI draft via generateDraft function (fire and forget).
+    // Osnutek nastane samo, če je modul Pridobivanje aktiven (aktiven trial ali pillar_leads).
+    // Opomba: workflow "Lead Nurture ob novem leadu iz obrazca" prav tako kliče onNewFormLead → generateDraft;
+    // generateDraft za isto stranko/pillar/korak ne ustvari dvojnika (dedupe).
+    const biz = businesses[0];
+    const trialActive = biz.subscription_status === 'trialing' && biz.trial_ends_at && new Date(biz.trial_ends_at) > new Date();
+    if (trialActive || biz.pillar_leads === true) {
+      base44.asServiceRole.functions.invoke('generateDraft', {
+        business_id,
+        lead_id: lead.id,
+        pillar: 'web_form_lead',
+        sequence_step: 1,
+        internal_secret: Deno.env.get('INTERNAL_FUNCTION_SECRET') || '',
+      }).catch(() => {});
+    }
 
     return Response.json({ success: true, lead_id: lead.id }, { headers: corsHeaders });
   } catch (error) {
     return Response.json(
-      { error: "Internal server error", details: error.message, status: error.status || 500 },
+      { error: "Internal server error" },
       { status: 500, headers: corsHeaders }
     );
   }
