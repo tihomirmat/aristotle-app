@@ -9,6 +9,7 @@ import { Upload, FileText, ChevronRight, ChevronLeft, Loader2, CheckCircle, Edit
 import { toast } from "sonner";
 import { offerScan } from "@/functions/offerScan";
 
+import { fnError } from "@/lib/fn-error";
 const STEPS = ["Naložite vir", "Ekstrakcija besedila", "AI analiza", "Shranite template"];
 const KIND_LABELS = { service: "Storitev", product: "Izdelek", saas: "SaaS", custom: "Po meri" };
 
@@ -85,7 +86,7 @@ export default function PonudbeSkener() {
       setEditedResult(result);
       setStep(3);
     } catch (err) {
-      toast.error("Napaka pri ekstrakciji: " + err.message);
+      toast.error("Napaka pri ekstrakciji: " + fnError(err));
       setStep(0);
     } finally {
       setLoading(false);
@@ -113,7 +114,7 @@ export default function PonudbeSkener() {
       toast.success("Template je shranjen!");
       navigate(`/ponudbe/templati/${template.id}`);
     } catch (err) {
-      toast.error("Napaka pri shranjevanju: " + err.message);
+      toast.error("Napaka pri shranjevanju: " + fnError(err));
     } finally {
       setSaving(false);
     }
