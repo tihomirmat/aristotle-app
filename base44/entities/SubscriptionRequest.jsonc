@@ -1,0 +1,90 @@
+{
+  "name": "SubscriptionRequest",
+  "type": "object",
+  "description": "Naro\u010dilo modulov (stranka klikne 'Naro\u010di module' v Naro\u010dnini). Aktivacijo potrdi admin (ro\u010dno pla\u010dilo/predra\u010dun), dokler ni pla\u010dilnega procesorja.",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "business_name": {
+      "type": "string"
+    },
+    "owner_email": {
+      "type": "string"
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "bundle": {
+      "type": "boolean",
+      "default": false
+    },
+    "monthly_total_eur": {
+      "type": "number",
+      "default": 0
+    },
+    "integration_fee_eur": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "activated",
+        "rejected",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "note": {
+      "type": "string"
+    },
+    "activated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "business_id"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
