@@ -36,7 +36,13 @@ export default function Prejeto() {
 
   const { data: drafts = [], isLoading } = useQuery({
     queryKey: ["drafts-pending", business?.id],
-    queryFn: () => base44.entities.DraftMessage.filter({ business_id: business.id, status: "pending" }),
+    // Prikažemo čakajoče IN označene za pregled (quality_score < 6) — slednji prej niso bili vidni nikjer v UI.
+    queryFn: async () => {
+      const all = await base44.entities.DraftMessage.filter({ business_id: business.id });
+      return all
+        .filter((d) => d.status === "pending" || d.status === "flagged_for_review")
+        .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+    },
     enabled: !!business?.id,
   });
 
@@ -148,6 +154,9 @@ export default function Prejeto() {
                     <Badge variant="secondary" className="text-xs flex items-center gap-1">
                       <Mail className="w-3 h-3" /> E-pošta
                     </Badge>
+                    {msg.status === "flagged_for_review" && (
+                      <Badge className="text-xs bg-orange-100 text-orange-700 border-0">Za pregled{msg.quality_score ? ` · Q${msg.quality_score}` : ""}</Badge>
+                    )}
                     {lead && <span className="text-sm font-medium text-foreground">→ {lead.name}</span>}
                     {msg.scheduled_at && (
                       <span className="text-xs text-muted-foreground">
