@@ -3,9 +3,48 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 import { jsPDF } from 'npm:jspdf@2.5.2';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'npm:docx@8.5.0';
 
+// ─── Skupna avtorizacija / entitlements (kopija v vsaki funkciji — Base44 funkcije nimajo skupnih modulov) ───
+const ownsBusiness = (user, business) => {
+  if (!user || !business) return false;
+  if (user.role === 'admin') return true;
+  return business.created_by_id === user.id
+    || (!!user.email && business.created_by === user.email)
+    || (!!user.email && !!business.owner_email && business.owner_email === user.email);
+};
+
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 
 const PLATFORM_MODELS = ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-4-5'];
+
+// Cene v EUR na 1M tokenov (list price USD × ~0,92). Prej je bila uporabljena cena 15/75 USD (Opus 4) → 3× previsok obračun.
+const PRICE_EUR_PER_MTOK = {
+  'claude-haiku-4-5':  { in: 0.92, out: 4.60 },
+  'claude-sonnet-4-5': { in: 2.76, out: 13.80 },
+  'claude-opus-4-5':   { in: 4.60, out: 23.00 },
+};
+const platformCostEur = (model, tokensIn, tokensOut) => {
+  const p = PRICE_EUR_PER_MTOK[model] || PRICE_EUR_PER_MTOK['claude-opus-4-5'];
+  return (tokensIn * p.in + tokensOut * p.out) / 1_000_000;
+};
+
+// ── Pisava z vsemi slovenskimi znaki za PDF (jsPDF Helvetica nima č/ć/đ) — naloži se enkrat na hladen zagon ──
+let FONT_CACHE = null;
+async function loadPdfFonts() {
+  if (FONT_CACHE) return FONT_CACHE;
+  const toB64 = (buf) => { const bytes = new Uint8Array(buf); let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); };
+  try {
+    const [r, b] = await Promise.all([
+      fetch('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf'),
+      fetch('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans-Bold.ttf'),
+    ]);
+    if (!r.ok || !b.ok) throw new Error('font fetch failed');
+    FONT_CACHE = { normal: toB64(await r.arrayBuffer()), bold: toB64(await b.arrayBuffer()) };
+  } catch (e) {
+    console.error('PDF font load failed, falling back to Helvetica:', e.message);
+    FONT_CACHE = { normal: null, bold: null };
+  }
+  return FONT_CACHE;
+}
 
 function pickModel(business, kind) {
   if (business.subscription_status === 'trialing') {
@@ -111,8 +150,17 @@ function markdownToHtml(markdown, vars) {
 }
 
 // ── Render markdown to PDF (jsPDF, pure JS) ──
-function renderPdf(markdown) {
+async function renderPdf(markdown) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const fonts = await loadPdfFonts();
+  let fontName = 'helvetica';
+  if (fonts.normal) {
+    doc.addFileToVFS('DejaVuSans.ttf', fonts.normal);
+    doc.addFont('DejaVuSans.ttf', 'DejaVu', 'normal');
+    doc.addFileToVFS('DejaVuSans-Bold.ttf', fonts.bold || fonts.normal);
+    doc.addFont('DejaVuSans-Bold.ttf', 'DejaVu', 'bold');
+    fontName = 'DejaVu';
+  }
   const pageH = 297, marginX = 20, marginTop = 20, marginBottom = 20, maxW = 170;
   let y = marginTop;
   const ensure = (h) => { if (y + h > pageH - marginBottom) { doc.addPage(); y = marginTop; } };
@@ -127,7 +175,7 @@ function renderPdf(markdown) {
     else if (line.startsWith('- ') || line.startsWith('* ')) { text = '• ' + line.slice(2); }
     text = text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/\|/g, '  ');
     doc.setFontSize(size);
-    doc.setFont('helvetica', style);
+    doc.setFont(fontName, style);
     const wrapped = doc.splitTextToSize(text, maxW);
     for (const w of wrapped) {
       ensure(size * 0.45);
@@ -177,6 +225,7 @@ Deno.serve(async (req) => {
     const businesses = await base44.asServiceRole.entities.Business.filter({ id: business_id });
     const business = businesses[0];
     if (!business) return Response.json({ error: 'Podjetje ni najdeno' }, { status: 404 });
+    if (!ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.', code: 'FORBIDDEN' }, { status: 403 });
 
     // ─── Gates ────────────────────────────────────────────────────────────────
     const isTrialing = business.subscription_status === 'trialing';
@@ -185,7 +234,29 @@ Deno.serve(async (req) => {
     // Gate 1: module entitlement (trial opens all modules; otherwise pillar_offers must be true)
     const trialStillValid = isTrialing && business.trial_ends_at && new Date(business.trial_ends_at) > new Date();
     if (!trialStillValid && business.pillar_offers !== true) {
-      return Response.json({ error: 'Modul Generator ponudb ni aktiven.', code: 'MODULE_LOCKED' }, { status: 403 });
+      return Response.json({ error: 'Modul Generator ponudb ni aktiven. Aktivirajte ga v Nastavitve → Naročnina.', code: 'MODULE_LOCKED' }, { status: 402 });
+    }
+
+    // ── kind = 'rerender': stranka je sprejela predlog izboljšave → ponovno izriši PDF/DOCX brez LLM klica in brez kvote ──
+    if (kind === 'rerender') {
+      const md = String(body.output_markdown || '');
+      if (!parent_id || !md.trim()) return Response.json({ error: 'Manjkajoči parametri: parent_id, output_markdown' }, { status: 400 });
+      const gens = await base44.asServiceRole.entities.OfferGeneration.filter({ id: parent_id });
+      const gen = gens[0];
+      if (!gen || gen.business_id !== business.id) return Response.json({ error: 'Ponudba ni najdena.' }, { status: 404 });
+      let pdfUrl = null, docxUrl = null;
+      try {
+        const stamp = Date.now();
+        pdfUrl = await uploadBytes(base44, await renderPdf(md), `ponudba-${stamp}.pdf`, 'application/pdf');
+        docxUrl = await uploadBytes(base44, await renderDocx(md), `ponudba-${stamp}.docx`, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      } catch (renderErr) {
+        return Response.json({ error: 'Izvoz PDF/DOCX ni uspel: ' + renderErr.message }, { status: 500 });
+      }
+      await base44.asServiceRole.entities.OfferGeneration.update(gen.id, {
+        output_markdown: md, output_pdf_url: pdfUrl, output_docx_url: docxUrl,
+        improvements_suggested: Array.isArray(body.improvements_suggested) ? body.improvements_suggested : gen.improvements_suggested,
+      });
+      return Response.json({ success: true, generation_id: gen.id, output_markdown: md, output_pdf_url: pdfUrl, output_docx_url: docxUrl, improvements_suggested: Array.isArray(body.improvements_suggested) ? body.improvements_suggested : (gen.improvements_suggested || []) });
     }
 
     // Gate 2 (trial only): per-business trial credit cap
@@ -226,6 +297,9 @@ Deno.serve(async (req) => {
     if (template_id) {
       const templates = await base44.asServiceRole.entities.OfferTemplate.filter({ id: template_id });
       template = templates[0];
+      if (template && template.business_id !== business.id) {
+        return Response.json({ error: 'Template ne pripada temu podjetju.', code: 'FORBIDDEN' }, { status: 403 });
+      }
     }
 
     const globalVars = business.offers_global_vars || {};
@@ -261,14 +335,14 @@ VRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.`;
 
     // Cost calc (only for platform)
     const isPlatform = provider === 'platform_anthropic';
-    const costEur = isPlatform ? (tokensIn * 0.000015) + (tokensOut * 0.000075) : 0;
+    const costEur = isPlatform ? platformCostEur(model, tokensIn, tokensOut) : 0;
 
     // Render PDF + DOCX and upload to storage (non-fatal on failure)
     let outputPdfUrl = null, outputDocxUrl = null;
     const finalMarkdown = result.output_markdown || text;
     try {
       const stamp = Date.now();
-      const pdfBytes = renderPdf(finalMarkdown);
+      const pdfBytes = await renderPdf(finalMarkdown);
       outputPdfUrl = await uploadBytes(base44, pdfBytes, `ponudba-${stamp}.pdf`, 'application/pdf');
       const docxBytes = await renderDocx(finalMarkdown);
       outputDocxUrl = await uploadBytes(base44, docxBytes, `ponudba-${stamp}.docx`, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
