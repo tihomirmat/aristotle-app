@@ -10,6 +10,7 @@ import { useBusiness } from "@/lib/business-context";
 import { toast } from "sonner";
 import { generateDrafts } from "@/functions/generateDrafts";
 
+import { fnError } from "@/lib/fn-error";
 const PILLAR_OPTIONS = [
   { value: "reactivation", label: "Reaktivacija stranke" },
   { value: "review_request", label: "Prošnja za Google oceno" },
@@ -43,7 +44,7 @@ export default function GenerateDraftButton() {
       setOpen(false);
       setLeadId("");
     } catch (err) {
-      toast.error("Napaka pri generiranju: " + (err?.message || "Neznana napaka"));
+      toast.error("Napaka pri generiranju: " + fnError(err));
     }
     setLoading(false);
   };
