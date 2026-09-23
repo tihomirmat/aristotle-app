@@ -1,6 +1,31 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import nodemailer from 'npm:nodemailer@6.9.9';
 
+// ─── Skupna avtorizacija / entitlements (kopija v vsaki funkciji — Base44 funkcije nimajo skupnih modulov) ───
+const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
+const isInternalCall = (body) => !!INTERNAL_SECRET && body?.internal_secret === INTERNAL_SECRET;
+const ownsBusiness = (user, business) => {
+  if (!user || !business) return false;
+  if (user.role === 'admin') return true;
+  return business.created_by_id === user.id
+    || (!!user.email && business.created_by === user.email)
+    || (!!user.email && !!business.owner_email && business.owner_email === user.email);
+};
+const isTrialActive = (b) => b?.subscription_status === 'trialing' && !!b.trial_ends_at && new Date(b.trial_ends_at) > new Date();
+const isTrialExpired = (b) => b?.subscription_status === 'trialing' && !!b.trial_ends_at && new Date(b.trial_ends_at) <= new Date();
+// Enako kot src/lib/entitlements.js: aktiven trial odpre vse module, sicer mora biti pillar_* = true
+const hasModule = (b, pillarKey) => !!b && (isTrialActive(b) || b[pillarKey] === true);
+
+const APP_ID = '69fb8760fa0b118b8a291e26';
+const APP_URL = (Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app').replace(/\/$/, '');
+
+// Podpisan odjavni žeton: HMAC-SHA256(INTERNAL_FUNCTION_SECRET, lead.id) — preverja ga funkcija `unsubscribe`
+async function unsubscribeToken(leadId) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(INTERNAL_SECRET || 'no-secret'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(leadId));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+
 // Sends an approved DraftMessage to the lead via the business's configured email provider.
 // Triggered by entity automation on DraftMessage update → status = "approved"
 // Can also be called directly with { draft_id }
@@ -14,6 +39,16 @@ Deno.serve(async (req) => {
     const draftId = body.draft_id || body.data?.id;
     if (!draftId) {
       return Response.json({ error: 'draft_id is required' }, { status: 400 });
+    }
+
+    // Avtentikacija: interni klic (secret) | workflow payload ({ data }) | prijavljen lastnik podjetja.
+    // Workflow klica ne moremo kriptografsko preveriti, zato spodaj še preverjamo, da osnutek res izvira od lastnika/backend-a.
+    const internal = isInternalCall(body);
+    const isWorkflowPayload = !!body.data?.id && !body.draft_id;
+    let user = null;
+    if (!internal) {
+      user = await base44.auth.me().catch(() => null);
+      if (!user && !isWorkflowPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Fetch draft
@@ -36,6 +71,32 @@ Deno.serve(async (req) => {
 
     if (!lead) return Response.json({ error: 'Lead not found' }, { status: 404 });
     if (!business) return Response.json({ error: 'Business not found' }, { status: 404 });
+
+    // ─── AVTORIZACIJA / KONSISTENTNOST NAJEMNIKA (zaščita pred odprtim e-mail relayem) ───
+    if (user && !ownsBusiness(user, business)) {
+      return Response.json({ error: 'Nimate dostopa do tega podjetja.', code: 'FORBIDDEN' }, { status: 403 });
+    }
+    if (lead.business_id !== draft.business_id) {
+      await base44.asServiceRole.entities.DraftMessage.update(draftId, { status: 'failed', reviewer_notes: 'Varnostna zavrnitev: stranka ne pripada podjetju osnutka.' });
+      return Response.json({ error: 'Lead/business mismatch', code: 'FORBIDDEN' }, { status: 403 });
+    }
+    // Osnutek mora ustvariti lastnik podjetja, admin-backend (service role) ali biti ustvarjen prek generateDraft.
+    const draftCreator = String(draft.created_by || '');
+    const draftCreatorId = String(draft.created_by_id || '');
+    const trustedCreator = draftCreatorId.startsWith('service_') || draftCreator.startsWith('service+')
+      || (!!business.created_by_id && draftCreatorId === business.created_by_id)
+      || (!!business.created_by && draftCreator === business.created_by)
+      || (!!business.owner_email && draftCreator === business.owner_email);
+    if (!trustedCreator) {
+      await base44.asServiceRole.entities.DraftMessage.update(draftId, { status: 'failed', reviewer_notes: 'Varnostna zavrnitev: osnutek ni bil ustvarjen s strani lastnika podjetja.' });
+      return Response.json({ error: 'Draft origin not trusted', code: 'FORBIDDEN' }, { status: 403 });
+    }
+    // Modul mora biti aktiven (trial ali kupljen) — pošiljanje je plačljiva funkcija
+    const PILLAR_MODULE = { reactivation: 'pillar_reactivation', review_request: 'pillar_reviews', referral_ask: 'pillar_reviews', web_form_lead: 'pillar_leads', chatbot_handoff: 'pillar_leads', booking_proposal: 'pillar_leads' };
+    if (isTrialExpired(business) || !hasModule(business, PILLAR_MODULE[draft.pillar] || 'pillar_reactivation')) {
+      await base44.asServiceRole.entities.DraftMessage.update(draftId, { status: 'failed', reviewer_notes: 'Modul ni aktiven (preizkus končan ali modul ni kupljen). Aktivirajte naročnino v Nastavitve → Naročnina.' });
+      return Response.json({ skipped: true, reason: 'module_locked', code: 'MODULE_LOCKED', error: 'Modul ni aktiven. Aktivirajte naročnino za nadaljevanje.' }, { status: 402 });
+    }
 
     // ─── Guardrails ───────────────────────────────────────────────────────────
     if (!lead.email) {
@@ -68,43 +129,44 @@ Deno.serve(async (req) => {
 
     // ─── Build email body (add signature + unsubscribe footer) ────────────────
     const signature = business.email_signature ? `\n\n${business.email_signature}` : `\n\nLep pozdrav,\n${business.name}`;
-    const footer = `\n\n---\nIf you no longer wish to receive these emails, please reply with "Odjava" or contact us directly.`;
+    const unsubUrl = `${APP_URL}/api/apps/${APP_ID}/functions/unsubscribe?lead=${encodeURIComponent(lead.id)}&t=${await unsubscribeToken(lead.id)}`;
+    const footer = `\n\n---\nČe teh sporočil ne želite več prejemati, se lahko odjavite tukaj: ${unsubUrl}\nali odgovorite na to sporočilo z besedo »Odjava«.`;
     const fullBody = (draft.body || '') + signature + footer;
 
     // ─── Send via configured provider ────────────────────────────────────────
+    // SMTP samo, če je konfiguracija POPOLNA; pol-nastavljen SMTP je napaka (prej se je osnutek označil kot poslan brez pošiljanja).
+    // Gmail/Outlook OAuth povezava še ni implementirana → platformski pošiljatelj (Base44 SendEmail).
     let sendError = null;
+    const smtpComplete = !!(business.smtp_host && business.smtp_user && business.smtp_pass);
 
-    if (business.email_provider === 'smtp' && business.smtp_host && business.smtp_user && business.smtp_pass) {
-      // SMTP
+    if (business.email_provider === 'smtp' && !smtpComplete) {
+      sendError = 'SMTP ni v celoti nastavljen (strežnik, uporabnik in geslo so obvezni). Preverite Nastavitve → Integracije.';
+    } else if (business.email_provider === 'smtp' && smtpComplete) {
       const transporter = nodemailer.createTransport({
         host: business.smtp_host,
-        port: business.smtp_port || 587,
+        port: Number(business.smtp_port) || 587,
         secure: business.smtp_encryption === 'ssl_tls',
         requireTLS: business.smtp_encryption === 'starttls',
         auth: { user: business.smtp_user, pass: business.smtp_pass },
       });
-      const mailResult = await transporter.sendMail({
-        from: `"${business.smtp_from_name || business.name}" <${business.smtp_from_email || business.smtp_user}>`,
+      await transporter.sendMail({
+        from: `"${(business.smtp_from_name || business.name).replace(/"/g, '')}" <${business.smtp_from_email || business.smtp_user}>`,
         to: lead.email,
         subject: draft.subject || '(brez zadeve)',
         text: fullBody,
       }).catch(e => { sendError = e.message; return null; });
-    } else if ((business.email_provider === 'gmail' && business.gmail_access_token) ||
-               (business.email_provider === 'outlook' && business.outlook_access_token)) {
-      // Gmail / Outlook via platform SendEmail integration (OAuth token refresh is complex; fall through to platform)
-      // For now fall through to platform SendEmail — OAuth refresh flows are handled separately
-      sendError = 'oauth_fallback';
-    }
-
-    if (!business.email_provider || sendError === 'oauth_fallback' || (!business.smtp_host && !business.gmail_access_token && !business.outlook_access_token)) {
-      // Fall back to platform SendEmail integration
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        to: lead.email,
-        subject: draft.subject || '(brez zadeve)',
-        body: fullBody,
-        from_name: business.name,
-      });
-      sendError = null;
+    } else {
+      // Platform SendEmail (tudi za gmail/outlook, dokler OAuth pošiljanje ni implementirano)
+      try {
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: lead.email,
+          subject: draft.subject || '(brez zadeve)',
+          body: fullBody,
+          from_name: business.name,
+        });
+      } catch (e) {
+        sendError = e.message || 'Platformsko pošiljanje ni uspelo';
+      }
     }
 
     if (sendError) {
