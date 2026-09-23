@@ -3,6 +3,27 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 
+// Varna base64 pretvorba (String.fromCharCode(...bytes) vrže napako pri datotekah > ~125 KB)
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  return btoa(binary);
+}
+
+// ─── Skupna avtorizacija / entitlements (kopija v vsaki funkciji — Base44 funkcije nimajo skupnih modulov) ───
+const ownsBusiness = (user, business) => {
+  if (!user || !business) return false;
+  if (user.role === 'admin') return true;
+  return business.created_by_id === user.id
+    || (!!user.email && business.created_by === user.email)
+    || (!!user.email && !!business.owner_email && business.owner_email === user.email);
+};
+const isTrialActive = (b) => b?.subscription_status === 'trialing' && !!b.trial_ends_at && new Date(b.trial_ends_at) > new Date();
+const isTrialExpired = (b) => b?.subscription_status === 'trialing' && !!b.trial_ends_at && new Date(b.trial_ends_at) <= new Date();
+// Enako kot src/lib/entitlements.js: aktiven trial odpre vse module, sicer mora biti pillar_* = true
+const hasModule = (b, pillarKey) => !!b && (isTrialActive(b) || b[pillarKey] === true);
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -19,6 +40,10 @@ Deno.serve(async (req) => {
     const businesses = await base44.asServiceRole.entities.Business.filter({ id: business_id });
     const business = businesses[0];
     if (!business) return Response.json({ error: 'Podjetje ni najdeno' }, { status: 404 });
+    if (!ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.', code: 'FORBIDDEN' }, { status: 403 });
+    if (isTrialExpired(business) || !hasModule(business, 'pillar_offers')) {
+      return Response.json({ error: 'Modul Generator ponudb ni aktiven. Aktivirajte ga v Nastavitve → Naročnina.', code: 'MODULE_LOCKED' }, { status: 402 });
+    }
 
     let extractedValues = {};
 
@@ -26,7 +51,8 @@ Deno.serve(async (req) => {
     if (['jpg', 'jpeg', 'png', 'image'].includes(file_type?.toLowerCase())) {
       const imageRes = await fetch(file_url);
       const imageBuffer = await imageRes.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+      if (imageBuffer.byteLength > 20 * 1024 * 1024) return Response.json({ error: 'Datoteka je prevelika (največ 20 MB).' }, { status: 400 });
+      const base64 = bytesToBase64(new Uint8Array(imageBuffer));
       const mediaType = file_type?.toLowerCase() === 'png' ? 'image/png' : 'image/jpeg';
 
       const response = await anthropic.messages.create({
