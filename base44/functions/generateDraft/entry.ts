@@ -40,7 +40,7 @@ const costEur = (model, tokensIn, tokensOut) => {
 };
 
 // ─── Plast 1: ARISTOTLE PERSONA ───────────────────────────────────────────────
-const ARISTOTLE_PERSONA = `Ti si AI Aristotle, digitalni asistent za male podjetnike v Sloveniji. Pravila: spoštljivo vikanje povsod (vi, vam, vas, vaš). Topel, profesionalen, brez prodajnih trikov. Brez Nujno!, Samo še danes!, Ne zamudite!. Brez VELIKIH ČRK v telesu. Brez emojijev v formalnih panogah (dental_medspa, auto, home_services, marketing_services). Max 1 emoji v sproščenih panogah (gym, restaurant, salon_barber). Telo pod 120 besedami. Brez anglicizmov (Hej→Pozdravljeni). Pozdrav: Spoštovani {ime} (moški) ali Spoštovana {ime} (ženska). Zaključek: Lep pozdrav, {business.name}. Nikoli ne navajaj cen razen če current_offer pove ceno. Nikoli ne dodaj odjavne povezave v body — backend doda v footer.`;
+const ARISTOTLE_PERSONA = `Ti si AI Aristotle, digitalni asistent za male podjetnike v Sloveniji. Pravila: spoštljivo vikanje povsod (vi, vam, vas, vaš). Topel, profesionalen, brez prodajnih trikov. Brez Nujno!, Samo še danes!, Ne zamudite!. Brez VELIKIH ČRK v telesu. Brez emojijev v formalnih panogah (dental_medspa, auto, home_services, marketing_services). Max 1 emoji v sproščenih panogah (gym, restaurant, salon_barber). Telo pod 120 besedami. Brez anglicizmov (Hej→Pozdravljeni). Pozdrav: Spoštovani {ime} (moški) ali Spoštovana {ime} (ženska). Zaključek: Lep pozdrav, {business.name}. Nikoli ne navajaj cen razen če current_offer pove ceno. Nikoli ne dodaj odjavne povezave v body — backend doda v footer. KONTAKTI: edini kontaktni podatki podjetja so business.phone in business.email; lead.phone in lead.email so podatki STRANKE in jih nikoli ne navajaj kot naše. Če business.phone manjka, ne navajaj nobene telefonske številke (napiši „odgovorite na to sporočilo“). Ne izmišljuj imen oseb, rokov ali storitev, ki jih ni v podatkih.`;
 
 // ─── Plast 2: SLOVENE STYLE GUIDE ────────────────────────────────────────────
 const SLOVENE_STYLE_GUIDE = `1) Sklanjatve: Ana→Spoštovana Ana, Tomaž→Spoštovani Tomaž, z g./ga.: Spoštovani g. Krajnc / Spoštovana ga. Novak. 2) Črke: ohrani č/š/ž/ć (Tomaž ne Tomaz). 3) Števila: decimalka vejica "35,50 €", tisočni pika "1.000 €", valuta za številko "49 €". 4) Datumi: "20. maj 2026" (mala črka mesec) ali "20. 5. 2026". 5) Čas 24-urni: 14:30, 9:00. 6) Dnevi/meseci mala začetnica. 7) Vikanje plural za oba spola: ste prejeli, vam pošiljamo. 8) "ki" namesto "kateri" kjer možno. 9) "vaš" mala začetnica. 10) Telefoni z razmaki: "+386 40 555 111".`;
@@ -171,7 +171,8 @@ Deno.serve(async (req) => {
       business: {
         name: business.name,
         industry_template: business.industry_template,
-        phone: business.phone,
+        phone: business.phone || null,
+        email: business.email || null,
         services: business.services,
         current_offer: business.current_offer,
         google_review_link: business.google_review_link,
@@ -180,8 +181,8 @@ Deno.serve(async (req) => {
       },
       lead: {
         name: lead.name,
-        email: lead.email,
-        phone: lead.phone,
+        email: lead.email, // e-pošta STRANKE (prejemnik)
+        phone: lead.phone, // telefon STRANKE — ni naša številka
         notes: lead.notes,
         source: lead.source,
         status: lead.status,
