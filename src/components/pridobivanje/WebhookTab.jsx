@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import EmbedFormBuilder from "./EmbedFormBuilder";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-const FUNCTION_BASE_URL = "https://api.base44.com/api/apps/69fb8760fa0b118b8a291e26/functions";
+const FUNCTION_BASE_URL = "https://aristotle-smart-growth.base44.app/api/functions"; // preverjeno: api.base44.com vrne 404
 
 const STEPS = [
   {
