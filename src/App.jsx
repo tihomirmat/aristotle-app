@@ -26,14 +26,34 @@ import PonudbeSkener from '@/pages/PonudbeSkener';
 import PonudbeNova from '@/pages/PonudbeNova';
 import PonudbeTemplate from '@/pages/PonudbeTemplate';
 import PonudbeNastavitve from '@/pages/PonudbeNastavitve';
+import { Navigate } from 'react-router-dom';
+
+// Admin strani so dostopne samo uporabnikom z vlogo admin (prej: samo skrite v meniju, URL je bil odprt)
+const AdminOnly = ({ children }) => {
+  const { user } = useBusiness();
+  if (user?.role !== 'admin') return <Navigate to="/" replace />;
+  return children;
+};
 
 const AppRoutes = () => {
-  const { business, isLoading, noBusinessYet } = useBusiness();
+  const { business, isLoading, noBusinessYet, loadError, refetch } = useBusiness();
 
   if (isLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadError && !business) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background p-6">
+        <div className="max-w-md text-center space-y-3">
+          <h2 className="text-xl font-bold">Podatkov trenutno ni mogoče naložiti</h2>
+          <p className="text-sm text-muted-foreground">Preverite internetno povezavo in poskusite znova. Če težava vztraja, nam pišite.</p>
+          <button onClick={() => refetch?.()} className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white">Poskusi znova</button>
+        </div>
       </div>
     );
   }
@@ -65,8 +85,8 @@ const AppRoutes = () => {
         <Route path="/ponudbe/nova" element={<PonudbeNova />} />
         <Route path="/ponudbe/templati/:id" element={<PonudbeTemplate />} />
         <Route path="/ponudbe/nastavitve" element={<PonudbeNastavitve />} />
-        <Route path="/admin/businesses" element={<AdminBusinesses />} />
-        <Route path="/admin/usage" element={<AdminUsage />} />
+        <Route path="/admin/businesses" element={<AdminOnly><AdminBusinesses /></AdminOnly>} />
+        <Route path="/admin/usage" element={<AdminOnly><AdminUsage /></AdminOnly>} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
