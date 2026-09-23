@@ -1,5 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// Demo podatki: samo lastnik podjetja (ali admin); vsi zapisi dobijo owner_email, da jih lastnik vidi in lahko briše.
+const ownsBusiness = (user, business) => {
+  if (!user || !business) return false;
+  if (user.role === 'admin') return true;
+  return business.created_by_id === user.id
+    || (!!user.email && business.created_by === user.email)
+    || (!!user.email && !!business.owner_email && business.owner_email === user.email);
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -13,6 +22,8 @@ Deno.serve(async (req) => {
     const businesses = await base44.asServiceRole.entities.Business.filter({ id: business_id });
     const business = businesses[0];
     if (!business) return Response.json({ error: 'Business not found' }, { status: 404 });
+    if (!ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.', code: 'FORBIDDEN' }, { status: 403 });
+    const ownerEmail = business.owner_email || business.created_by;
 
     const DEMO_LEADS = [
       { name: "Ana Novak", email: "ana.novak@example.si", phone: "+386 40 111 222", status: "new", source: "form", notes: "Zanima me vaša storitev" },
@@ -33,6 +44,7 @@ Deno.serve(async (req) => {
           ...l,
           tags: l.tags || [],
           business_id,
+          owner_email: ownerEmail,
           consent_email: true,
           is_demo: true,
         })
@@ -48,18 +60,21 @@ Deno.serve(async (req) => {
     // Generiraj AI drafts za 3 leade
     const draftResults = await Promise.all([
       base44.asServiceRole.functions.invoke('generateDraft', {
+        internal_secret: Deno.env.get('INTERNAL_FUNCTION_SECRET') || '',
         business_id,
         lead_id: ana?.id,
         pillar: 'reactivation',
         sequence_step: 1,
       }).catch(() => null),
       base44.asServiceRole.functions.invoke('generateDraft', {
+        internal_secret: Deno.env.get('INTERNAL_FUNCTION_SECRET') || '',
         business_id,
         lead_id: marko?.id,
         pillar: 'review_request',
         sequence_step: 1,
       }).catch(() => null),
       base44.asServiceRole.functions.invoke('generateDraft', {
+        internal_secret: Deno.env.get('INTERNAL_FUNCTION_SECRET') || '',
         business_id,
         lead_id: petra?.id,
         pillar: 'web_form_lead',
@@ -75,6 +90,7 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.BookingProposal.create({
       business_id,
+      owner_email: ownerEmail,
       lead_id: maja?.id,
       service_requested: "Uvodni termin",
       duration_minutes: 60,
@@ -92,6 +108,7 @@ Deno.serve(async (req) => {
     const bookedAt = new Date(now); bookedAt.setDate(bookedAt.getDate() + 2); bookedAt.setHours(10, 0, 0, 0);
     await base44.asServiceRole.entities.ConfirmedBooking.create({
       business_id,
+      owner_email: ownerEmail,
       lead_id: luka?.id,
       booked_at: bookedAt.toISOString(),
       duration_minutes: 60,
@@ -112,6 +129,7 @@ Deno.serve(async (req) => {
     await Promise.all([
       base44.asServiceRole.entities.KnowledgeBase.create({
         business_id,
+        owner_email: ownerEmail,
         title: "Naše storitve",
         content: `Pri ${business.name} ponujamo: ${services}. Za info pišite na ${email} ali pokličite ${phone}. Termini in cene se prilagajajo. Z veseljem vam pripravimo personaliziran predlog.`,
         category: "Storitve",
@@ -120,6 +138,7 @@ Deno.serve(async (req) => {
       }),
       base44.asServiceRole.entities.KnowledgeBase.create({
         business_id,
+        owner_email: ownerEmail,
         title: "Rezervacija termina",
         content: `Termin lahko rezervirate na 3 načine: 1) Kliknete spodaj na Rezerviraj termin. 2) Pokličete ${phone}. 3) Pišete na ${email} s preferenco. Delovni čas pon-pet od ${hoursStart} do ${hoursEnd}. Potrditev v isti delovni dan.`,
         category: "Termini",
@@ -128,6 +147,7 @@ Deno.serve(async (req) => {
       }),
       base44.asServiceRole.entities.KnowledgeBase.create({
         business_id,
+        owner_email: ownerEmail,
         title: "Pogosta vprašanja",
         content: `Ali ponujate brezplačno posvetovanje? Da, prvi razgovor je brezplačen. Kako poteka prvo srečanje? Spoznamo potrebe, predstavimo storitve, določimo naslednje korake. Ali izdajate račune? Da, s pravilno izdanim računom (z DDV kjer relevantno). Kako prekličem termin? Brezplačno do 24 ur pred rezervacijo. Kakšen rok za odgovor? V naslednjih delovnih dneh, običajno isti dan.`,
         category: "FAQ",
@@ -136,6 +156,7 @@ Deno.serve(async (req) => {
       }),
       base44.asServiceRole.entities.KnowledgeBase.create({
         business_id,
+        owner_email: ownerEmail,
         title: "Kontaktni podatki",
         content: `Naslov: ${address}. Telefon: ${phone}. Email: ${email}. Spletna stran: ${website}. Delovni čas: pon-pet, ${hoursStart}-${hoursEnd}.`,
         category: "Kontakt",
