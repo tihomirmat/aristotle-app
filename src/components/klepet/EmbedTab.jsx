@@ -44,17 +44,17 @@ export default function EmbedTab({ business }) {
   const position = widgetForm.widget_position || "bottom-right";
   const welcome = widgetForm.widget_welcome_message;
 
-  const embedCode = `<!-- Aristotle Chatbot Widget -->
+  const embedCode = `<!-- AI Aristotle – klepetalni pomočnik -->
 <script>
   window.ARISTOTLE_CONFIG = {
-    businessId: "${business?.id || 'VAŠ_BUSINESS_ID'}",
-    primaryColor: "${color}",
-    welcomeMessage: "${welcome}",
-    position: "${position}",
-    title: "${title}"
+    businessId: ${JSON.stringify(business?.id || "VAŠ_BUSINESS_ID")},
+    primaryColor: ${JSON.stringify(color || "#10b981")},
+    welcomeMessage: ${JSON.stringify(welcome || "")},
+    position: ${JSON.stringify(position)},
+    title: ${JSON.stringify(title)}
   };
 </script>
-<script src="https://aristotle-smart-growth.base44.app/chatbot-widget.js" defer></script>`;
+<script src="https://aristotle-smart-growth.base44.app/api/functions/chatbotWidget" defer></script>`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(embedCode);
