@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { sendMonthlyInvoicePackage } from "@/functions/sendMonthlyInvoicePackage";
 
+import { fnError } from "@/lib/fn-error";
 function monthKey(d) {
   const dt = new Date(d);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
@@ -93,7 +94,7 @@ export default function Racuni() {
         });
         successCount++;
       } catch (e) {
-        toast.error(`Napaka pri nalaganju ${file.name}: ${e.message}`);
+        toast.error(`Napaka pri nalaganju ${file.name}: ${fnError(e)}`);
       }
     }
 
@@ -130,7 +131,7 @@ export default function Racuni() {
         toast.error("Napaka pri pošiljanju paketa.");
       }
     } catch (e) {
-      toast.error("Napaka: " + e.message);
+      toast.error("Napaka: " + fnError(e));
     }
     setSendingPackage(false);
   };
