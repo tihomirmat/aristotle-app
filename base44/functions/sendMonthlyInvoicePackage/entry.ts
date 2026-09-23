@@ -141,23 +141,22 @@ Deno.serve(async (req) => {
 
       // Build email body
       const monthName = new Date(prevYear, prevMonth, 1).toLocaleString("sl-SI", { month: "long", year: "numeric" });
-      const tableHeader = "Pošiljatelj\tZadeva\tDatum prejema\tDatoteka";
-      const emailBody = [
-        `Spoštovani,`,
-        ``,
-        `Pripravljen je mesečni paket računov za ${business.name} za obdobje ${monthName}.`,
-        ``,
-        `Prenos paketa (ZIP z vsemi računi): ${zipUrl}`,
-        ``,
-        `Skupno računov: ${invoices.length}`,
-        ``,
-        `Seznam računov:`,
-        tableHeader,
-        ...summaryRows,
-        ``,
-        `Lep pozdrav,`,
-        `AI Aristotle — ${business.name}`,
-      ].join("\n");
+      const invoiceTable = '<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;margin:0 0 16px;border:1px solid #e5e7eb;border-radius:8px;border-collapse:separate;font-size:13px">'
+        + '<tr style="background:#f3f4f6"><td style="padding:8px 10px;color:#6b7280">Pošiljatelj</td><td style="padding:8px 10px;color:#6b7280">Zadeva</td><td style="padding:8px 10px;color:#6b7280">Prejeto</td><td style="padding:8px 10px;color:#6b7280">Datoteka</td></tr>'
+        + invoices.map((inv, i) => {
+          const receivedStr = inv.received_date ? new Date(inv.received_date).toLocaleDateString("sl-SI") : "—";
+          return `<tr style="background:${i % 2 ? '#f9fafb' : '#ffffff'}"><td style="padding:8px 10px">${escHtml(inv.source_email_from || "?")}</td><td style="padding:8px 10px">${escHtml(inv.subject || "—")}</td><td style="padding:8px 10px;white-space:nowrap">${escHtml(receivedStr)}</td><td style="padding:8px 10px">${escHtml(inv.file_name || "—")}</td></tr>`;
+        }).join('')
+        + '</table>';
+      const emailBody = emailHtml({
+        brand: business.name,
+        brandSub: 'prek AI Aristotle',
+        title: `Mesečni paket računov — ${monthName}`,
+        bodyHtml: textToHtml(`Spoštovani,\npripravljen je mesečni paket prejetih računov za ${business.name} za obdobje ${monthName}. V paketu (ZIP) je ${invoices.length} ${invoices.length === 1 ? 'račun' : invoices.length === 2 ? 'računa' : invoices.length < 5 ? 'računi' : 'računov'}.`)
+          + invoiceTable
+          + textToHtml(`Če kateri od računov manjka ali je napačen, odgovorite na to sporočilo.\n\nLep pozdrav,\n${business.name}`),
+        cta: { label: 'Prenesi paket (ZIP)', url: zipUrl },
+      });
 
       await base44.asServiceRole.integrations.Core.SendEmail({
         to: business.accountant_email,
