@@ -96,12 +96,23 @@ Deno.serve(async (req) => {
 
     const ownerEmail = business.owner_email || request?.owner_email || (String(business.created_by || '').includes('@no-reply.base44.com') ? '' : business.created_by);
     if (ownerEmail) {
-      const moduleList = modules.map((m) => `• ${LABELS[m]}`).join('\n');
+      const moduleListHtml = '<ul style="margin:0;padding-left:18px">' + modules.map((m) => `<li>${escHtml(LABELS[m])}</li>`).join('') + '</ul>';
       await base44.asServiceRole.integrations.Core.SendEmail({
         to: ownerEmail,
         from_name: 'AI Aristotle',
         subject: 'Vaša naročnina je aktivna',
-        body: `Pozdravljeni,\n\nvaša naročnina AI Aristotle je aktivirana. Aktivni moduli:\n\n${moduleList}\n\n${isBundle ? 'Paket vseh modulov: 399 €/mes' : `${modules.length} × 99 €/mes`} (brez DDV).\n\nPrijavite se: ${(Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app')}\n\nHvala za zaupanje.\nEkipa AI Aristotle`,
+        body: emailHtml({
+          title: 'Vaša naročnina je aktivna',
+          bodyHtml: textToHtml(`Pozdravljeni,\nvaša naročnina AI Aristotle za podjetje ${business.name} je aktivirana. Vsi izbrani moduli so vam na voljo takoj.`)
+            + emailRows([
+              ['Podjetje', escHtml(business.name)],
+              ['Aktivni moduli', moduleListHtml],
+              ['Mesečno', `<strong>${isBundle ? '399 €' : `${modules.length * 99} €`}</strong> (brez DDV)${isBundle ? ' · paket vseh modulov' : ` · ${modules.length} × 99 €`}`],
+              ['Obračun', 'mesečno po predračunu'],
+            ])
+            + textToHtml('Za spremembo naročnine ali vprašanja preprosto odgovorite na to sporočilo.\n\nHvala za zaupanje.\nEkipa AI Aristotle'),
+          cta: { label: 'Prijava v AI Aristotle', url: EMAIL_APP_URL },
+        }),
       }).catch(() => {});
     }
 
