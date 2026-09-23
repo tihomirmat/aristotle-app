@@ -134,14 +134,20 @@ Deno.serve(async (req) => {
     const fullBody = (draft.body || '') + signature + footer;
 
     // ─── Send via configured provider ────────────────────────────────────────
-    // SMTP samo, če je konfiguracija POPOLNA; pol-nastavljen SMTP je napaka (prej se je osnutek označil kot poslan brez pošiljanja).
-    // Gmail/Outlook OAuth povezava še ni implementirana → platformski pošiljatelj (Base44 SendEmail).
+    // SMTP samo, če je konfiguracija POPOLNA (prej se je pri pol-nastavljenem SMTP osnutek označil kot poslan brez pošiljanja).
+    // Nepopoln SMTP ali Gmail/Outlook (OAuth pošiljanje še ni implementirano) → platformski pošiljatelj (Base44 SendEmail),
+    // z opombo na osnutku, da lastnik ve, prek česa je šlo sporočilo.
     let sendError = null;
+    let sentVia = 'platform';
+    let sendNote = '';
     const smtpComplete = !!(business.smtp_host && business.smtp_user && business.smtp_pass);
 
     if (business.email_provider === 'smtp' && !smtpComplete) {
-      sendError = 'SMTP ni v celoti nastavljen (strežnik, uporabnik in geslo so obvezni). Preverite Nastavitve → Integracije.';
-    } else if (business.email_provider === 'smtp' && smtpComplete) {
+      sendNote = 'SMTP ni v celoti nastavljen (strežnik, uporabnik, geslo) — poslano prek platformskega pošiljatelja. Dopolnite Nastavitve → Integracije.';
+    }
+
+    if (business.email_provider === 'smtp' && smtpComplete) {
+      sentVia = 'smtp';
       const transporter = nodemailer.createTransport({
         host: business.smtp_host,
         port: Number(business.smtp_port) || 587,
@@ -201,6 +207,7 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.DraftMessage.update(draftId, {
         status: 'sent',
         sent_at: now,
+        ...(sendNote ? { reviewer_notes: `Poslano (${sentVia}). ${sendNote}` } : {}),
       }),
       base44.asServiceRole.entities.Lead.update(lead.id, {
         last_contacted_at: now,
