@@ -135,6 +135,7 @@
     "email_provider": {
       "type": "string",
       "enum": [
+        "platform",
         "gmail",
         "outlook",
         "smtp"
