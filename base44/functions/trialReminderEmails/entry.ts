@@ -4,7 +4,7 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const APP_URL = Deno.env.get("APP_URL") || "https://app.aiaristotle.si";
+const APP_URL = (Deno.env.get("APP_URL") || "https://aristotle-smart-growth.base44.app").replace(/\/$/, "");
 const ACTIVATION_LINK = `${APP_URL}/nastavitve?tab=billing`;
 
 function hoursUntil(dateStr) {
@@ -23,16 +23,17 @@ Deno.serve(async (req) => {
     const sent = [];
 
     for (const biz of trialing) {
+      try {
       if (!biz.trial_ends_at) continue;
       const hours = hoursUntil(biz.trial_ends_at);
       const alreadySent = biz.trial_emails_sent || [];
 
-      // Fetch owner user
-      const users = await base44.asServiceRole.entities.User.filter({ email: biz.created_by });
+      // Fetch owner user — owner_email ima prednost (service-role zapisi imajo created_by = service+...)
+      const ownerEmail = biz.owner_email || (String(biz.created_by || '').includes('@no-reply.base44.com') ? '' : biz.created_by);
+      if (!ownerEmail) continue;
+      const users = await base44.asServiceRole.entities.User.filter({ email: ownerEmail });
       const owner = users[0];
       const ownerName = owner?.full_name || "uporabnik";
-      const ownerEmail = biz.created_by;
-      if (!ownerEmail) continue;
 
       // Fetch stats
       const [drafts, leads, conversations] = await Promise.all([
@@ -48,7 +49,8 @@ Deno.serve(async (req) => {
       const nConversations = conversations.length;
 
       // ── DAY 10 — between 4d0h and 3d23h remaining ──
-      if (!alreadySent.includes("day10") && hours <= 96 && hours > 95) {
+      // Okna so kumulativna (<= 96 h), ne 1-urna — če se urni zagon zamakne, e-pošta ne izpade.
+      if (!alreadySent.includes("day10") && hours <= 96 && hours > 48) {
         const body = `Pozdravljeni, ${ownerName},
 
 vaš 14-dnevni preizkus AI Aristotle se konča čez 4 dni.
@@ -61,7 +63,7 @@ Doslej ste:
 Da ne izgubite tega dela, izberite module in nadaljujte z avtomatizacijo:
 
 • Posamezen modul: 99 €/mes (brez DDV)
-• Vseh 5 modulov: 399 €/mes — prihranite 96 €/mes in brez stroška namestitve
+• Vseh 6 modulov: 399 €/mes — prihranite 195 €/mes in brez stroška namestitve
 
 Aktiviraj naročnino → ${ACTIVATION_LINK}
 
@@ -87,7 +89,7 @@ Ekipa AI Aristotle`;
 
       // ── DAY 12 — between 2d0h and 1d23h remaining ──
       const alreadySent12 = (await base44.asServiceRole.entities.Business.filter({ id: biz.id }))[0]?.trial_emails_sent || alreadySent;
-      if (!alreadySent12.includes("day12") && hours <= 48 && hours > 47) {
+      if (!alreadySent12.includes("day12") && hours <= 48 && hours > 24) {
         const body = `Pozdravljeni, ${ownerName},
 
 vaš preizkus AI Aristotle se konča čez 2 dni.
@@ -97,7 +99,7 @@ Trenutno v sistemu čaka ${nPendingDrafts} osnutkov AI sporočil, pripravljenih 
 Aktivirajte naročnino zdaj in nadaljujte brez prekinitve:
 
 • Posamezen modul: 99 €/mes (brez DDV)
-• Vseh 5 modulov: 399 €/mes — brez stroška namestitve, prihranite 96 €/mes
+• Vseh 6 modulov: 399 €/mes — brez stroška namestitve, prihranite 195 €/mes
 
 Izberi module → ${ACTIVATION_LINK}
 
@@ -123,7 +125,7 @@ Ekipa AI Aristotle`;
       const alreadySent14 = (await base44.asServiceRole.entities.Business.filter({ id: biz.id }))[0]?.trial_emails_sent || alreadySent12;
       const trialDate = new Date(biz.trial_ends_at).toISOString().split("T")[0];
       const today = new Date().toISOString().split("T")[0];
-      if (!alreadySent14.includes("day14") && trialDate === today && hours > 0) {
+      if (!alreadySent14.includes("day14") && hours <= 24 && hours > 0) {
         const body = `Pozdravljeni, ${ownerName},
 
 danes je zadnji dan vašega 14-dnevnega preizkusa.
@@ -139,7 +141,7 @@ V zadnjih 14 dneh ste:
 Aktivirajte naročnino zdaj in nadaljujte brez prekinitve:
 
 • Posamezen modul: 99 €/mes (brez DDV)
-• Vseh 5 modulov: 399 €/mes — brez stroška namestitve
+• Vseh 6 modulov: 399 €/mes — brez stroška namestitve
 
 Aktiviraj naročnino → ${ACTIVATION_LINK}
 
@@ -159,6 +161,9 @@ Ekipa AI Aristotle`;
           trial_emails_sent: [...alreadySent14, "day14"],
         });
         sent.push({ business_id: biz.id, email: "day14" });
+      }
+      } catch (e) {
+        sent.push({ business_id: biz.id, error: e.message });
       }
     }
 
