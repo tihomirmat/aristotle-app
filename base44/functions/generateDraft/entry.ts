@@ -39,8 +39,17 @@ const costEur = (model, tokensIn, tokensOut) => {
   return (tokensIn * p.in + tokensOut * p.out) / 1_000_000;
 };
 
+// Varovalka: odstrani nadomestne oznake, ki jih model kdaj vstavi namesto imena ([MERGETOKEN: FULL_NAME], {{name}}, [IME] ...)
+const sanitizeDraftText = (s) => String(s ?? '')
+  .replace(/\s*\[\s*MERGETOKEN[^\]]*\]/gi, '')
+  .replace(/\s*\{\{[^}]*\}\}/g, '')
+  .replace(/\s*\[(IME|NAME|FULL_NAME|PRIIMEK|ime)\]/g, '')
+  .replace(/(Spoštovan[ai])\s*,/g, '$1,')
+  .replace(/[ \t]+,/g, ',')
+  .trim();
+
 // ─── Plast 1: ARISTOTLE PERSONA ───────────────────────────────────────────────
-const ARISTOTLE_PERSONA = `Ti si AI Aristotle, digitalni asistent za male podjetnike v Sloveniji. Pravila: spoštljivo vikanje povsod (vi, vam, vas, vaš). Topel, profesionalen, brez prodajnih trikov. Brez Nujno!, Samo še danes!, Ne zamudite!. Brez VELIKIH ČRK v telesu. Brez emojijev v formalnih panogah (dental_medspa, auto, home_services, marketing_services). Max 1 emoji v sproščenih panogah (gym, restaurant, salon_barber). Telo pod 120 besedami. Brez anglicizmov (Hej→Pozdravljeni). Pozdrav: Spoštovani {ime} (moški) ali Spoštovana {ime} (ženska). Zaključek: Lep pozdrav, {business.name}. Nikoli ne navajaj cen razen če current_offer pove ceno. Nikoli ne dodaj odjavne povezave v body — backend doda v footer. KONTAKTI: edini kontaktni podatki podjetja so business.phone in business.email; lead.phone in lead.email so podatki STRANKE in jih nikoli ne navajaj kot naše. Če business.phone manjka, ne navajaj nobene telefonske številke (napiši „odgovorite na to sporočilo“). Ne izmišljuj imen oseb, rokov ali storitev, ki jih ni v podatkih.`;
+const ARISTOTLE_PERSONA = `Ti si AI Aristotle, digitalni asistent za male podjetnike v Sloveniji. Pravila: spoštljivo vikanje povsod (vi, vam, vas, vaš). Topel, profesionalen, brez prodajnih trikov. Brez Nujno!, Samo še danes!, Ne zamudite!. Brez VELIKIH ČRK v telesu. Brez emojijev v formalnih panogah (dental_medspa, auto, home_services, marketing_services). Max 1 emoji v sproščenih panogah (gym, restaurant, salon_barber). Telo pod 120 besedami. Brez anglicizmov (Hej→Pozdravljeni). Pozdrav: Spoštovani {ime} (moški) ali Spoštovana {ime} (ženska). Zaključek: Lep pozdrav, {business.name}. Nikoli ne navajaj cen razen če current_offer pove ceno. Nikoli ne dodaj odjavne povezave v body — backend doda v footer. KONTAKTI: edini kontaktni podatki podjetja so business.phone in business.email; lead.phone in lead.email so podatki STRANKE in jih nikoli ne navajaj kot naše. Če business.phone manjka, ne navajaj nobene telefonske številke (napiši „odgovorite na to sporočilo“). Ne izmišljuj imen oseb, rokov ali storitev, ki jih ni v podatkih. NADOMESTNE OZNAKE: nikoli ne uporabljaj oznak kot [MERGETOKEN], {{ime}}, [IME] ipd. Če lead.name ni osebno ime (npr. vsebuje [TEST], številke, ime podjetja), začni s „Spoštovani,“ brez imena. Podpis je vedno točno business.name (ne „Tim …“, ne „Ekipa …“).`;
 
 // ─── Plast 2: SLOVENE STYLE GUIDE ────────────────────────────────────────────
 const SLOVENE_STYLE_GUIDE = `1) Sklanjatve: Ana→Spoštovana Ana, Tomaž→Spoštovani Tomaž, z g./ga.: Spoštovani g. Krajnc / Spoštovana ga. Novak. 2) Črke: ohrani č/š/ž/ć (Tomaž ne Tomaz). 3) Števila: decimalka vejica "35,50 €", tisočni pika "1.000 €", valuta za številko "49 €". 4) Datumi: "20. maj 2026" (mala črka mesec) ali "20. 5. 2026". 5) Čas 24-urni: 14:30, 9:00. 6) Dnevi/meseci mala začetnica. 7) Vikanje plural za oba spola: ste prejeli, vam pošiljamo. 8) "ki" namesto "kateri" kjer možno. 9) "vaš" mala začetnica. 10) Telefoni z razmaki: "+386 40 555 111".`;
@@ -242,8 +251,8 @@ Deno.serve(async (req) => {
       lead_id,
       pillar,
       channel: 'email',
-      subject: reviewData.revised_subject || draftData.subject || 'Sporočilo',
-      body: reviewData.revised_body || draftData.body_text || '',
+      subject: sanitizeDraftText(reviewData.revised_subject || draftData.subject || 'Sporočilo'),
+      body: sanitizeDraftText(reviewData.revised_body || draftData.body_text || ''),
       status: draftStatus,
       ai_model_used: primaryModel,
       quality_score: qualityScore,
