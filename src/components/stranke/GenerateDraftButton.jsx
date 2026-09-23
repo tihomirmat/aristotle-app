@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { generateDraft } from "@/functions/generateDraft";
 
+import { fnError } from "@/lib/fn-error";
 const PILLAR_OPTIONS = [
   { value: "reactivation", label: "Reaktivacija" },
   { value: "review_request", label: "Prošnja za oceno" },
@@ -35,7 +36,7 @@ export default function GenerateDraftButton({ lead, businessId }) {
         toast.success(`Osnutek za "${lead.name}" je pripravljen v Prejeto.`);
       }
     } catch (e) {
-      toast.error("Napaka pri generiranju: " + e.message);
+      toast.error("Napaka pri generiranju: " + fnError(e));
     } finally {
       setLoading(false);
     }
