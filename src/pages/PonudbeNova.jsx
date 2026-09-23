@@ -13,7 +13,13 @@ import { ChevronRight, ChevronLeft, Loader2, CheckCircle, Download, Mail, Thumbs
 import { toast } from "sonner";
 import { offerGenerate } from "@/functions/offerGenerate";
 import { offerExtract } from "@/functions/offerExtract";
+import { offerSend } from "@/functions/offerSend";
+import { Label } from "@/components/ui/label";
 import ReactMarkdown from "react-markdown";
+
+// Backend funkcije vračajo { error, code } s statusom 402/403 — SDK vrže axios napako, sporočilo je v err.response.data
+const fnError = (err) => err?.response?.data?.error || err?.data?.error || err?.message || "Neznana napaka";
+const fnCode = (err) => err?.response?.data?.code || err?.data?.code || "";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const INPUT_METHODS = [
@@ -51,6 +57,10 @@ export default function PonudbeNova() {
   const [generationResult, setGenerationResult] = useState(null);
   const [generationId, setGenerationId] = useState(null);
   const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [emailDialog, setEmailDialog] = useState(false);
+  const [emailForm, setEmailForm] = useState({ to_email: "", subject: "", message: "" });
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [rerendering, setRerendering] = useState(false);
 
   const { data: template } = useQuery({
     queryKey: ["offer-template-single", templateId],
@@ -66,7 +76,10 @@ export default function PonudbeNova() {
   });
 
   const activeTemplate = template || defaultTemplates;
-  const globalVars = business?.offers_global_vars || {};
+  // Stabilna referenca: prej je `business?.offers_global_vars || {}` ob vsakem renderju ustvaril nov objekt →
+  // useEffect spodaj se je prožil v neskončni zanki in brisal vnose v obrazcu (vsako novo podjetje).
+  const globalVarsJson = JSON.stringify(business?.offers_global_vars || {});
+  const globalVars = React.useMemo(() => JSON.parse(globalVarsJson), [globalVarsJson]);
 
   // Build variables list: global defaults + template vars
   const allVariables = DEFAULT_GLOBAL_VARS.map(v => ({
@@ -83,8 +96,9 @@ export default function PonudbeNova() {
     initial.podjetje_naziv = globalVars.podjetje_naziv || business?.name || "";
     initial.podjetje_naslov = globalVars.podjetje_naslov || business?.address || "";
     initial.podpisnik_ime = globalVars.podpisnik_ime || "";
-    setFormValues(initial);
-  }, [business, globalVars]);
+    setFormValues((fv) => ({ ...initial, ...fv, podjetje_naziv: fv.podjetje_naziv || initial.podjetje_naziv, podjetje_naslov: fv.podjetje_naslov || initial.podjetje_naslov }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [business?.id, globalVarsJson]);
 
   const hasOffers = hasModule(business, "pillar_offers");
   const freeGenLeft = Math.max(0, 5 - (business?.offers_free_generations_used || 0));
@@ -117,7 +131,7 @@ export default function PonudbeNova() {
       toast.success("Vrednosti so bile ekstrahirane iz vira");
       setStep(1);
     } catch (err) {
-      toast.error("Napaka pri ekstrakciji: " + err.message);
+      toast.error("Napaka pri ekstrakciji: " + fnError(err));
     } finally {
       setExtracting(false);
     }
@@ -135,11 +149,12 @@ export default function PonudbeNova() {
       setGenerationId(res.data.generation_id);
       setStep(3);
     } catch (err) {
-      if (err.message.includes("OFFERS_FREE_QUOTA_REACHED") || err.message.includes("BYOK_REQUIRED")) {
+      const code = fnCode(err);
+      if (code === "OFFERS_FREE_QUOTA_REACHED" || code === "BYOK_REQUIRED" || String(err.message).includes("BYOK_REQUIRED")) {
         setShowQuotaModal(true);
         setStep(1);
       } else {
-        toast.error("Napaka pri generaciji: " + err.message);
+        toast.error("Napaka pri generaciji: " + fnError(err));
         setStep(1);
       }
     } finally {
@@ -147,15 +162,45 @@ export default function PonudbeNova() {
     }
   };
 
-  const handleImprovement = async (section_to_improve, parentId) => {
-    if (freeGenLeft === 0 && !hasByok) { setShowQuotaModal(true); return; }
+  // Sprejmi predlog: besedilo "prej" zamenjamo s "po" v ponudbi in ponovno izvozimo PDF/DOCX (brez LLM klica, brez kvote).
+  const handleImprovement = async (imp, parentId) => {
+    if (!generationResult?.output_markdown) return;
+    const current = generationResult.output_markdown;
+    const before = String(imp.before || "").trim();
+    const after = String(imp.after || "").trim();
+    let updated = current;
+    if (before && current.includes(before)) updated = current.replace(before, after);
+    else if (after) updated = current + "\n\n" + after; // če "prej" ni najden dobesedno, dodamo predlog na konec
+    const improvements = (generationResult.improvements_suggested || []).map(x => x.section === imp.section ? { ...x, accepted: true } : x);
+    setRerendering(true);
     try {
-      const res = await offerGenerate({ business_id: business.id, template_id: activeTemplate?.id, kind: "improvement", resolved_vars: formValues, input_method: "form", parent_id: parentId, section_to_improve });
-      toast.success("Izboljšava je bila ustvarjena!");
-      // Update improvements in result
-      setGenerationResult(r => ({ ...r, improvements_suggested: r.improvements_suggested?.map(imp => imp.section === section_to_improve.section ? { ...imp, accepted: true } : imp) }));
+      const res = await offerGenerate({ business_id: business.id, kind: "rerender", parent_id: parentId, output_markdown: updated, improvements_suggested: improvements });
+      if (res.data?.error) throw new Error(res.data.error);
+      setGenerationResult(r => ({ ...r, ...res.data, improvements_suggested: improvements }));
+      toast.success("Izboljšava je vključena, PDF in DOCX sta posodobljena.");
     } catch (err) {
-      toast.error("Napaka: " + err.message);
+      toast.error("Napaka: " + fnError(err));
+    } finally {
+      setRerendering(false);
+    }
+  };
+
+  const handleRejectImprovement = (imp) => {
+    setGenerationResult(r => ({ ...r, improvements_suggested: (r.improvements_suggested || []).filter(x => x.section !== imp.section) }));
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailForm.to_email.trim()) { toast.error("Vnesite e-poštni naslov prejemnika."); return; }
+    setSendingEmail(true);
+    try {
+      const res = await offerSend({ business_id: business.id, generation_id: generationId, ...emailForm });
+      if (res.data?.error) throw new Error(res.data.error);
+      toast.success(`Ponudba je poslana na ${emailForm.to_email}.`);
+      setEmailDialog(false);
+    } catch (err) {
+      toast.error("Pošiljanje ni uspelo: " + fnError(err));
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -308,7 +353,7 @@ export default function PonudbeNova() {
                 <Button variant="outline" className="gap-2"><Download className="w-4 h-4" />Prenesi DOCX</Button>
               </a>
             )}
-            <Button variant="outline" className="gap-2"><Mail className="w-4 h-4" />Pošlji po e-pošti</Button>
+            <Button variant="outline" className="gap-2" onClick={() => { setEmailForm({ to_email: "", subject: `Ponudba — ${business?.name || ""}`, message: "" }); setEmailDialog(true); }}><Mail className="w-4 h-4" />Pošlji po e-pošti</Button>
           </div>
 
           {/* Improvements */}
@@ -334,8 +379,8 @@ export default function PonudbeNova() {
                   <p className="text-xs text-muted-foreground italic">{imp.rationale}</p>
                   {!imp.accepted && (
                     <div className="flex gap-2">
-                      <Button size="sm" className="gap-1 h-7 text-xs" onClick={() => handleImprovement(imp, generationId)}><ThumbsUp className="w-3 h-3" />Sprejmi</Button>
-                      <Button size="sm" variant="ghost" className="gap-1 h-7 text-xs"><ThumbsDown className="w-3 h-3" />Zavrni</Button>
+                      <Button size="sm" className="gap-1 h-7 text-xs" disabled={rerendering} onClick={() => handleImprovement(imp, generationId)}>{rerendering ? <Loader2 className="w-3 h-3 animate-spin" /> : <ThumbsUp className="w-3 h-3" />}Sprejmi</Button>
+                      <Button size="sm" variant="ghost" className="gap-1 h-7 text-xs" onClick={() => handleRejectImprovement(imp)}><ThumbsDown className="w-3 h-3" />Zavrni</Button>
                     </div>
                   )}
                 </div>
@@ -344,6 +389,36 @@ export default function PonudbeNova() {
           )}
         </div>
       )}
+
+      {/* E-mail dialog */}
+      <Dialog open={emailDialog} onOpenChange={setEmailDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pošlji ponudbo po e-pošti</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Prejemnik (e-pošta) *</Label>
+              <Input type="email" value={emailForm.to_email} onChange={(e) => setEmailForm({ ...emailForm, to_email: e.target.value })} placeholder="stranka@podjetje.si" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Zadeva</Label>
+              <Input value={emailForm.subject} onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sporočilo (neobvezno)</Label>
+              <Textarea value={emailForm.message} onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} placeholder="Spoštovani, v prilogi vam pošiljamo ponudbo …" className="h-24 text-sm" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {business?.email_provider === "smtp" && business?.smtp_host ? "Poslano bo prek vašega SMTP računa s PDF priponko." : "Poslano bo prek sistema AI Aristotle s povezavami za prenos PDF/DOCX."}
+            </p>
+          </div>
+          <div className="flex gap-2 justify-end mt-2">
+            <Button variant="outline" onClick={() => setEmailDialog(false)}>Prekliči</Button>
+            <Button onClick={handleSendEmail} disabled={sendingEmail}>{sendingEmail ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}Pošlji</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Quota modal */}
       <Dialog open={showQuotaModal} onOpenChange={setShowQuotaModal}>
