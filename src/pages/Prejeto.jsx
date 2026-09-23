@@ -75,6 +75,7 @@ export default function Prejeto() {
 
   const trialSendsOut = business?.subscription_status === "trialing" && (business?.trial_sends_remaining ?? 20) <= 0;
   const noEmailProvider = !business?.email_provider && !business?.gmail_access_token && !business?.outlook_access_token && !business?.smtp_host;
+  const smtpIncomplete = business?.email_provider === "smtp" && !(business?.smtp_host && business?.smtp_user);
 
   return (
     <div>
@@ -87,7 +88,10 @@ export default function Prejeto() {
         <StatusBanner variant="warning" message="Porabili ste vse brezplačne pošiljke preizkusa. Odobritev bo shranjena, a sporočila ne bodo poslana, dokler ne aktivirate naročnine." action={{ label: "Aktiviraj", href: "/nastavitve?tab=billing" }} />
       )}
       {noEmailProvider && (
-        <StatusBanner variant="info" message="E-pošta ni nastavljena — sporočila se ne morejo pošiljati. Povežite Gmail, Outlook ali SMTP v Nastavitvah." action={{ label: "Nastavi", href: "/nastavitve?tab=integracije" }} />
+        <StatusBanner variant="info" message="E-pošta ni nastavljena — sporočila se pošiljajo prek platformskega pošiljatelja AI Aristotle. Za pošiljanje z vašega naslova povežite SMTP v Nastavitvah." action={{ label: "Nastavi", href: "/nastavitve?tab=integracije" }} />
+      )}
+      {smtpIncomplete && (
+        <StatusBanner variant="warning" message="SMTP ni v celoti nastavljen (strežnik, uporabnik, geslo) — do dopolnitve se sporočila pošiljajo prek platformskega pošiljatelja." action={{ label: "Dopolni", href: "/nastavitve?tab=integracije" }} />
       )}
       <DemoMessageModal open={showDemo} onOpenChange={setShowDemo} />
 
