@@ -29,7 +29,8 @@ export default function Dashboard() {
 
   const { data: drafts = [] } = useQuery({
     queryKey: ["drafts", business?.id],
-    queryFn: () => base44.entities.DraftMessage.filter({ business_id: business.id, status: "pending" }),
+    // Čakajoči = pending + flagged_for_review (enako kot Prejeto)
+    queryFn: async () => (await base44.entities.DraftMessage.filter({ business_id: business.id })).filter((d) => d.status === "pending" || d.status === "flagged_for_review"),
     enabled: !!business?.id,
   });
 
