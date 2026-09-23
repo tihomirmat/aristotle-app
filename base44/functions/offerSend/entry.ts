@@ -90,6 +90,14 @@ Deno.serve(async (req) => {
     const signature = business.email_signature ? `\n\n${business.email_signature}` : `\n\nLep pozdrav,\n${business.name}${business.phone ? `\n${business.phone}` : ''}`;
     const links = [gen.output_pdf_url ? `PDF: ${gen.output_pdf_url}` : '', gen.output_docx_url ? `DOCX: ${gen.output_docx_url}` : ''].filter(Boolean).join('\n');
     const intro = message || `Spoštovani,\n\nv prilogi vam pošiljamo našo ponudbo. Za vsa vprašanja smo vam z veseljem na voljo.`;
+    // HTML različica (glava s podjetjem, gumba za prenos PDF/DOCX, podpis)
+    const downloadButtons = [gen.output_pdf_url ? emailButton('Prenesi ponudbo (PDF)', gen.output_pdf_url) : '', gen.output_docx_url ? `<p style="margin:-8px 0 16px;font-size:13px"><a href="${escHtml(gen.output_docx_url)}" style="color:#4f46e5">Prenesi kot DOCX (Word)</a></p>` : ''].join('');
+    const htmlBody = (withDownloads) => emailHtml({
+      brand: business.name,
+      brandSub: business.phone ? String(business.phone) : '',
+      title: '',
+      bodyHtml: textToHtml(intro) + (withDownloads ? downloadButtons : '') + textToHtml(signature.trim()),
+    });
 
     const smtpComplete = business.email_provider === 'smtp' && business.smtp_host && business.smtp_user && business.smtp_pass;
     let sentVia = 'platform';
@@ -110,6 +118,7 @@ Deno.serve(async (req) => {
         to,
         subject: finalSubject,
         text: `${intro}${signature}${attachments.length ? '' : `\n\nPrenos ponudbe:\n${links}`}`,
+        html: htmlBody(!attachments.length),
         attachments,
       });
       sentVia = 'smtp';
@@ -117,7 +126,7 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.integrations.Core.SendEmail({
         to,
         subject: finalSubject,
-        body: `${intro}${signature}\n\nPrenos ponudbe:\n${links}`,
+        body: htmlBody(true),
         from_name: business.name,
       });
     }
