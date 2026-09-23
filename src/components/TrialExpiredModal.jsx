@@ -8,8 +8,9 @@ export default function TrialExpiredModal({ business }) {
   const location = useLocation();
   if (!business || business.subscription_status !== "past_due") return null;
 
-  // Na strani Nastavitve (kjer je Naročnina) ne blokiramo — sicer stranka ne more izbrati modulov.
-  if (location.pathname.startsWith("/nastavitve")) {
+  // Na strani Nastavitve (kjer je Naročnina) in v admin delu ne blokiramo — sicer stranka ne more izbrati modulov,
+  // admin pa ne more aktivirati naročil, če je njegovo lastno podjetje v stanju past_due.
+  if (location.pathname.startsWith("/nastavitve") || location.pathname.startsWith("/admin")) {
     return (
       <div className="sticky top-0 z-[60] bg-red-50 border-b border-red-200 text-red-800 text-sm px-6 py-2.5 flex items-center gap-2">
         <AlertCircle className="w-4 h-4 shrink-0" />
