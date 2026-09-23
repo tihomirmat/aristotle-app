@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { requestSubscription } from "@/functions/requestSubscription";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Star, Globe, MessageSquare, Bot, Package, CheckCircle, AlertCircle, Clock, Plus, Sparkles, FileSignature } from "lucide-react";
-import { differenceInDays, addMonths, format } from "date-fns";
+import { differenceInDays } from "date-fns";
 import { toast } from "sonner";
 
 const MODULES = [
@@ -37,7 +38,6 @@ export default function BillingTab({ business }) {
   const sendsLeft = business?.trial_sends_remaining ?? 20;
 
   const activePillars = MODULES.filter(m => business?.[m.key]);
-  const nextPaymentDate = format(addMonths(new Date(), 1), "d. M. yyyy");
 
   // Pricing
   const monthlyTotal = isBundle ? 399 : selected.size * 99;
@@ -49,8 +49,17 @@ export default function BillingTab({ business }) {
     const next = new Set(selected);
     if (next.has(key)) { next.delete(key); } else { next.add(key); }
     setSelected(next);
-    if (next.size < 6) setIsBundle(false);
+    // Vseh 6 modulov = paket (399 € namesto 594 €)
+    setIsBundle(next.size === MODULES.length);
   };
+
+  // Odprto naročilo (čaka na aktivacijo s strani AI Aristotle)
+  const { data: pendingRequests = [] } = useQuery({
+    queryKey: ["subscription-requests", business?.id],
+    queryFn: () => base44.entities.SubscriptionRequest.filter({ business_id: business.id, status: "pending" }),
+    enabled: !!business?.id,
+  });
+  const pendingRequest = pendingRequests[0] || null;
 
   const selectBundle = () => {
     setIsBundle(true);
@@ -61,38 +70,24 @@ export default function BillingTab({ business }) {
     setIsBundle(false);
   };
 
+  // Naročilo modulov: NE aktivira ničesar samo od sebe (prej je gumb "Potrdi in plačaj" aktiviral naročnino brez plačila).
+  // Ustvari SubscriptionRequest + e-pošto adminu; aktivacijo po plačilu izvede AI Aristotle v /admin/businesses.
   const activateMutation = useMutation({
     mutationFn: async () => {
-      const pillarUpdates = {};
-      MODULES.forEach(m => { pillarUpdates[m.key] = isBundle || selected.has(m.key); });
-      // pillar_digest follows pillar_assistant
-      pillarUpdates.pillar_digest = pillarUpdates.pillar_assistant;
-
-      const updates = {
-        ...pillarUpdates,
-        subscription_status: "active",
-        billing_mode: isBundle ? "bundle" : "alacarte",
-        bundle_active: isBundle,
-        integration_fee_paid: true,
-      };
-      await base44.entities.Business.update(business.id, updates);
-
-      // Send confirmation email
-      const moduleList = MODULES
-        .filter(m => pillarUpdates[m.key])
-        .map(m => `• ${m.label}`)
-        .join("\n");
-      await base44.integrations.Core.SendEmail({
-        to: business.created_by,
-        subject: "Vaša naročnina je aktivna",
-        body: `Pozdravljeni!\n\nVaša naročnina je uspešno aktivirana. Aktivni moduli:\n\n${moduleList}\n\nNaslednji datum plačila: ${nextPaymentDate}\n\nHvala, da ste izbrali naš sistem.`,
+      const res = await requestSubscription({
+        business_id: business.id,
+        bundle: isBundle,
+        modules: MODULES.filter(m => isBundle || selected.has(m.key)).map(m => m.key),
       });
+      const data = res?.data ?? res;
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["business"] });
-      toast.success("Naročnina je aktivirana!");
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["subscription-requests", business?.id] });
+      toast.success(data?.already_pending ? "Naročilo je že v obdelavi." : "Naročilo je oddano. Predračun prejmete po e-pošti.");
     },
-    onError: (err) => toast.error("Napaka: " + err.message),
+    onError: (err) => toast.error("Napaka: " + (err?.response?.data?.error || err?.data?.error || err.message)),
   });
 
   return (
@@ -128,7 +123,7 @@ export default function BillingTab({ business }) {
                   ))}
                 </div>
                 <p className="text-sm text-emerald-700">
-                  {business?.bundle_active ? "399 €/mes" : `${activePillars.length * 99} €/mes`} · Naslednje plačilo: {nextPaymentDate}
+                  {business?.bundle_active ? "399 €/mes" : `${activePillars.length * 99} €/mes`} (brez DDV) · Obračun mesečno po predračunu
                 </p>
               </>
             )}
@@ -151,7 +146,9 @@ export default function BillingTab({ business }) {
             </Button>
           )}
           {isActive && (
-            <Button variant="outline" className="shrink-0">Upravljaj naročnino</Button>
+            <Button variant="outline" className="shrink-0" asChild>
+              <a href="mailto:ingenius.tihomir@gmail.com?subject=Sprememba%20naro%C4%8Dnine%20AI%20Aristotle">Upravljaj naročnino</a>
+            </Button>
           )}
         </div>
       </div>
@@ -198,7 +195,7 @@ export default function BillingTab({ business }) {
                     <div className="mt-3 flex items-center justify-between">
                       <span className="text-sm font-bold">99 €/mes</span>
                       <Badge variant={isSelected ? "default" : "outline"} className="text-xs">
-                        {isSelected ? "Aktivno" : "Dodaj"}
+                        {business?.[m.key] && isActive ? "Aktivno" : isSelected ? "Izbrano" : "Dodaj"}
                       </Badge>
                     </div>
                   </div>
@@ -300,22 +297,27 @@ export default function BillingTab({ business }) {
               </div>
             </div>
 
-            <Button
-              id="confirm-btn"
-              className="w-full"
-              size="lg"
-              disabled={selected.size === 0 || loading || activateMutation.isPending}
-              onClick={() => activateMutation.mutate()}
-            >
-              {activateMutation.isPending ? "Obdelavam..." : "Potrdi in plačaj"}
-            </Button>
+            {pendingRequest ? (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                <p className="font-semibold">Naročilo je v obdelavi</p>
+                <p className="text-xs mt-1">
+                  {pendingRequest.bundle ? "Paket vseh modulov" : `${(pendingRequest.modules || []).length} modulov`} · {pendingRequest.monthly_total_eur} €/mes.
+                  Predračun prejmete na {pendingRequest.owner_email}. Po plačilu module aktiviramo in vas obvestimo.
+                </p>
+              </div>
+            ) : (
+              <Button
+                id="confirm-btn"
+                className="w-full"
+                size="lg"
+                disabled={selected.size === 0 || loading || activateMutation.isPending}
+                onClick={() => activateMutation.mutate()}
+              >
+                {activateMutation.isPending ? "Oddajam naročilo..." : "Naroči module"}
+              </Button>
+            )}
 
-            <p className="text-xs text-muted-foreground text-center">Vse cene so brez DDV.</p>
-            <div className="flex justify-center gap-3 text-xs text-muted-foreground">
-              <a href="#" className="hover:underline">Pogoji storitve</a>
-              <span>·</span>
-              <a href="#" className="hover:underline">Pogoji preklica</a>
-            </div>
+            <p className="text-xs text-muted-foreground text-center">Vse cene so brez DDV. Po oddaji naročila prejmete predračun; moduli se aktivirajo po plačilu.</p>
           </div>
         </div>
       </div>
