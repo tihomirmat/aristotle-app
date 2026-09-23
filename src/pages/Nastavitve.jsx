@@ -294,17 +294,24 @@ export default function Nastavitve() {
               <div className="space-y-3">
                 <div className="space-y-2">
                   <Label>Ponudnik e-pošte</Label>
-                  <Select value={business?.email_provider || ""} onValueChange={(v) => saveMutation.mutate({ email_provider: v })}>
+                  <Select value={business?.email_provider || "platform"} onValueChange={(v) => saveMutation.mutate({ email_provider: v })}>
                     <SelectTrigger><SelectValue placeholder="Izberite ponudnika" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="gmail">Gmail</SelectItem>
-                      <SelectItem value="outlook">Outlook / Microsoft 365</SelectItem>
-                      <SelectItem value="smtp">SMTP (lastni strežnik)</SelectItem>
+                      <SelectItem value="platform">AI Aristotle (platformski pošiljatelj — privzeto)</SelectItem>
+                      <SelectItem value="smtp">SMTP (lastni strežnik ali Gmail/Outlook prek SMTP)</SelectItem>
+                      <SelectItem value="gmail">Gmail (OAuth — še ni na voljo)</SelectItem>
+                      <SelectItem value="outlook">Outlook / Microsoft 365 (OAuth — še ni na voljo)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {(!business?.email_provider || business?.email_provider === "platform") && (
+                    <p className="text-xs text-muted-foreground">Sporočila se pošiljajo prek sistema AI Aristotle (v imenu vašega podjetja). Za pošiljanje z vašega lastnega naslova izberite SMTP.</p>
+                  )}
                 </div>
                 {business?.email_provider === "smtp" && (
                   <div className="space-y-3 pt-2 border-t">
+                    {!(business?.smtp_host && business?.smtp_user && business?.smtp_pass) && (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">SMTP še ni popoln (gostitelj, uporabniško ime in geslo so obvezni). Do dopolnitve se sporočila pošiljajo prek platformskega pošiljatelja. Za Gmail: smtp.gmail.com, vrata 587, STARTTLS, geslo za aplikacije.</p>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2"><Label>SMTP gostitelj</Label><Input placeholder="mail.primer.si" defaultValue={business?.smtp_host || ""} onBlur={(e) => saveMutation.mutate({ smtp_host: e.target.value })} /></div>
                       <div className="space-y-2"><Label>Vrata</Label><Input type="number" placeholder="587" defaultValue={business?.smtp_port || ""} onBlur={(e) => saveMutation.mutate({ smtp_port: parseInt(e.target.value) })} /></div>
@@ -330,7 +337,7 @@ export default function Nastavitve() {
                   <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
                     {business.gmail_email || business.outlook_email
                       ? <span className="text-emerald-600 font-medium">✓ Povezano: {business.gmail_email || business.outlook_email}</span>
-                      : "OAuth avtorizacija je na voljo prek agencijske nadzorne plošče."}
+                      : "Povezava prek OAuth še ni na voljo — do takrat se sporočila pošiljajo prek platformskega pošiljatelja. Za pošiljanje z vašega Gmail/Outlook naslova izberite SMTP (Gmail: smtp.gmail.com, vrata 587, STARTTLS, geslo za aplikacije; Outlook: smtp.office365.com, vrata 587)."}
                   </div>
                 )}
               </div>
