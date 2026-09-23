@@ -15,10 +15,10 @@ import StatusBanner from "@/components/ui/StatusBanner";
 const PILLARS = [
   { key: "pillar_reactivation", label: "Reaktivacija strank", desc: "Avtomatska reaktivacija neaktivnih strank po e-pošti.", icon: Mail, color: "bg-blue-500", href: "/prejeto", stat_label: "sporočil ta teden", plans: ["starter","growth","scale"] },
   { key: "pillar_reviews", label: "Ocene & napotitve", desc: "Avtomatske prošnje za Google ocene in napotitve.", icon: Star, color: "bg-amber-500", href: "/ocene", stat_label: "prošenj ta teden", plans: ["starter","growth","scale"] },
-  { key: "pillar_leads", label: "Pridobivanje & CRM", desc: "Webhook, embed forma in upravljanje leadov. Brezplačen modul.", icon: Globe, color: "bg-emerald-500", href: "/pridobivanje", stat_label: "novih strank ta teden", plans: ["starter","growth","scale"], always_on: true },
+  { key: "pillar_leads", label: "Pridobivanje strank", desc: "Spletni obrazec, webhook in samodejni prvi odgovor novim povpraševanjem.", icon: Globe, color: "bg-emerald-500", href: "/pridobivanje", stat_label: "novih strank ta teden", plans: ["starter","growth","scale"] },
   { key: "pillar_chatbot", label: "Klepetalni pomočnik", desc: "AI klepetalni widget na vašem spletnem mestu.", icon: MessageSquare, color: "bg-violet-500", href: "/klepet", stat_label: "pogovorov ta teden", plans: ["starter","growth","scale"] },
   { key: "pillar_assistant", label: "Osebni asistent", desc: "AI asistent za upravljanje terminov in dnevnih nalog.", icon: Bot, color: "bg-rose-500", href: "/asistent", stat_label: "akcij ta teden", plans: ["growth","scale"], min_plan: "growth" },
-  { key: "pillar_digest", label: "Tedenski povzetek", desc: "Avtomatski tedenski poročili vsak ponedeljek.", icon: BarChart3, color: "bg-indigo-500", href: "/asistent", stat_label: "poročil", plans: ["scale"], min_plan: "scale" },
+  { key: "pillar_offers", label: "Generator ponudb", desc: "Skeniranje obstoječih ponudb, predloge in AI generiranje PDF/DOCX ponudb.", icon: BarChart3, color: "bg-indigo-500", href: "/ponudbe", stat_label: "ponudb", plans: ["starter","growth","scale"] },
 ];
 
 
