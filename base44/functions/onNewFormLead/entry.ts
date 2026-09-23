@@ -20,7 +20,8 @@ Deno.serve(async (req) => {
     const businesses = await base44.asServiceRole.entities.Business.filter({ id: data.business_id });
     const business = businesses[0];
     if (!business) return Response.json({ skipped: true, reason: 'no business' });
-    if (!business.pillar_leads) return Response.json({ skipped: true, reason: 'pillar_leads disabled' });
+    const trialActive = business.subscription_status === 'trialing' && business.trial_ends_at && new Date(business.trial_ends_at) > new Date();
+    if (!trialActive && business.pillar_leads !== true) return Response.json({ skipped: true, reason: 'pillar_leads disabled' });
 
     const pillar = data.source === 'chatbot' ? 'chatbot_handoff' : 'web_form_lead';
 
@@ -29,6 +30,7 @@ Deno.serve(async (req) => {
       lead_id: data.id,
       pillar,
       sequence_step: 1,
+      internal_secret: Deno.env.get('INTERNAL_FUNCTION_SECRET') || '',
     });
 
     return Response.json({ success: true, triggered: pillar, lead_id: data.id });
