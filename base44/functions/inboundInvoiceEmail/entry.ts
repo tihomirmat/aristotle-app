@@ -1,5 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// Varna base64 pretvorba (String.fromCharCode(...bytes) vrže RangeError pri datotekah > ~125 KB)
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  return btoa(binary);
+}
+
 // Public inbound-email webhook — provider-agnostic (Mailgun + Resend style).
 //
 // Mailgun posts multipart/form-data with fields:
@@ -78,7 +86,8 @@ Deno.serve(async (req) => {
         if (file instanceof File) {
           if (!isAllowedAttachment(file.name, file.type)) continue;
           const ab = await file.arrayBuffer();
-          const b64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
+          if (ab.byteLength > 25 * 1024 * 1024) continue; // > 25 MB preскоči
+          const b64 = bytesToBase64(new Uint8Array(ab));
           attachmentsToProcess.push({ filename: file.name, base64: b64, mimeType: file.type });
         }
       }
