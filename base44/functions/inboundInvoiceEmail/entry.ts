@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
         if (file instanceof File) {
           if (!isAllowedAttachment(file.name, file.type)) continue;
           const ab = await file.arrayBuffer();
-          if (ab.byteLength > 25 * 1024 * 1024) continue; // > 25 MB preскоči
+          if (ab.byteLength > 25 * 1024 * 1024) continue; // > 25 MB preskočimo
           const b64 = bytesToBase64(new Uint8Array(ab));
           attachmentsToProcess.push({ filename: file.name, base64: b64, mimeType: file.type });
         }
