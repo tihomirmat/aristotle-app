@@ -105,8 +105,10 @@ Deno.serve(async (req) => {
       const transporter = nodemailer.createTransport({
         host: business.smtp_host,
         port: Number(business.smtp_port) || 587,
-        secure: business.smtp_encryption === 'ssl_tls',
+        secure: business.smtp_encryption === 'ssl_tls' || Number(business.smtp_port) === 465,
         requireTLS: business.smtp_encryption === 'starttls',
+        ignoreTLS: business.smtp_encryption === 'none',
+        connectionTimeout: 15000,
         auth: { user: business.smtp_user, pass: business.smtp_pass },
       });
       const attachments = [];
