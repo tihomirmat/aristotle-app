@@ -14,6 +14,7 @@ import { Save, Loader2, CheckCircle, AlertCircle, CreditCard, Mail, Calendar, Us
 import BillingTab from "@/components/nastavitve/BillingTab";
 import { seedDemoData } from "@/functions/seedDemoData";
 import { clearDemoData } from "@/functions/clearDemoData";
+import { testSmtp } from "@/functions/testSmtp";
 import { fnError } from "@/lib/fn-error";
 import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
 import TerminiTab from "@/components/nastavitve/TerminiTab";
@@ -111,6 +112,22 @@ export default function Nastavitve() {
   const isTrialing = business?.subscription_status === "trialing";
   const isHealthOk = business?.email_last_health_check_status === "ok";
   const [demoLoading, setDemoLoading] = useState(null); // 'seed' | 'clear' | null
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const handleTestSmtp = async () => {
+    if (!business?.id) return;
+    setSmtpTesting(true);
+    try {
+      const res = await testSmtp({ business_id: business.id });
+      const data = res?.data ?? res;
+      if (data?.error) throw new Error(data.error);
+      sonnerToast.success(`Testno sporočilo poslano na ${data?.sent_to || user?.email}. Preverite predal (tudi neželeno pošto).`);
+    } catch (err) {
+      sonnerToast.error(fnError(err) || "Test SMTP ni uspel.");
+    } finally {
+      setSmtpTesting(false);
+      queryClient.invalidateQueries({ queryKey: ["business"] });
+    }
+  };
   const [copiedToken, setCopiedToken] = useState(false);
 
   const invoiceAddress = business?.invoice_inbound_token
@@ -330,6 +347,19 @@ export default function Nastavitve() {
                           <SelectItem value="none">Brez</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="pt-2 border-t space-y-2">
+                      <Button variant="outline" size="sm" className="gap-2" onClick={handleTestSmtp} disabled={smtpTesting || !(business?.smtp_host && business?.smtp_user && business?.smtp_pass)}>
+                        {smtpTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                        Pošlji testno e-pošto na {user?.email || "moj naslov"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground">Polja se shranijo, ko kliknete izven njih. Test preveri povezavo s strežnikom in pošlje sporočilo z vašega naslova.</p>
+                      {business?.email_last_health_check_status === "error" && business?.email_last_health_check_error && (
+                        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md p-2 break-words">Zadnja napaka: {business.email_last_health_check_error}</p>
+                      )}
+                      {business?.email_last_health_check_status === "ok" && business?.email_last_health_check_at && (
+                        <p className="text-xs text-emerald-700">Zadnji uspešen test: {new Date(business.email_last_health_check_at).toLocaleString("sl-SI")}</p>
+                      )}
                     </div>
                   </div>
                 )}
