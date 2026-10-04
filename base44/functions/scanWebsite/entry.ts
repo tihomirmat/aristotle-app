@@ -2,7 +2,6 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 
 // Prebere spletno stran podjetja (do 8 podstrani) in iz nje izlušči profil + bazo znanja.
-// Uporaba: onboarding (samodejno izpolnjevanje) in Nastavitve/Spletni klepet (osvežitev baze znanja).
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const MAX_PAGES = 8;
@@ -21,7 +20,7 @@ async function fetchText(url) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 12000);
   try {
-    const res = await fetch(url, { signal: ctrl.signal, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIAristotleBot/1.0; +https://aristotle-smart-growth.base44.app)', 'Accept-Language': 'sl,en;q=0.8' } });
+    const res = await fetch(url, { signal: ctrl.signal, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AIAristotleBot/1.0)', 'Accept-Language': 'sl,en;q=0.8' } });
     if (!res.ok) return null;
     const ct = res.headers.get('content-type') || '';
     if (!ct.includes('text/html')) return null;
