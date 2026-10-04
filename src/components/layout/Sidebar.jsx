@@ -29,6 +29,13 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     refetchInterval: 60000,
   });
   const pendingCount = pendingDrafts.length;
+  const { data: newLeads = [] } = useQuery({
+    queryKey: ["leads-new-sidebar", business?.id],
+    queryFn: () => base44.entities.Lead.filter({ business_id: business.id, status: "new" }),
+    enabled: !!business?.id,
+    refetchInterval: 60000,
+  });
+  const newLeadsCount = newLeads.length;
 
   const groups = [
     {
@@ -42,8 +49,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     {
       title: "Stranke",
       items: [
-        { path: "/stranke", label: "Stranke", icon: Users },
-        { path: "/pridobivanje", label: "Nova povpraševanja", icon: Globe, locked: !hasModule(business, "pillar_leads"), lockDesc: "Spletni obrazec in samodejni prvi odgovor novim strankam." },
+        { path: "/stranke", label: "Stranke", icon: Users, badge: newLeadsCount > 0 ? newLeadsCount : null },
         { path: "/klepet", label: "Spletni klepet", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "AI klepet na vaši spletni strani, ki odgovarja 24/7." },
         { path: "/ocene", label: "Google ocene", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Samodejne prošnje za Google ocene in priporočila." },
       ],

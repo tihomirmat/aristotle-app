@@ -4,11 +4,11 @@ import Sidebar from "./Sidebar";
 import UserMenu from "./UserMenu";
 import TrialExpiredModal from "@/components/TrialExpiredModal";
 import { useBusiness } from "@/lib/business-context";
-import { Search, Sparkles } from "lucide-react";
+import { Search } from "lucide-react";
 
 // Naslovi strani za zgornjo vrstico (brezhibno ujemanje z menijem)
 const TITLES = [
-  ["/prejeto", "Za odobritev"], ["/stranke", "Stranke"], ["/pridobivanje", "Nova povpraševanja"],
+  ["/prejeto", "Za odobritev"], ["/stranke", "Stranke"], 
   ["/klepet", "Spletni klepet"], ["/asistent", "Asistent"], ["/ocene", "Google ocene"],
   ["/ponudbe", "Ponudbe"], ["/racuni", "Računi"], ["/nastavitve", "Nastavitve"],
   ["/admin/businesses", "Podjetja"], ["/admin/usage", "Poraba"],
@@ -33,9 +33,6 @@ export default function AppLayout() {
             <Search className="w-4 h-4" />
             <input className="bg-transparent outline-none flex-1 placeholder:text-muted-foreground/70" placeholder="Išči stranke, ponudbe …" onKeyDown={(e) => { if (e.key === "Enter" && e.target.value.trim()) window.location.href = `/stranke?q=${encodeURIComponent(e.target.value.trim())}`; }} />
           </div>
-          <Link to="/asistent" className="hidden md:inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-sm font-medium text-white btn-brand">
-            <Sparkles className="w-4 h-4" /> Kaj je danes na vrsti
-          </Link>
           <UserMenu />
         </div>
         <div className="p-6 md:p-8 max-w-6xl">

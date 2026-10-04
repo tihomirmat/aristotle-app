@@ -79,7 +79,7 @@ const AppRoutes = () => {
         <Route path="/asistent" element={<Asistent />} />
         <Route path="/ocene" element={<Ocene />} />
         <Route path="/nastavitve" element={<Nastavitve />} />
-        <Route path="/pridobivanje" element={<Pridobivanje />} />
+        <Route path="/pridobivanje" element={<Navigate to="/stranke?tab=viri" replace />} />
         <Route path="/racuni" element={<Racuni />} />
         <Route path="/ponudbe" element={<Ponudbe />} />
         <Route path="/ponudbe/skener" element={<PonudbeSkener />} />
