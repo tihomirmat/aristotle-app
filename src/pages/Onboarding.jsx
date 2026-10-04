@@ -250,7 +250,7 @@ export default function Onboarding() {
                   className="mt-0.5"
                 />
                 <Label htmlFor="gdpr" className="text-sm leading-relaxed cursor-pointer">
-                  Potrjujem, da imam veljavno soglasje za pošiljanje email sporočil svojim strankam (ZEPT-1, GDPR čl. 7).
+                  Potrjujem, da imam veljavno soglasje za pošiljanje email sporočil svojim strankam (ZEPT-1, GDPR čl. 7) ter da sem prebral/-a <a href="/pogoji" target="_blank" rel="noreferrer" className="underline">pogoje uporabe</a> in <a href="/zasebnost" target="_blank" rel="noreferrer" className="underline">politiko zasebnosti</a>.
                 </Label>
               </div>
               <div className="bg-accent border border-primary/20 rounded-lg p-4 text-sm text-muted-foreground">
