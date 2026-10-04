@@ -46,12 +46,15 @@ export default function UserMenu() {
             >
               <User className="w-4 h-4 text-muted-foreground" /> Moj profil
             </Link>
-            <button
+            <a
+              href="/zasebnost"
+              target="_blank"
+              rel="noreferrer"
               className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-muted/60 transition-colors w-full text-left"
               onClick={() => setOpen(false)}
             >
-              <HelpCircle className="w-4 h-4 text-muted-foreground" /> Pomoč
-            </button>
+              <HelpCircle className="w-4 h-4 text-muted-foreground" /> Zasebnost in pogoji
+            </a>
             <div className="border-t border-border my-1" />
             <button
               onClick={handleLogout}
