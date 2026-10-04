@@ -1,23 +1,5 @@
 {
   "name": "Inbox Sync (every 10 min)",
-  "description": "Vsakih 10 minut prebere nova e-sporo\u010dila v povezanih po\u0161tnih predalih, AI prepozna povpra\u0161evanja in jih doda med stranke.",
-  "trigger": {
-    "condition": null,
-    "config": {
-      "trigger_type": "scheduled",
-      "events": [],
-      "schedule_mode": "interval",
-      "cron_expression": null,
-      "one_time_date": null,
-      "timezone": "UTC",
-      "interval_value": 10,
-      "interval_unit": "minutes",
-      "interval_anchor": "2026-10-05T06:00:00.000000",
-      "ends_type": "never",
-      "ends_on_date": null,
-      "ends_after_count": null
-    }
-  },
   "definition": {
     "document": {
       "dsl": "1.0.0",
@@ -37,5 +19,23 @@
         }
       }
     ]
+  },
+  "description": "Vsakih 10 minut prebere nova e-sporo\u010dila v povezanih po\u0161tnih predalih, AI prepozna povpra\u0161evanja in jih doda med stranke.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 10,
+      "interval_unit": "minutes",
+      "interval_anchor": "2026-10-05T06:00:00",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
   }
 }
