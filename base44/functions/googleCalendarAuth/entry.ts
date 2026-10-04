@@ -3,13 +3,6 @@ import {
   encryptToken, decryptToken, createState, verifyState, revokeToken, SCOPES,
 } from '../../shared/googleCalendar.js';
 
-// Lasten Google OAuth 2.0 (authorization code flow) za Google Koledar.
-// NE uporablja Base44 konektorja — aplikacija je za množico uporabnikov brez Base44 računa.
-// Akcije:
-//   GET  ?code=...&state=...  → OAuth callback (Google preusmeri sem)
-//   POST { action: "start", business_id } → vrne auth_url + redirect_uri
-//   POST { action: "disconnect", business_id } → prekliče žeton, počisti polja
-
 const APP_URL = 'https://aristotle-smart-growth.base44.app';
 const REDIRECT_URI = `${APP_URL}/functions/googleCalendarAuth`;
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -30,7 +23,6 @@ function redirect(path: string) {
 
 Deno.serve(async (req) => {
   try {
-    // ─── GET: OAuth callback od Google ───
     if (req.method === 'GET') {
       const url = new URL(req.url);
       const code = url.searchParams.get('code');
@@ -67,13 +59,11 @@ Deno.serve(async (req) => {
       if (!tokenRes.ok) return redirect('/nastavitve?tab=termini&gcal=error');
 
       const encAccess = await encryptToken(tokens.access_token);
-      // refresh_token pride samo ob prompt=consent; obdrži starega, če ga ni
       const encRefresh = tokens.refresh_token
         ? await encryptToken(tokens.refresh_token)
         : business.google_calendar_refresh_token || null;
       const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString();
 
-      // Pridobi Google e-naslov uporabnika
       let gcalEmail = business.google_calendar_email || null;
       try {
         const ui = await fetch(USERINFO_URL, { headers: { Authorization: `Bearer ${tokens.access_token}` } });
@@ -90,7 +80,6 @@ Deno.serve(async (req) => {
       return redirect('/nastavitve?tab=termini&gcal=connected');
     }
 
-    // ─── POST: start / disconnect ───
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -142,7 +131,6 @@ Deno.serve(async (req) => {
 
     return Response.json({ error: 'Neznana akcija' }, { status: 400 });
   } catch (error) {
-    // Status 200 z napako v telesu, da UI prikaže pravi vzrok namesto splošnega 500.
     return Response.json({ error: 'Napaka na strežniku: ' + (error?.message || String(error)) }, { status: 200 });
   }
 });
