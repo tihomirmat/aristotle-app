@@ -9,12 +9,12 @@ import { differenceInDays } from "date-fns";
 import { toast } from "sonner";
 
 const MODULES = [
-  { key: "pillar_reactivation", label: "Reaktivacija strank", desc: "Avtomatska reaktivacija neaktivnih strank po e-pošti.", icon: Mail, color: "bg-blue-500" },
-  { key: "pillar_reviews", label: "Ocene & napotitve", desc: "Avtomatske prošnje za Google ocene in napotitve.", icon: Star, color: "bg-amber-500" },
-  { key: "pillar_leads", label: "Pridobivanje strank", desc: "Avtomatska nega potencialnih strank iz spletnega obrazca.", icon: Globe, color: "bg-emerald-500" },
-  { key: "pillar_chatbot", label: "Klepetalni pomočnik", desc: "AI klepetalni widget na vašem spletnem mestu.", icon: MessageSquare, color: "bg-violet-500" },
+  { key: "pillar_reactivation", label: "Vrnite stare stranke", desc: "Strankam, ki jih dolgo ni bilo, AI napiše osebno vabilo nazaj.", icon: Mail, color: "bg-blue-500" },
+  { key: "pillar_reviews", label: "Google ocene", desc: "Po opravljeni storitvi AI prosi stranko za Google oceno in priporočilo.", icon: Star, color: "bg-amber-500" },
+  { key: "pillar_leads", label: "Nova povpraševanja", desc: "Spletni obrazec in oseben odgovor vsaki novi stranki v nekaj minutah.", icon: Globe, color: "bg-emerald-500" },
+  { key: "pillar_chatbot", label: "Spletni klepet", desc: "AI odgovarja obiskovalcem vaše spletne strani 24/7.", icon: MessageSquare, color: "bg-violet-500" },
   { key: "pillar_assistant", label: "Osebni asistent", desc: "AI asistent za upravljanje terminov, dnevnih nalog in tedenskih poročil.", icon: Bot, color: "bg-rose-500" },
-  { key: "pillar_offers", label: "Generator ponudb", desc: "AI generator ponudb iz obstoječih predlog. Skeniranje obstoječe ponudbe, OCR, transkripti, izvoz v PDF/DOCX.", icon: FileSignature, color: "bg-cyan-600" },
+  { key: "pillar_offers", label: "Ponudbe", desc: "Iz vaše obstoječe ponudbe naredi predlogo; nova ponudba v PDF v nekaj minutah.", icon: FileSignature, color: "bg-cyan-600" },
 ];
 
 export default function BillingTab({ business }) {

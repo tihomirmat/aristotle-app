@@ -12,7 +12,7 @@ import { generateDrafts } from "@/functions/generateDrafts";
 
 import { fnError } from "@/lib/fn-error";
 const PILLAR_OPTIONS = [
-  { value: "reactivation", label: "Reaktivacija stranke" },
+  { value: "reactivation", label: "Vabilo stari stranki" },
   { value: "review_request", label: "Prošnja za Google oceno" },
   { value: "web_form_lead", label: "Novi lead (spletni obrazec)" },
   { value: "referral_ask", label: "Napotitev" },
@@ -39,7 +39,7 @@ export default function GenerateDraftButton() {
     setLoading(true);
     try {
       await generateDrafts({ pillar, lead_id: leadId, business_id: business.id });
-      queryClient.invalidateQueries({ queryKey: ["drafts-pending", business?.id] });
+      queryClient.invalidateQueries({ queryKey: ["drafts-all", business?.id] });
       toast.success("AI osnutek ustvarjen in čaka na odobritev.");
       setOpen(false);
       setLeadId("");

@@ -29,7 +29,7 @@ export default function Klepet() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Klepetalni pomočnik</h1>
+        <h1 className="text-2xl font-bold">Spletni klepet</h1>
         <p className="text-muted-foreground mt-1">Upravljajte znanje chatbota, pregledujte pogovore in pridobite embed kodo.</p>
       </div>
 

@@ -8,7 +8,7 @@ import { generateDraft } from "@/functions/generateDraft";
 
 import { fnError } from "@/lib/fn-error";
 const PILLAR_OPTIONS = [
-  { value: "reactivation", label: "Reaktivacija" },
+  { value: "reactivation", label: "Vabilo stari stranki" },
   { value: "review_request", label: "Prošnja za oceno" },
   { value: "web_form_lead", label: "Nega leada" },
   { value: "referral_ask", label: "Napotitev" },
@@ -33,7 +33,7 @@ export default function GenerateDraftButton({ lead, businessId }) {
       if (score && score < 6) {
         toast.warning(`Osnutek ustvarjen (kakovost: ${score}/10) — označen za pregled.`);
       } else {
-        toast.success(`Osnutek za "${lead.name}" je pripravljen v Prejeto.`);
+        toast.success(`Osnutek za "${lead.name}" čaka v »Za odobritev«.`);
       }
     } catch (e) {
       toast.error("Napaka pri generiranju: " + fnError(e));

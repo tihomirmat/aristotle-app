@@ -95,7 +95,7 @@ export default function Pridobivanje() {
       });
       await generateDraft({ business_id: business.id, lead_id: testLead.id, pillar: "web_form_lead", sequence_step: 1 });
       queryClient.invalidateQueries({ queryKey: ["leads-form", business?.id] });
-      toast.success("Testni lead ustvarjen in draft generiran — preverite Prejeto.");
+      toast.success("Testna stranka je ustvarjena, AI odgovor čaka v »Za odobritev«.");
     } catch (e) {
       toast.error("Napaka: " + fnError(e));
     } finally {
@@ -108,7 +108,7 @@ export default function Pridobivanje() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Pridobivanje strank</h1>
+        <h1 className="text-2xl font-bold">Nova povpraševanja</h1>
         <p className="text-muted-foreground mt-1">Spletni obrazec in upravljanje novih leadov.</p>
       </div>
 

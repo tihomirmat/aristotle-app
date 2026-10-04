@@ -38,7 +38,7 @@ export default function Ponudbe() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <FileText className="w-12 h-12 text-muted-foreground/30 mb-4" />
-        <h2 className="text-xl font-bold mb-2">Generator ponudb</h2>
+        <h2 className="text-xl font-bold mb-2">Ponudbe</h2>
         <p className="text-muted-foreground max-w-sm mb-6">Ta modul ni aktiven. Aktivirajte ga v Naročnini za dostop do AI generatorja ponudb.</p>
         <Link to="/nastavitve?tab=billing"><Button>Aktiviraj modul</Button></Link>
       </div>
@@ -49,7 +49,7 @@ export default function Ponudbe() {
     <div className="space-y-8">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Generator ponudb</h1>
+          <h1 className="text-2xl font-bold">Ponudbe</h1>
           <p className="text-muted-foreground mt-1">AI generator ponudb iz obstoječih predlog.</p>
         </div>
         <div className="flex gap-2">

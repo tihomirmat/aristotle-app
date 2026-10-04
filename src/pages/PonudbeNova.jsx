@@ -138,7 +138,7 @@ export default function PonudbeNova() {
   };
 
   const handleGenerate = async () => {
-    if (!hasOffers) { toast.error("Aktivirajte modul Generator ponudb v Naročnini."); return; }
+    if (!hasOffers) { toast.error("Aktivirajte modul Ponudbe v Naročnini."); return; }
     if (freeGenLeft === 0 && !hasByok) { setShowQuotaModal(true); return; }
     setGenerating(true);
     setStep(2);
@@ -216,7 +216,7 @@ export default function PonudbeNova() {
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <AlertCircle className="w-10 h-10 text-amber-500 mb-4" />
         <h2 className="text-xl font-bold mb-2">Modul ni aktiven</h2>
-        <p className="text-muted-foreground mb-6">Aktivirajte modul Generator ponudb v Naročnini.</p>
+        <p className="text-muted-foreground mb-6">Aktivirajte modul Ponudbe v Naročnini.</p>
         <Link to="/nastavitve?tab=billing"><Button>Aktiviraj v Naročnini</Button></Link>
       </div>
     );

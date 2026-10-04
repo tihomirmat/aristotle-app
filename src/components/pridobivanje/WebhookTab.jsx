@@ -29,7 +29,7 @@ const STEPS = [
   {
     num: "4",
     title: "Odobrite in pošljite",
-    desc: "AI draft pristane v razdelku Prejeto. Ga preglejte, po potrebi uredite in z enim klikom pošljete na email stranke.",
+    desc: "AI pripravi odgovor, ki ga najdete v »Za odobritev«. Preglejte ga in z enim klikom pošljete stranki.",
   },
 ];
 
