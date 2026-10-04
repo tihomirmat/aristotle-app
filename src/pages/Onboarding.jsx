@@ -6,286 +6,219 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Zap, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
+import { Rocket, ChevronRight, ChevronLeft, Loader2, Globe, Sparkles, CheckCircle2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { completeOnboarding } from "@/functions/completeOnboarding";
+import { scanWebsite } from "@/functions/scanWebsite";
+import { fnError } from "@/lib/fn-error";
 
 const INDUSTRY_OPTIONS = [
-  { value: "gym", label: "Fitness / wellness" },
-  { value: "dental_medspa", label: "Zobozdravstvo / medspa" },
+  { value: "gym", label: "Fitnes / wellness" },
+  { value: "dental_medspa", label: "Zobozdravstvo / lepota" },
   { value: "home_services", label: "Dom in popravila" },
-  { value: "restaurant", label: "Restavracija / kavarna" },
+  { value: "restaurant", label: "Gostinstvo" },
   { value: "salon_barber", label: "Frizerski / lepotni salon" },
   { value: "auto", label: "Avtoservis" },
-  { value: "other", label: "Marketing / storitve" },
-  { value: "other2", label: "Drugo" },
+  { value: "other", label: "Storitve / drugo" },
 ];
 
-const TOTAL_STEPS = 4;
+const STEPS = ["Spletna stran", "Preverite podatke", "Zaključek"];
 
 export default function Onboarding() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanInfo, setScanInfo] = useState(null); // { pages_read, knowledgeCount }
+  const [url, setUrl] = useState("");
 
   const [form, setForm] = useState({
-    name: "",
-    industry_template: "",
-    phone: "",
-    address: "",
-    website: "",
-    hours: "",
-    services: "",
-    current_offer: "",
-    google_review_link: "",
-    gdpr_confirmed: false,
+    name: "", industry_template: "other", phone: "", address: "", website: "", hours: "",
+    services: "", current_offer: "", google_review_link: "", brand_voice: "", knowledge: [], gdpr_confirmed: false,
   });
-
   const update = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
-  const canNext = () => {
-    if (step === 1) return form.name.trim().length > 0;
-    if (step === 4) return form.gdpr_confirmed;
-    return true;
+  const handleScan = async () => {
+    if (!url.trim()) return;
+    setScanning(true);
+    try {
+      const res = await scanWebsite({ url: url.trim() });
+      const data = res?.data ?? res;
+      if (data?.error) throw new Error(data.error);
+      const d = data.data || {};
+      setForm((f) => ({
+        ...f,
+        name: d.name || f.name,
+        industry_template: d.industry_template || f.industry_template,
+        phone: d.phone || f.phone,
+        address: d.address || f.address,
+        website: d.website || url.trim(),
+        hours: d.hours || f.hours,
+        services: d.services || f.services,
+        current_offer: d.current_offer || f.current_offer,
+        brand_voice: d.brand_voice || f.brand_voice,
+        knowledge: d.knowledge || [],
+      }));
+      setScanInfo({ pages_read: d.pages_read || 1, knowledgeCount: (d.knowledge || []).length, description: d.short_description || "" });
+      setStep(2);
+    } catch (err) {
+      toast.error(fnError(err) || "Strani ni bilo mogoče prebrati.");
+    } finally {
+      setScanning(false);
+    }
   };
 
   const handleFinish = async () => {
-    if (!form.gdpr_confirmed) return;
+    if (!form.gdpr_confirmed || !form.name.trim()) return;
     setSaving(true);
     try {
       const user = await base44.auth.me();
       const res = await completeOnboarding({ form });
       const data = res?.data ?? res;
       if (data?.error) throw new Error(data.error);
-
       await queryClient.invalidateQueries({ queryKey: ["business", user.email] });
-      toast.success("Aplikacija je pripravljena! Baza znanja je nastavljena.");
       window.location.href = "/";
     } catch (err) {
-      toast.error("Napaka pri zaključku: " + (err.message || "Poskusite znova."));
+      toast.error("Napaka pri zaključku: " + (fnError(err) || "Poskusite znova."));
     } finally {
       setSaving(false);
     }
   };
 
-  /* legacy client-side creation moved to backend function completeOnboarding
-  const _legacyFinish = async () => {
-    const user = await base44.auth.me();
-
-    // Auto-seed Knowledge Base
-    const phone = form.phone || "še ni vneseno";
-    const address = form.address || "še ni vneseno";
-    const website = form.website || "še ni vneseno";
-    const services = form.services || "naše storitve";
-    const email = user.email || "še ni vneseno";
-    await Promise.all([
-      base44.entities.KnowledgeBase.create({
-        business_id: business.id,
-        title: "Naše storitve",
-        content: `Pri ${form.name} ponujamo: ${services}. Za info pišite na ${email} ali pokličite ${phone}. Termini in cene se prilagajajo. Z veseljem vam pripravimo personaliziran predlog.`,
-        category: "Storitve",
-        active: true,
-      }),
-      base44.entities.KnowledgeBase.create({
-        business_id: business.id,
-        title: "Rezervacija termina",
-        content: `Termin lahko rezervirate na 3 načine: 1) Kliknete spodaj na Rezerviraj termin. 2) Pokličete ${phone}. 3) Pišete na ${email} s preferenco. Delovni čas pon-pet od 09:00 do 17:00. Potrditev v isti delovni dan.`,
-        category: "Termini",
-        active: true,
-      }),
-      base44.entities.KnowledgeBase.create({
-        business_id: business.id,
-        title: "Pogosta vprašanja",
-        content: `Ali ponujate brezplačno posvetovanje? Da, prvi razgovor je brezplačen. Kako poteka prvo srečanje? Spoznamo potrebe, predstavimo storitve, določimo naslednje korake. Ali izdajate račune? Da, s pravilno izdanim računom (z DDV kjer relevantno). Kako prekličem termin? Brezplačno do 24 ur pred rezervacijo. Kakšen rok za odgovor? V naslednjih delovnih dneh, običajno isti dan.`,
-        category: "FAQ",
-        active: true,
-      }),
-      base44.entities.KnowledgeBase.create({
-        business_id: business.id,
-        title: "Kontaktni podatki",
-        content: `Naslov: ${address}. Telefon: ${phone}. Email: ${email}. Spletna stran: ${website}. Delovni čas: pon-pet, 09:00-17:00.`,
-        category: "Kontakt",
-        active: true,
-      }),
-    ]);
-
-    await queryClient.invalidateQueries({ queryKey: ["business", user.email] });
-    toast.success("Aplikacija je pripravljena! Baza znanja je nastavljena.");
-    window.location.href = "/";
-  };
-  */
-
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-xl">
-        {/* Logo */}
-        <div className="flex items-center gap-3 justify-center mb-8">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
+    <div className="min-h-screen grid lg:grid-cols-[440px_1fr]">
+      {/* Levi panel — znamka */}
+      <aside className="hidden lg:flex flex-col justify-between bg-space bg-space-stars text-white p-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[hsl(13,94%,55%)] to-[hsl(41,100%,53%)] flex items-center justify-center shadow-lg">
+            <Rocket className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold">AI Aristotle</span>
-        </div>
-
-        {/* Progress bar */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-            <span>Korak {step} od {TOTAL_STEPS}</span>
-            <span>{Math.round((step / TOTAL_STEPS) * 100)}%</span>
-          </div>
-          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-300"
-              style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
-            />
+          <div className="leading-tight">
+            <p className="font-display font-bold text-lg">AI Aristotle</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-white/60">by Spletnost</p>
           </div>
         </div>
+        <div>
+          <h1 className="text-white text-3xl leading-tight">Vaš marketing <span className="text-gradient-brand">dela sam</span>, vi samo odobrite.</h1>
+          <ul className="mt-6 space-y-3 text-white/80 text-sm">
+            {["Odgovori novim strankam v nekaj minutah", "Vrne stranke, ki jih dolgo ni bilo", "Prosi za Google ocene po vsaki storitvi", "Spletni klepet, ki odgovarja 24/7", "Ponudba v PDF v nekaj minutah"].map((t) => (
+              <li key={t} className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 text-[hsl(41,100%,53%)] shrink-0" /> {t}</li>
+            ))}
+          </ul>
+        </div>
+        <p className="text-xs text-white/50">Nastavitev traja 2 minuti. Večino podatkov preberemo z vaše spletne strani.</p>
+      </aside>
 
-        <div className="bg-card rounded-2xl border shadow-sm p-6">
-          {/* Step 1 — Dobrodošli */}
-          {step === 1 && (
-            <div className="space-y-5">
-              <div>
-                <h2 className="text-xl font-bold mb-1">Dobrodošli v AI Aristotle</h2>
-                <p className="text-sm text-muted-foreground">V naslednjih 3–5 minutah bomo postavili vašo aplikacijo, ki vam pomaga avtomatizirati marketing in komunikacijo s strankami.</p>
+      {/* Desni panel — koraki */}
+      <main className="flex items-center justify-center p-6 md:p-12 bg-background">
+        <div className="w-full max-w-xl">
+          <ol className="flex items-center gap-2 text-xs mb-8">
+            {STEPS.map((s, i) => {
+              const n = i + 1; const done = n < step; const active = n === step;
+              return (
+                <li key={s} className="flex items-center gap-2">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center font-semibold ${done ? "bg-emerald-500 text-white" : active ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>{done ? "✓" : n}</span>
+                  <span className={active ? "font-semibold" : "text-muted-foreground"}>{s}</span>
+                  {n < STEPS.length && <span className="w-8 h-px bg-border mx-1" />}
+                </li>
+              );
+            })}
+          </ol>
+
+          <div className="card-elevated p-7">
+            {step === 1 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl">Vnesite svojo spletno stran</h2>
+                  <p className="text-sm text-muted-foreground mt-1.5">Preberemo jo in sami izpolnimo ime, storitve, kontakt in delovni čas. Spletni klepet se iz nje tudi nauči odgovarjati.</p>
+                </div>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Globe className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input className="pl-9 h-11" placeholder="www.vase-podjetje.si" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleScan()} autoFocus />
+                  </div>
+                  <Button className="btn-brand h-11 px-5" onClick={handleScan} disabled={scanning || !url.trim()}>
+                    {scanning ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                    {scanning ? "Berem stran …" : "Preberi stran"}
+                  </Button>
+                </div>
+                {scanning && <p className="text-xs text-muted-foreground">Berem do 8 podstrani (storitve, cenik, kontakt). Traja 10–30 sekund.</p>}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex-1 h-px bg-border" /> ali <span className="flex-1 h-px bg-border" />
+                </div>
+                <Button variant="outline" className="w-full h-11" onClick={() => setStep(2)}>
+                  <Pencil className="w-4 h-4 mr-2" /> Nimam spletne strani, vnesem ročno
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label>Ime podjetja *</Label>
-                <Input
-                  placeholder="Npr. Studio Fit Ljubljana"
-                  value={form.name}
-                  onChange={(e) => update("name", e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Panoga</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {INDUSTRY_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => update("industry_template", opt.value)}
-                      className={`p-3 rounded-lg border text-sm text-left transition-colors ${
-                        form.industry_template === opt.value
-                          ? "border-primary bg-accent text-primary font-medium"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+            )}
+
+            {step === 2 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-2xl">Preverite podatke</h2>
+                  {scanInfo
+                    ? <p className="text-sm text-muted-foreground mt-1.5">Prebrali smo {scanInfo.pages_read} {scanInfo.pages_read === 1 ? "stran" : scanInfo.pages_read < 5 ? "strani" : "strani"} in pripravili {scanInfo.knowledgeCount} vnosov za spletni klepet. Popravite, kar ni točno.</p>
+                    : <p className="text-sm text-muted-foreground mt-1.5">Ti podatki so osnova za vsa sporočila, ki jih bo AI pisal v vašem imenu.</p>}
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 sm:col-span-2"><Label>Ime podjetja *</Label><Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Npr. Studio Fit Ljubljana" /></div>
+                  <div className="space-y-1.5"><Label>Telefon</Label><Input value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="030 301 300" /></div>
+                  <div className="space-y-1.5"><Label>Spletna stran</Label><Input value={form.website} onChange={(e) => update("website", e.target.value)} placeholder="https://…" /></div>
+                  <div className="space-y-1.5 sm:col-span-2"><Label>Naslov</Label><Input value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Ulica 1, 1000 Ljubljana" /></div>
+                  <div className="space-y-1.5 sm:col-span-2"><Label>Delovni čas</Label><Input value={form.hours} onChange={(e) => update("hours", e.target.value)} placeholder="Pon–Pet 8:00–16:00" /></div>
+                  <div className="space-y-1.5 sm:col-span-2"><Label>Storitve (vsaka v svoji vrstici)</Label><Textarea value={form.services} onChange={(e) => update("services", e.target.value)} className="h-28" placeholder="Striženje&#10;Barvanje&#10;Nega" /></div>
+                  <div className="space-y-1.5 sm:col-span-2"><Label>Trenutna ponudba (ni obvezno)</Label><Input value={form.current_offer} onChange={(e) => update("current_offer", e.target.value)} placeholder="Npr. Prvi obisk –20 %" /></div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Panoga</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {INDUSTRY_OPTIONS.map((opt) => (
+                      <button key={opt.value} type="button" onClick={() => update("industry_template", opt.value)}
+                        className={`px-3 py-1.5 rounded-full border text-sm transition-colors ${form.industry_template === opt.value ? "border-primary bg-accent text-accent-foreground font-medium" : "border-border hover:border-primary/50"}`}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Step 2 — Kontakt in lokacija */}
-          {step === 2 && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-bold mb-1">Kontakt in lokacija</h2>
-                <p className="text-sm text-muted-foreground">Te podatke bo AI uporabljal pri komunikaciji s strankami.</p>
+            {step === 3 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-2xl">Še potrditev in začnemo</h2>
+                  <p className="text-sm text-muted-foreground mt-1.5">Prvih 14 dni je brezplačnih. AI nikoli ne pošlje sporočila brez vaše odobritve.</p>
+                </div>
+                <div className="rounded-xl border bg-muted/40 p-4 text-sm space-y-1">
+                  <p><span className="text-muted-foreground">Podjetje:</span> <strong>{form.name || "—"}</strong></p>
+                  <p><span className="text-muted-foreground">Storitve:</span> {form.services ? form.services.split("\n").filter(Boolean).slice(0, 4).join(", ") : "—"}</p>
+                  <p><span className="text-muted-foreground">Kontakt:</span> {[form.phone, form.address].filter(Boolean).join(" · ") || "—"}</p>
+                  {form.knowledge?.length > 0 && <p><span className="text-muted-foreground">Spletni klepet:</span> {form.knowledge.length} vnosov znanja z vaše strani</p>}
+                </div>
+                <label htmlFor="gdpr" className="flex items-start gap-3 rounded-xl border p-4 cursor-pointer hover:bg-muted/30">
+                  <Checkbox id="gdpr" checked={form.gdpr_confirmed} onCheckedChange={(v) => update("gdpr_confirmed", !!v)} className="mt-0.5" />
+                  <span className="text-sm leading-relaxed">
+                    Potrjujem, da imam soglasje svojih strank za pošiljanje e-pošte (ZEPT-1, GDPR čl. 7) in sprejemam <a href="/pogoji" target="_blank" rel="noreferrer" className="underline">pogoje uporabe</a> ter <a href="/zasebnost" target="_blank" rel="noreferrer" className="underline">politiko zasebnosti</a>.
+                  </span>
+                </label>
               </div>
-              <div className="space-y-2">
-                <Label>Telefon</Label>
-                <Input placeholder="030 301 300 ali +386 30 301 300" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Naslov</Label>
-                <Input placeholder="Ulica 1, Ljubljana" value={form.address} onChange={(e) => update("address", e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Spletna stran</Label>
-                <Input placeholder="https://www.primer.si" value={form.website} onChange={(e) => update("website", e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Delovni čas</Label>
-                <Input placeholder="Pon–Pet 8:00–18:00, Sob 9:00–13:00" value={form.hours} onChange={(e) => update("hours", e.target.value)} />
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Step 3 — Storitve in ponudba */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-xl font-bold mb-1">Storitve in ponudba</h2>
-                <p className="text-sm text-muted-foreground">AI bo te podatke uporabil za personalizacijo sporočil.</p>
+            {step > 1 && (
+              <div className="flex justify-between mt-8">
+                <Button variant="ghost" onClick={() => setStep((s) => s - 1)}><ChevronLeft className="w-4 h-4 mr-1" /> Nazaj</Button>
+                {step === 2 ? (
+                  <Button className="btn-brand" onClick={() => setStep(3)} disabled={!form.name.trim()}>Naprej <ChevronRight className="w-4 h-4 ml-1" /></Button>
+                ) : (
+                  <Button className="btn-brand" onClick={handleFinish} disabled={saving || !form.gdpr_confirmed || !form.name.trim()}>
+                    {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Rocket className="w-4 h-4 mr-2" />} Začni uporabljati
+                  </Button>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label>Storitve</Label>
-                <Textarea
-                  placeholder="Navedite vaše glavne storitve, po vrsticah"
-                  value={form.services}
-                  onChange={(e) => update("services", e.target.value)}
-                  className="h-28"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Trenutna posebna ponudba</Label>
-                <Textarea
-                  placeholder="Npr. Prvi obisk -20%"
-                  value={form.current_offer}
-                  onChange={(e) => update("current_offer", e.target.value)}
-                  className="h-20"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Google Review link</Label>
-                <Input placeholder="https://g.page/r/..." value={form.google_review_link} onChange={(e) => update("google_review_link", e.target.value)} />
-              </div>
-            </div>
-          )}
-
-          {/* Step 4 — GDPR */}
-          {step === 4 && (
-            <div className="space-y-5">
-              <div>
-                <h2 className="text-xl font-bold mb-1">GDPR soglasje</h2>
-              </div>
-              <div className="flex items-start gap-3 bg-muted/50 rounded-lg p-4">
-                <Checkbox
-                  id="gdpr"
-                  checked={form.gdpr_confirmed}
-                  onCheckedChange={(v) => update("gdpr_confirmed", !!v)}
-                  className="mt-0.5"
-                />
-                <Label htmlFor="gdpr" className="text-sm leading-relaxed cursor-pointer">
-                  Potrjujem, da imam veljavno soglasje za pošiljanje email sporočil svojim strankam (ZEPT-1, GDPR čl. 7) ter da sem prebral/-a <a href="/pogoji" target="_blank" rel="noreferrer" className="underline">pogoje uporabe</a> in <a href="/zasebnost" target="_blank" rel="noreferrer" className="underline">politiko zasebnosti</a>.
-                </Label>
-              </div>
-              <div className="bg-accent border border-primary/20 rounded-lg p-4 text-sm text-muted-foreground">
-                Kasneje boste lahko v Nastavitvah povezali Gmail / Outlook ali nastavili SMTP za pošiljanje. Za zdaj boste videli draft sporočila pred pošiljanjem.
-              </div>
-            </div>
-          )}
-
-          {/* Navigation */}
-          <div className="flex justify-between mt-8">
-            <Button
-              variant="outline"
-              onClick={() => setStep((s) => s - 1)}
-              disabled={step === 1}
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" /> Nazaj
-            </Button>
-
-            {step < TOTAL_STEPS ? (
-              <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
-                Naprej <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleFinish}
-                disabled={saving || !form.gdpr_confirmed}
-                className="bg-primary hover:bg-primary/90"
-              >
-                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Zaključi onboarding
-              </Button>
             )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
