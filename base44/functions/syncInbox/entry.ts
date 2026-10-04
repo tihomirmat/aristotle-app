@@ -71,7 +71,6 @@ async function syncOne(base44, business) {
           const text = (parsed.text || (parsed.html ? String(parsed.html).replace(/<[^>]+>/g, ' ') : '')).replace(/\s+\n/g, '\n').trim();
           const forced = rules.some((r) => fromEmail.includes(r) || lower(subject).includes(r));
           const bulk = !!headers.get('list-unsubscribe') || ['bulk', 'list', 'junk'].includes(precedence) || (autoSubmitted && autoSubmitted !== 'no');
-          // Obvestila obrazcev so pogosto avtomatska — preskočimo samo, če niso v pravilih in so očitno masovna.
           if (bulk && !forced && !/obrazec|povpra|form|kontakt|inquiry|naročil/i.test(subject)) continue;
           mails.push({ uid: msg.uid, messageId: parsed.messageId || `${business.id}-${msg.uid}`, fromName: from.name || '', fromEmail, subject, text, date: parsed.date || new Date(), forced });
         }
@@ -86,7 +85,6 @@ async function syncOne(base44, business) {
   }
   out.scanned = mails.length;
 
-  // AI razvrščanje v paketih po 10
   const leads = await base44.asServiceRole.entities.Lead.filter({ business_id: business.id });
   const byEmail = new Map(leads.filter((l) => l.email).map((l) => [lower(l.email), l]));
   const seenIds = new Set(leads.map((l) => l.email_message_id).filter(Boolean));
@@ -149,7 +147,6 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const internal = !!INTERNAL_SECRET && body?.internal_secret === INTERNAL_SECRET;
 
-    // Urnik (workflow) teče kot skrbnik aplikacije brez business_id → obdelaj vsa podjetja.
     const user = internal ? null : await base44.auth.me().catch(() => null);
     const scheduled = internal || (user?.role === 'admin' && !body.business_id);
     if (!scheduled) {
@@ -158,10 +155,9 @@ Deno.serve(async (req) => {
       const business = (await base44.asServiceRole.entities.Business.filter({ id: body.business_id }))[0];
       if (!business || !ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.' });
       const r = await syncOne(base44, business);
-      return Response.json(r.error ? { error: r.error, ...r } : { success: true, ...r });
+      return Response.json(r.error ? { ...r, error: r.error } : { ...r, success: true });
     }
 
-    // Urnik: vsa podjetja z vklopljenim branjem pošte
     const all = body.business_id
       ? await base44.asServiceRole.entities.Business.filter({ id: body.business_id })
       : await base44.asServiceRole.entities.Business.filter({ imap_enabled: true });
