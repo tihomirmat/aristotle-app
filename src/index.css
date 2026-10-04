@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,43 +7,48 @@
 @layer base {
   :root {
     --font-inter: 'Inter', sans-serif;
-    --background: 220 20% 97%;
-    --foreground: 224 30% 12%;
+    --font-display: 'Montserrat', 'Inter', sans-serif;
+    /* Spletnost: oranžna #f84214, globoka modra #091f93 / #340698, jantar #ffb50e */
+    --background: 220 33% 97%;
+    --foreground: 230 45% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 224 30% 12%;
+    --card-foreground: 230 45% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 224 30% 12%;
-    --primary: 245 58% 51%;
+    --popover-foreground: 230 45% 10%;
+    --primary: 13 94% 52%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 20% 94%;
-    --secondary-foreground: 224 30% 12%;
-    --muted: 220 16% 93%;
-    --muted-foreground: 220 10% 46%;
-    --accent: 245 58% 95%;
-    --accent-foreground: 245 58% 51%;
+    --secondary: 222 30% 94%;
+    --secondary-foreground: 230 45% 10%;
+    --muted: 222 25% 94%;
+    --muted-foreground: 225 12% 44%;
+    --accent: 13 94% 95%;
+    --accent-foreground: 13 85% 40%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 16% 90%;
-    --input: 220 16% 90%;
-    --ring: 245 58% 51%;
-    --chart-1: 245 58% 51%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 340 75% 55%;
-    --chart-5: 200 70% 50%;
-    --radius: 0.75rem;
-    --sidebar-background: 228 28% 12%;
-    --sidebar-foreground: 220 20% 75%;
-    --sidebar-primary: 245 58% 60%;
+    --border: 222 22% 89%;
+    --input: 222 22% 87%;
+    --ring: 13 94% 52%;
+    --chart-1: 13 94% 52%;
+    --chart-2: 229 88% 31%;
+    --chart-3: 41 100% 53%;
+    --chart-4: 258 92% 31%;
+    --chart-5: 216 80% 48%;
+    --radius: 0.875rem;
+    --sidebar-background: 232 72% 9%;
+    --sidebar-foreground: 228 30% 78%;
+    --sidebar-primary: 13 94% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 228 25% 18%;
+    --sidebar-accent: 232 50% 16%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 228 20% 20%;
-    --sidebar-ring: 245 58% 51%;
-    --success: 152 60% 42%;
+    --sidebar-border: 232 40% 16%;
+    --sidebar-ring: 13 94% 55%;
+    --success: 152 60% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 41 100% 48%;
+    --warning-foreground: 230 45% 10%;
+    --brand-blue: 229 88% 31%;
+    --brand-violet: 258 92% 31%;
+    --brand-amber: 41 100% 53%;
   }
 
   .dark {
@@ -96,4 +101,39 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ─── Spletnost / AI Aristotle vizualni sistem ─────────────────────────── */
+@layer base {
+  h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+  h1 { @apply text-2xl md:text-[1.75rem] font-bold; }
+  body { font-feature-settings: "ss01", "cv11"; }
+}
+
+@layer components {
+  /* Vesoljski gradient za stransko vrstico in hero */
+  .bg-space {
+    background:
+      radial-gradient(60% 50% at 100% 0%, hsl(258 92% 31% / 0.55) 0%, transparent 60%),
+      radial-gradient(50% 40% at 0% 100%, hsl(229 88% 31% / 0.55) 0%, transparent 60%),
+      hsl(var(--sidebar-background));
+  }
+  .bg-space-stars {
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.55) 50%, transparent 51%),
+      radial-gradient(1px 1px at 70% 8%, rgba(255,255,255,.4) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 85% 42%, rgba(255,255,255,.5) 50%, transparent 51%),
+      radial-gradient(1px 1px at 35% 62%, rgba(255,255,255,.35) 50%, transparent 51%),
+      radial-gradient(1px 1px at 55% 88%, rgba(255,255,255,.45) 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 20% 92%, rgba(255,255,255,.3) 50%, transparent 51%);
+  }
+  .card-elevated {
+    @apply bg-card border border-border/70 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,.04),0_8px_24px_-12px_rgba(16,24,40,.12)];
+  }
+  .card-hover { @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_2px_4px_rgba(16,24,40,.06),0_16px_32px_-12px_rgba(16,24,40,.18)]; }
+  .text-gradient-brand {
+    background: linear-gradient(90deg, hsl(13 94% 52%), hsl(41 100% 53%));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .btn-brand { @apply bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_6px_16px_-6px_hsl(13_94%_52%/.6)]; }
 }
