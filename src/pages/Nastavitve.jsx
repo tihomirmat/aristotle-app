@@ -490,7 +490,7 @@ export default function Nastavitve() {
             <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
               <h3 className="font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /> Avtomatski zajem računov (e-pošta)</h3>
               <p className="text-sm text-muted-foreground">
-                Nastavite posredovanje e-pošte na spodnji webhook URL, da sistem samodejno zajame PDF/slike iz prilog. Brez tega nastavite račune ročno na strani Računi.
+                Prejete račune posredujte (ali jih dajte v CC) na spodnji naslov, sistem pa bo samodejno zajel PDF/slike iz prilog. Račune lahko vedno dodate tudi ročno na strani Računi.
               </p>
 
               {invoiceAddress ? (
@@ -504,6 +504,7 @@ export default function Nastavitve() {
                       </Button>
                     </div>
                   </div>
+                  {user?.role === "admin" && (<>
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Webhook URL (usmerite Mailgun Route ali Resend inbound sem):</p>
                     <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-3 py-2 text-xs font-mono break-all">
@@ -519,6 +520,7 @@ export default function Nastavitve() {
                     <p>1. V Resend odprite <em>Inbound → Add endpoint</em> in vnesite webhook URL</p>
                     <p>2. Nastavite svojo domeno, da pošilja e-pošto do <code className="bg-muted px-1 rounded">{invoiceAddress}</code></p>
                   </div>
+                  </>)}
                 </div>
               ) : (
                 <Button variant="outline" size="sm" onClick={generateToken} disabled={saveMutation.isPending}>
