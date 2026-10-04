@@ -8,6 +8,7 @@ import { BookOpen, MessageSquare, Code2, AlertTriangle } from "lucide-react";
 import KnowledgeBaseTab from "@/components/klepet/KnowledgeBaseTab";
 import ConversationsTab from "@/components/klepet/ConversationsTab";
 import EmbedTab from "@/components/klepet/EmbedTab";
+import WebsiteLearnCard from "@/components/klepet/WebsiteLearnCard";
 
 export default function Klepet() {
   const { business } = useBusiness();
@@ -29,15 +30,15 @@ export default function Klepet() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Spletni klepet</h1>
-        <p className="text-muted-foreground mt-1">Upravljajte znanje chatbota, pregledujte pogovore in pridobite embed kodo.</p>
+        <h1>Spletni klepet</h1>
+        <p className="text-muted-foreground mt-1 max-w-2xl">AI klepet na vaši spletni strani odgovarja obiskovalcem 24/7. Kdor pusti kontakt, postane stranka. 1) Naučite ga iz spletne strani, 2) vstavite ga na stran (zavihek Namestitev), 3) spremljajte pogovore.</p>
       </div>
 
       <Tabs defaultValue="kb">
         <TabsList className="mb-6">
           <TabsTrigger value="kb" className="flex items-center gap-2">
             <BookOpen className="w-4 h-4" />
-            Baza znanja
+            Kaj klepet ve
             {docs.length > 0 && <Badge variant="secondary" className="text-xs ml-1">{docs.length}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="convs" className="flex items-center gap-2">
@@ -56,6 +57,7 @@ export default function Klepet() {
         </TabsList>
 
         <TabsContent value="kb">
+          <WebsiteLearnCard docs={docs} />
           <KnowledgeBaseTab businessId={business?.id} />
         </TabsContent>
 
