@@ -208,6 +208,43 @@
     "email_last_health_check_error": {
       "type": "string"
     },
+    "imap_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Branje prejete pošte (povpraševanja iz e-pošte)"
+    },
+    "imap_host": {
+      "type": "string"
+    },
+    "imap_port": {
+      "type": "number",
+      "default": 993
+    },
+    "imap_user": {
+      "type": "string"
+    },
+    "imap_pass": {
+      "type": "string"
+    },
+    "imap_secure": {
+      "type": "boolean",
+      "default": true
+    },
+    "imap_last_uid": {
+      "type": "number",
+      "default": 0
+    },
+    "imap_last_sync_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "imap_last_error": {
+      "type": "string"
+    },
+    "inquiry_rules": {
+      "type": "string",
+      "description": "Neobvezno: pošiljatelji ali zadeve, ki vedno pomenijo povpraševanje (ena na vrstico, npr. obrazec@mojastran.si ali 'Novo povpraševanje')"
+    },
     "google_calendar_connected": {
       "type": "boolean",
       "default": false

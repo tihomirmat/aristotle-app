@@ -20,7 +20,8 @@
         "form",
         "import",
         "chatbot",
-        "manual"
+        "manual",
+        "email"
       ],
       "default": "manual"
     },
@@ -30,7 +31,9 @@
         "new",
         "contacted",
         "replied",
+        "booked",
         "converted",
+        "lost",
         "unsubscribed"
       ],
       "default": "new"
@@ -42,6 +45,22 @@
     "booking_intent": {
       "type": "boolean",
       "default": false
+    },
+    "email_subject": {
+      "type": "string",
+      "description": "Zadeva zadnjega prejetega e-sporočila (vir email)"
+    },
+    "email_message_id": {
+      "type": "string",
+      "description": "Message-ID zadnjega prejetega e-sporočila (dedupe)"
+    },
+    "last_inbound_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Kdaj je stranka nazadnje pisala"
+    },
+    "service_requested": {
+      "type": "string"
     },
     "tags": {
       "type": "array",
