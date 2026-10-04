@@ -27,6 +27,7 @@ import PonudbeNova from '@/pages/PonudbeNova';
 import PonudbeTemplate from '@/pages/PonudbeTemplate';
 import PonudbeNastavitve from '@/pages/PonudbeNastavitve';
 import { Navigate } from 'react-router-dom';
+import { Zasebnost, Pogoji } from '@/pages/Pravno';
 
 // Admin strani so dostopne samo uporabnikom z vlogo admin (prej: samo skrite v meniju, URL je bil odprt)
 const AdminOnly = ({ children }) => {
@@ -121,7 +122,12 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <AuthenticatedApp />
+          <Routes>
+            {/* Javni pravni strani brez prijave (potrebni za Google verifikacijo in prodajo) */}
+            <Route path="/zasebnost" element={<Zasebnost />} />
+            <Route path="/pogoji" element={<Pogoji />} />
+            <Route path="*" element={<AuthenticatedApp />} />
+          </Routes>
         </Router>
         <Toaster />
         <SonnerToaster position="bottom-right" richColors />
