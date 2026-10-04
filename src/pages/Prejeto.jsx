@@ -7,41 +7,44 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, X, Pencil, Mail, Loader2, Inbox, Sparkles, AlertTriangle } from "lucide-react";
+import { CheckCircle2, X, Pencil, Mail, Loader2, Inbox, Send, Clock, Globe, MessageSquare, Star, RotateCcw, CalendarDays, Bot, ShieldCheck } from "lucide-react";
 import StatusBanner from "@/components/ui/StatusBanner";
 import { format } from "date-fns";
-import DemoMessageModal from "@/components/prejeto/DemoMessageModal";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import GenerateDraftButton from "@/components/prejeto/GenerateDraftButton";
+import { Link } from "react-router-dom";
 
-const PILLAR_LABELS = {
-  reactivation: "Reaktivacija",
-  review_request: "Prošnja za oceno",
-  review_response: "Odgovor na oceno",
-  referral_ask: "Napotitev",
-  web_form_lead: "Spletni obrazec",
-  chatbot_handoff: "Klepet",
-  assistant_action: "Asistent",
-  booking_proposal: "Predlog termina",
-  booking_confirmation: "Potrditev termina",
+// Zakaj je sporočilo nastalo — v jeziku stranke, ne v žargonu modulov.
+const REASONS = {
+  web_form_lead: { label: "Novo povpraševanje", why: "Stranka je izpolnila spletni obrazec. AI je pripravil prvi odgovor.", icon: Globe, color: "bg-emerald-100 text-emerald-700" },
+  chatbot_handoff: { label: "Iz spletnega klepeta", why: "Stranka je v klepetu pustila kontakt. AI je pripravil nadaljevanje.", icon: MessageSquare, color: "bg-violet-100 text-violet-700" },
+  reactivation: { label: "Stara stranka", why: "S to stranko niste bili v stiku 30 dni ali več. AI jo vljudno povabi nazaj.", icon: RotateCcw, color: "bg-blue-100 text-blue-700" },
+  review_request: { label: "Prošnja za oceno", why: "Storitev je zaključena. AI prosi stranko za Google oceno.", icon: Star, color: "bg-amber-100 text-amber-700" },
+  review_response: { label: "Odgovor na oceno", why: "Stranka je pustila oceno. AI je pripravil odgovor.", icon: Star, color: "bg-amber-100 text-amber-700" },
+  referral_ask: { label: "Prošnja za priporočilo", why: "Zadovoljna stranka. AI jo prosi, da vas priporoči naprej.", icon: Star, color: "bg-amber-100 text-amber-700" },
+  booking_proposal: { label: "Predlog termina", why: "Stranka želi termin. AI je iz koledarja izbral proste termine.", icon: CalendarDays, color: "bg-rose-100 text-rose-700" },
+  booking_confirmation: { label: "Potrditev termina", why: "Termin je potrjen. AI je pripravil potrditev.", icon: CalendarDays, color: "bg-rose-100 text-rose-700" },
+  assistant_action: { label: "Predlog asistenta", why: "Asistent je predlagal to sporočilo.", icon: Bot, color: "bg-slate-100 text-slate-700" },
 };
+const reasonFor = (p) => REASONS[p] || { label: p || "Sporočilo", why: "AI je pripravil to sporočilo.", icon: Mail, color: "bg-slate-100 text-slate-700" };
+
+const TABS = [
+  { key: "pending", label: "Čaka na vas" },
+  { key: "sent", label: "Poslano" },
+  { key: "skipped", label: "Zavrnjeno" },
+];
 
 export default function Prejeto() {
   const { business } = useBusiness();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [showDemo, setShowDemo] = useState(false);
-  const [showHowAI, setShowHowAI] = useState(false);
+  const [tab, setTab] = useState("pending");
 
-  const { data: drafts = [], isLoading } = useQuery({
-    queryKey: ["drafts-pending", business?.id],
-    // Prikažemo čakajoče IN označene za pregled (quality_score < 6) — slednji prej niso bili vidni nikjer v UI.
+  const { data: allDrafts = [], isLoading } = useQuery({
+    queryKey: ["drafts-all", business?.id],
     queryFn: async () => {
       const all = await base44.entities.DraftMessage.filter({ business_id: business.id });
-      return all
-        .filter((d) => d.status === "pending" || d.status === "flagged_for_review")
-        .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+      return all.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
     },
     enabled: !!business?.id,
   });
@@ -51,163 +54,167 @@ export default function Prejeto() {
     queryFn: () => base44.entities.Lead.filter({ business_id: business.id }),
     enabled: !!business?.id,
   });
-
   const leadsMap = Object.fromEntries(leads.map((l) => [l.id, l]));
+
+  const pending = allDrafts.filter((d) => d.status === "pending" || d.status === "flagged_for_review");
+  const sent = allDrafts.filter((d) => d.status === "sent" || d.status === "approved");
+  const skipped = allDrafts.filter((d) => d.status === "skipped" || d.status === "failed");
+  const lists = { pending, sent, skipped };
+  const drafts = lists[tab];
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.DraftMessage.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["drafts-pending", business?.id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["drafts-all", business?.id] });
+      queryClient.invalidateQueries({ queryKey: ["drafts-sidebar", business?.id] });
+      queryClient.invalidateQueries({ queryKey: ["drafts", business?.id] });
+    },
   });
 
   const approve = (msg) => updateMutation.mutate({ id: msg.id, data: { status: "approved" } });
   const skip = (msg) => updateMutation.mutate({ id: msg.id, data: { status: "skipped" } });
-  const saveEdit = (msg) => {
-    updateMutation.mutate({ id: msg.id, data: { ...editForm, status: "approved" } });
-    setEditing(null);
-  };
-
-  const startEdit = (msg) => {
-    setEditing(msg.id);
-    setEditForm({ subject: msg.subject || "", body: msg.body || "" });
-  };
+  const saveEdit = (msg) => { updateMutation.mutate({ id: msg.id, data: { ...editForm, status: "approved" } }); setEditing(null); };
+  const startEdit = (msg) => { setEditing(msg.id); setEditForm({ subject: msg.subject || "", body: msg.body || "" }); };
 
   if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
 
   const trialSendsOut = business?.subscription_status === "trialing" && (business?.trial_sends_remaining ?? 20) <= 0;
-  const noEmailProvider = !business?.email_provider && !business?.gmail_access_token && !business?.outlook_access_token && !business?.smtp_host;
   const smtpIncomplete = business?.email_provider === "smtp" && !(business?.smtp_host && business?.smtp_user);
+  const fromAddress = business?.smtp_from_email || business?.gmail_email || business?.outlook_email || null;
+  const autoMode = business?.draft_mode === false;
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Prejeto</h1>
-        <p className="text-muted-foreground mt-1">Sporočila, ki čakajo na vašo odobritev pred pošiljanjem.</p>
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold">Za odobritev</h1>
+          <p className="text-muted-foreground mt-1 max-w-2xl">
+            AI pripravi sporočila vašim strankam. Nič se ne pošlje, dokler ne kliknete <strong>Odobri in pošlji</strong>.
+            {autoMode && " Samodejno pošiljanje je vklopljeno: sporočila z visoko oceno kakovosti gredo brez vas."}
+          </p>
+        </div>
+        <GenerateDraftButton />
       </div>
 
       {trialSendsOut && (
-        <StatusBanner variant="warning" message="Porabili ste vse brezplačne pošiljke preizkusa. Odobritev bo shranjena, a sporočila ne bodo poslana, dokler ne aktivirate naročnine." action={{ label: "Aktiviraj", href: "/nastavitve?tab=billing" }} />
-      )}
-      {noEmailProvider && (
-        <StatusBanner variant="info" message="E-pošta ni nastavljena — sporočila se pošiljajo prek platformskega pošiljatelja AI Aristotle. Za pošiljanje z vašega naslova povežite SMTP v Nastavitvah." action={{ label: "Nastavi", href: "/nastavitve?tab=integracije" }} />
+        <StatusBanner variant="warning" message="Porabili ste vse brezplačne pošiljke preizkusa. Odobritev bo shranjena, sporočila pa bodo poslana po aktivaciji naročnine." action={{ label: "Aktiviraj", href: "/nastavitve?tab=billing" }} />
       )}
       {smtpIncomplete && (
-        <StatusBanner variant="warning" message="SMTP ni v celoti nastavljen (strežnik, uporabnik, geslo) — do dopolnitve se sporočila pošiljajo prek platformskega pošiljatelja." action={{ label: "Dopolni", href: "/nastavitve?tab=integracije" }} />
+        <StatusBanner variant="warning" message="Pošiljanje z vašega naslova še ni nastavljeno. Do takrat sporočila pošilja AI Aristotle v vašem imenu." action={{ label: "Nastavi", href: "/nastavitve?tab=integracije" }} />
       )}
-      <DemoMessageModal open={showDemo} onOpenChange={setShowDemo} />
 
-      <Dialog open={showHowAI} onOpenChange={setShowHowAI}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /> Kako AI ustvarja sporočila?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 text-sm text-muted-foreground">
-            <p>AI analizira podatke vaših strank in samodejno pripravi personalizirana sporočila za različne scenarije:</p>
-            <ul className="space-y-2 list-none">
-              {[
-                { icon: "🔁", title: "Reaktivacija", desc: "Stranke, ki niso obiskale vašega podjetja dlje časa, prejmejo prijazen opomnik." },
-                { icon: "⭐", title: "Prošnja za oceno", desc: "Po zaključeni storitvi AI predlaga e-pošto, ki stranko povabi k pisanju Google ocene." },
-                { icon: "📅", title: "Predlog termina", desc: "Ko stranka izrazi zanimanje za storitev, AI pripravi sporočilo s predlogom terminov." },
-                { icon: "💬", title: "Klepet", desc: "Ko chatbot prepozna potencialno stranko, AI pripravi nadaljnje sporočilo za osebni stik." },
-              ].map((item) => (
-                <li key={item.title} className="flex gap-3 bg-muted/50 rounded-lg p-3">
-                  <span className="text-lg">{item.icon}</span>
-                  <div><p className="font-medium text-foreground">{item.title}</p><p>{item.desc}</p></div>
-                </li>
-              ))}
-            </ul>
-            <div className="bg-accent rounded-lg p-4 border border-primary/20">
-              <p className="font-semibold text-foreground mb-1">Primer AI sporočila — Reaktivacija</p>
-              <p className="italic text-xs leading-relaxed">"Pozdravljeni Ana, v Studio vas že dolgo nismo videli! 😊 Ker cenimo vaše zaupanje, smo za vas pripravili posebno ponudbo. Rezervirajte termin do konca meseca in prihranite. Veselimo se vašega obiska!"</p>
-            </div>
-            <p className="text-xs">Vsako sporočilo <strong className="text-foreground">najprej pregledate vi</strong> — AI ga nikoli ne pošlje brez vaše odobritve.</p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <div className="flex gap-1 mb-5 border-b">
+        {TABS.map((t) => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t.key ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+            {t.label} <span className="ml-1 text-xs text-muted-foreground">{lists[t.key].length}</span>
+          </button>
+        ))}
+      </div>
 
       {drafts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="flex flex-col items-center justify-center py-20 text-center max-w-md mx-auto">
           <Inbox className="w-12 h-12 text-muted-foreground/40 mb-4" />
-          <p className="font-medium text-muted-foreground">Ni sporočil za pregled.</p>
-          <p className="text-sm text-muted-foreground mt-1 mb-5">Ko AI pripravi nova sporočila, se bodo pojavila tukaj.</p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setShowDemo(true)}>
-              <Mail className="w-4 h-4 mr-2" /> Glej primer sporočila
-            </Button>
-            <Button variant="outline" onClick={() => setShowHowAI(true)}>
-              <Sparkles className="w-4 h-4 mr-2" /> Glej kako AI ustvarja sporočila
-            </Button>
-          </div>
+          {tab === "pending" ? (
+            <>
+              <p className="font-medium">Trenutno ni ničesar za odobritev.</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Sporočila se tukaj pojavijo samodejno, ko nova stranka izpolni <Link to="/pridobivanje" className="underline">spletni obrazec</Link>,
+                pusti kontakt v <Link to="/klepet" className="underline">spletnem klepetu</Link>, ko zaključite storitev (prošnja za oceno)
+                ali ko na Pregledu zaženete <Link to="/" className="underline">vračanje starih strank</Link>.
+              </p>
+            </>
+          ) : tab === "sent" ? (
+            <p className="font-medium text-muted-foreground">Še ni poslanih sporočil.</p>
+          ) : (
+            <p className="font-medium text-muted-foreground">Ni zavrnjenih sporočil.</p>
+          )}
         </div>
       ) : (
-        <><div className="flex justify-end gap-2 mb-4">
-          <GenerateDraftButton />
-          <Button variant="outline" size="sm" onClick={() => setShowHowAI(true)}>
-            <Sparkles className="w-4 h-4 mr-2" /> Kako AI ustvarja sporočila
-          </Button>
-        </div>
         <div className="space-y-4">
           {drafts.map((msg) => {
             const lead = leadsMap[msg.lead_id];
             const isEditing = editing === msg.id;
+            const r = reasonFor(msg.pillar);
+            const RIcon = r.icon;
+            const lowQuality = msg.status === "flagged_for_review";
 
             return (
-              <div key={msg.id} className="bg-card border rounded-xl p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className="text-xs">{PILLAR_LABELS[msg.pillar] || msg.pillar}</Badge>
-                    <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                      <Mail className="w-3 h-3" /> E-pošta
-                    </Badge>
-                    {msg.status === "flagged_for_review" && (
-                      <Badge className="text-xs bg-orange-100 text-orange-700 border-0">Za pregled{msg.quality_score ? ` · Q${msg.quality_score}` : ""}</Badge>
-                    )}
-                    {lead && <span className="text-sm font-medium text-foreground">→ {lead.name}</span>}
-                    {msg.scheduled_at && (
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(msg.scheduled_at), "d. M. yyyy HH:mm")}
-                      </span>
-                    )}
-                  </div>
+              <div key={msg.id} className="bg-card border rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-3 bg-muted/40 border-b flex items-center gap-3 flex-wrap">
+                  <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${r.color}`}>
+                    <RIcon className="w-3.5 h-3.5" /> {r.label}
+                  </span>
+                  <span className="text-sm">
+                    Za: <strong>{lead?.name || "neznana stranka"}</strong>
+                    {lead?.email && <span className="text-muted-foreground"> · {lead.email}</span>}
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> {msg.created_date ? format(new Date(msg.created_date), "d. M. yyyy HH:mm") : ""}
+                  </span>
                 </div>
 
-                {isEditing ? (
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Zadeva</Label>
-                      <Input value={editForm.subject} onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })} />
+                <div className="px-5 py-4">
+                  <p className="text-xs text-muted-foreground mb-3">{r.why}</p>
+                  {lowQuality && (
+                    <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-3 py-2 mb-3 flex items-start gap-2">
+                      <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>Preverjanje kakovosti je dalo oceno {msg.quality_score ?? "?"}/10. Pred pošiljanjem ga preberite ali uredite.{msg.reviewer_notes ? ` Opomba: ${msg.reviewer_notes}` : ""}</span>
+                    </p>
+                  )}
+
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Zadeva</Label>
+                        <Input value={editForm.subject} onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Vsebina</Label>
+                        <Textarea value={editForm.body} onChange={(e) => setEditForm({ ...editForm, body: e.target.value })} className="h-48" />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => saveEdit(msg)} disabled={updateMutation.isPending}>
+                          <Send className="w-4 h-4 mr-1" /> Shrani in pošlji
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditing(null)}>Prekliči</Button>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Vsebina</Label>
-                      <Textarea value={editForm.body} onChange={(e) => setEditForm({ ...editForm, body: e.target.value })} className="h-40" />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => saveEdit(msg)} disabled={updateMutation.isPending}>
-                        <CheckCircle2 className="w-4 h-4 mr-1" /> Shrani in odobri
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setEditing(null)}>Prekliči</Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {msg.subject && <p className="text-sm font-semibold mb-1">{msg.subject}</p>}
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{msg.body}</p>
-                    <div className="flex gap-2 mt-4">
-                      <Button size="sm" onClick={() => approve(msg)} disabled={updateMutation.isPending}>
-                        <CheckCircle2 className="w-4 h-4 mr-1" /> Odobri
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => startEdit(msg)}>
-                        <Pencil className="w-4 h-4 mr-1" /> Uredi
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => skip(msg)} disabled={updateMutation.isPending}>
-                        <X className="w-4 h-4 mr-1" /> Preskoči
-                      </Button>
-                    </div>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      {msg.subject && <p className="text-sm font-semibold mb-2">{msg.subject}</p>}
+                      <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">{msg.body}</p>
+
+                      {tab === "pending" ? (
+                        <div className="flex items-center gap-2 mt-5 flex-wrap">
+                          <Button size="sm" onClick={() => approve(msg)} disabled={updateMutation.isPending}>
+                            <Send className="w-4 h-4 mr-1" /> Odobri in pošlji
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => startEdit(msg)}>
+                            <Pencil className="w-4 h-4 mr-1" /> Uredi
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => skip(msg)} disabled={updateMutation.isPending}>
+                            <X className="w-4 h-4 mr-1" /> Ne pošlji
+                          </Button>
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            Pošlje se na {lead?.email || "e-naslov stranke"}{fromAddress ? ` z naslova ${fromAddress}` : ""}.
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="mt-4 text-xs text-muted-foreground flex items-center gap-2">
+                          {msg.status === "sent" && <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Poslano {msg.sent_at ? format(new Date(msg.sent_at), "d. M. yyyy HH:mm") : ""}</>}
+                          {msg.status === "approved" && <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Odobreno, pošiljanje v teku</>}
+                          {msg.status === "skipped" && <><X className="w-3.5 h-3.5" /> Niste poslali</>}
+                          {msg.status === "failed" && <><X className="w-3.5 h-3.5 text-red-600" /> Pošiljanje ni uspelo{msg.reviewer_notes ? `: ${msg.reviewer_notes}` : ""}</>}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             );
           })}
-        </div></>
+        </div>
       )}
     </div>
   );
