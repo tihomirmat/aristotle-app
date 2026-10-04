@@ -23,6 +23,8 @@ function redirect(path: string) {
 
 Deno.serve(async (req) => {
   try {
+    // GET: povratni klic Googla. Brskalnik tu ne pošlje prijave v aplikacijo, zato
+    // varnost zagotavlja podpisan in časovno omejen state (izda ga samo prijavljen lastnik prek POST start).
     if (req.method === 'GET') {
       const url = new URL(req.url);
       const code = url.searchParams.get('code');
@@ -35,10 +37,8 @@ Deno.serve(async (req) => {
       if (!businessId) return redirect('/nastavitve?tab=termini&gcal=error');
 
       const base44 = createClientFromRequest(req);
-      const user = await base44.auth.me();
-      if (!user) return redirect('/nastavitve?tab=termini&gcal=error');
       const business = (await base44.asServiceRole.entities.Business.filter({ id: businessId }))[0];
-      if (!business || !ownsBusiness(user, business)) return redirect('/nastavitve?tab=termini&gcal=error');
+      if (!business) return redirect('/nastavitve?tab=termini&gcal=error');
 
       const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
       const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
     if (!clientId || !clientSecret) {
       return Response.json({
-        error: 'Google OAuth skrivnosti niso nastavljene. Lastnik naj v Dashboard → Secrets doda GOOGLE_CLIENT_ID in GOOGLE_CLIENT_SECRET.',
+        error: 'Povezava z Google Koledarjem trenutno ni na voljo. Poskusite znova pozneje.',
         code: 'MISSING_SECRETS',
       }, { status: 200 });
     }
