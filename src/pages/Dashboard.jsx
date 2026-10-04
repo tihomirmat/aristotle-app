@@ -4,20 +4,11 @@ import { base44 } from "@/api/base44Client";
 import { useBusiness } from "@/lib/business-context";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mail, Star, Globe, MessageSquare, Bot, FileSignature, ArrowRight, Users, UserPlus, Calendar, CheckCircle2, Circle, Inbox } from "lucide-react";
+import { Mail, Star, MessageSquare, FileSignature, ArrowRight, Users, UserPlus, Calendar, CheckCircle2, Circle, Inbox, Send, RotateCcw } from "lucide-react";
 import ReactivationPanel from "@/components/dashboard/ReactivationPanel";
-import { hasModule } from "@/lib/entitlements";
 import TrialBanner from "@/components/dashboard/TrialBanner";
 import StatusBanner from "@/components/ui/StatusBanner";
 
-const MODULES = [
-  { key: "pillar_leads", label: "Nova povpraševanja", desc: "Obrazec za vašo spletno stran. Vsaka nova stranka v nekaj minutah dobi oseben odgovor, ki ga vi samo odobrite.", icon: Globe, tone: "from-emerald-500 to-teal-400", href: "/pridobivanje" },
-  { key: "pillar_chatbot", label: "Spletni klepet", desc: "AI odgovarja obiskovalcem vaše spletne strani 24/7 in vam preda tiste, ki pustijo kontakt.", icon: MessageSquare, tone: "from-violet-600 to-indigo-500", href: "/klepet" },
-  { key: "pillar_reactivation", label: "Vrnite stare stranke", desc: "Strankam, ki jih dolgo ni bilo, AI napiše osebno vabilo. Vi pregledate in pošljete z enim klikom.", icon: Mail, tone: "from-blue-700 to-blue-500", href: "/prejeto" },
-  { key: "pillar_reviews", label: "Google ocene", desc: "Po opravljeni storitvi AI prosi stranko za Google oceno in za priporočilo prijateljem.", icon: Star, tone: "from-amber-500 to-orange-400", href: "/ocene" },
-  { key: "pillar_assistant", label: "Asistent", desc: "Dnevni pregled: kaj vas čaka, kateri termini so odprti, komu morate odgovoriti.", icon: Bot, tone: "from-rose-600 to-orange-500", href: "/asistent" },
-  { key: "pillar_offers", label: "Ponudbe", desc: "Iz vaše obstoječe ponudbe naredi predlogo; nova ponudba v PDF je pripravljena v nekaj minutah.", icon: FileSignature, tone: "from-slate-700 to-slate-500", href: "/ponudbe" },
-];
 
 const greeting = () => { const h = new Date().getHours(); return h < 10 ? "Dobro jutro" : h < 18 ? "Dober dan" : "Dober večer"; };
 
@@ -40,6 +31,27 @@ export default function Dashboard() {
     enabled: !!business?.id,
   });
 
+  const { data: convs = [] } = useQuery({
+    queryKey: ["convs_dash", business?.id],
+    queryFn: () => base44.entities.ChatbotConversation.filter({ business_id: business.id }),
+    enabled: !!business?.id,
+  });
+  const { data: kb = [] } = useQuery({
+    queryKey: ["kb_dash", business?.id],
+    queryFn: () => base44.entities.KnowledgeBase.filter({ business_id: business.id }),
+    enabled: !!business?.id,
+  });
+  const { data: offers = [] } = useQuery({
+    queryKey: ["offers_dash", business?.id],
+    queryFn: () => base44.entities.OfferGeneration.filter({ business_id: business.id }),
+    enabled: !!business?.id,
+  });
+  const { data: allDrafts = [] } = useQuery({
+    queryKey: ["drafts-all", business?.id],
+    queryFn: () => base44.entities.DraftMessage.filter({ business_id: business.id }),
+    enabled: !!business?.id,
+  });
+
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7);
@@ -52,8 +64,8 @@ export default function Dashboard() {
   const setup = [
     { done: !!business?.website && !!business?.services, label: "Profil podjetja", hint: "Ime, storitve, spletna stran — iz tega AI piše sporočila.", href: "/nastavitve?tab=profil" },
     { done: !!business?.brand_voice, label: "Glas znamke", hint: "Kako naj zvenijo vaša sporočila.", href: "/nastavitve?tab=glas" },
-    { done: !!emailReady, label: "Pošiljanje z vašega naslova", hint: "Da sporočila pridejo z vašega e-naslova, ne od nas.", href: "/nastavitve?tab=integracije" },
-    { done: leads.length > 0, label: "Obrazec na spletni strani", hint: "Vstavite obrazec ali klepet; prvo povpraševanje to označi.", href: "/pridobivanje" },
+    { done: !!business?.imap_enabled, label: "E-poštni predal", hint: "AI najde povpraševanja v vaši pošti in odgovarja z vašega naslova.", href: "/nastavitve?tab=integracije" },
+    { done: leads.some((l) => l.source === "form" || l.source === "chatbot"), label: "Obrazec ali klepet na strani", hint: "Da tudi obiskovalci spletne strani postanejo stranke.", href: "/stranke?tab=viri" },
     { done: !!business?.google_calendar_connected, label: "Google Koledar", hint: "Asistent predlaga proste termine.", href: "/nastavitve?tab=termini" },
   ];
   const setupDone = setup.filter((s) => s.done).length;
@@ -67,6 +79,32 @@ export default function Dashboard() {
     { label: "Nova povpraševanja ta mesec", value: leadsThisMonth, sub: "iz obrazca in klepeta", icon: UserPlus },
     { label: "Za odobritev", value: drafts.length, sub: drafts.length > 0 ? "čakajo na vaš klik" : "nič ne čaka", icon: Inbox, href: "/prejeto", highlight: drafts.length > 0 },
     { label: "Termini ta teden", value: bookingsThisWeek, sub: business?.google_calendar_connected ? "iz Google Koledarja" : "koledar ni povezan", icon: Calendar },
+  ];
+
+  const monthAgo = new Date(); monthAgo.setDate(now.getDate() - 30);
+  const sentThisWeek = allDrafts.filter((d) => d.status === "sent" && d.sent_at && new Date(d.sent_at) >= weekAgo);
+  const convsThisWeek = convs.filter((c) => new Date(c.started_at || c.created_date) >= weekAgo).length;
+  const dormant = leads.filter((l) => l.email && l.consent_email && !["unsubscribed", "converted", "lost"].includes(l.status) && (!l.last_contacted_at || new Date(l.last_contacted_at) <= monthAgo)).length;
+  const reviewsSent = allDrafts.filter((d) => d.pillar === "review_request" && d.status === "sent").length;
+  const statusCards = [
+    { title: "Povpraševanja iz e-pošte", icon: Mail, tone: "from-primary to-[hsl(41,100%,53%)]", href: business?.imap_enabled ? "/stranke" : "/nastavitve?tab=integracije",
+      ok: !!business?.imap_enabled, state: business?.imap_enabled ? (business?.imap_last_error ? "Napaka pri branju pošte" : "Predal povezan, berem vsakih 10 min") : "Predal ni povezan",
+      metric: leads.filter((l) => l.source === "email" && new Date(l.created_date) >= weekAgo).length, metricLabel: "novih iz pošte ta teden", cta: business?.imap_enabled ? "Odpri stranke" : "Poveži predal" },
+    { title: "Spletni klepet", icon: MessageSquare, tone: "from-violet-600 to-indigo-500", href: "/klepet",
+      ok: kb.length > 0 && convs.length > 0, state: kb.length === 0 ? "Klepet še ne pozna vašega podjetja" : convs.length === 0 ? "Še ni vstavljen na spletno stran" : "Deluje",
+      metric: convsThisWeek, metricLabel: "pogovorov ta teden", cta: kb.length === 0 ? "Naučite ga iz spletne strani" : "Odpri klepet" },
+    { title: "Odgovori strankam", icon: Send, tone: "from-emerald-500 to-teal-400", href: "/prejeto",
+      ok: drafts.length === 0, state: drafts.length > 0 ? `${drafts.length} čaka na vašo odobritev` : "Nič ne čaka",
+      metric: sentThisWeek.length, metricLabel: "poslanih ta teden", cta: drafts.length > 0 ? "Preglej in pošlji" : "Odpri" },
+    { title: "Vrnite stare stranke", icon: RotateCcw, tone: "from-blue-700 to-blue-500", href: "/stranke",
+      ok: dormant === 0, state: dormant > 0 ? "Gumb »Vrnite stare stranke« zgoraj" : "Ni strank za vabilo",
+      metric: dormant, metricLabel: "strank brez stika 30+ dni", cta: "Poglej stranke" },
+    { title: "Google ocene", icon: Star, tone: "from-amber-500 to-orange-400", href: "/ocene",
+      ok: !!business?.google_review_link, state: business?.google_review_link ? "Prošnje gredo po vsaki zaključeni storitvi" : "Dodajte povezavo za ocene",
+      metric: reviewsSent, metricLabel: "poslanih prošenj za oceno", cta: business?.google_review_link ? "Odpri ocene" : "Dodaj povezavo" },
+    { title: "Ponudbe", icon: FileSignature, tone: "from-slate-700 to-slate-500", href: "/ponudbe",
+      ok: offers.length > 0, state: offers.length > 0 ? "V uporabi" : "Pripravite prvo ponudbo",
+      metric: offers.length, metricLabel: "pripravljenih ponudb", cta: "Nova ponudba" },
   ];
 
   const firstName = (user?.full_name || "").split(" ")[0];
@@ -146,25 +184,24 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Moduli */}
+      {/* Kaj se dogaja — stanje vsakega dela aplikacije */}
       <div>
-        <h2 className="text-lg mb-3">Kaj AI Aristotle dela za vas</h2>
+        <h2 className="text-lg mb-3">Kaj se dogaja</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {MODULES.map((m) => {
-            const enabled = hasModule(business, m.key);
-            const Icon = m.icon;
+          {statusCards.map((c) => {
+            const Icon = c.icon;
             return (
-              <Link key={m.key} to={enabled ? m.href : "/nastavitve?tab=billing"} className={`card-elevated card-hover p-5 flex flex-col ${!enabled ? "opacity-70" : ""}`}>
+              <Link key={c.title} to={c.href} className="card-elevated card-hover p-5 flex flex-col">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${m.tone} flex items-center justify-center shrink-0 shadow-sm`}>
-                    <Icon className="w-[18px] h-[18px] text-white" />
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${c.tone} flex items-center justify-center shrink-0`}><Icon className="w-[18px] h-[18px] text-white" /></div>
+                  <div className="min-w-0">
+                    <h3 className="text-[15px] font-semibold">{c.title}</h3>
+                    <p className={`text-xs mt-0.5 ${c.ok ? "text-emerald-700" : "text-amber-700"}`}>{c.state}</p>
                   </div>
-                  <h3 className="text-[15px] font-semibold">{m.label}</h3>
                 </div>
-                <p className="text-sm text-muted-foreground mt-3 flex-1">{m.desc}</p>
-                <p className={`text-sm font-medium mt-4 inline-flex items-center gap-1 ${enabled ? "text-primary" : "text-amber-700"}`}>
-                  {enabled ? "Odpri" : "Ni v naročnini"} <ArrowRight className="w-3.5 h-3.5" />
-                </p>
+                <p className="font-display text-2xl font-bold mt-4">{c.metric}</p>
+                <p className="text-xs text-muted-foreground">{c.metricLabel}</p>
+                <p className="text-sm font-medium mt-4 text-primary inline-flex items-center gap-1">{c.cta} <ArrowRight className="w-3.5 h-3.5" /></p>
               </Link>
             );
           })}
