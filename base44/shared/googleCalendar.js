@@ -13,9 +13,18 @@ const EVENTS_URL = (cal) => `https://www.googleapis.com/calendar/v3/calendars/${
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 
 async function getKey() {
-  const b64 = Deno.env.get('GOOGLE_TOKEN_ENCRYPTION_KEY');
+  let b64 = (Deno.env.get('GOOGLE_TOKEN_ENCRYPTION_KEY') || '').trim().replace(/\s+/g, '');
   if (!b64) throw new Error('GOOGLE_TOKEN_ENCRYPTION_KEY ni nastavljen');
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  // Podpora base64url (- _ → + /) in manjkajočemu paddingu
+  b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4 !== 0) b64 += '=';
+  // Če še vedno ni veljaven base64, izpelji 32-bajtni ključ iz SHA-256(vrednost)
+  try {
+    return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  } catch {
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(b64));
+    return new Uint8Array(hash).slice(0, 32);
+  }
 }
 
 export async function encryptToken(plaintext) {
