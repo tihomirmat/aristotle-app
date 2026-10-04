@@ -1,7 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// Completes onboarding for a new user: creates the Business + seeds the Knowledge Base.
-// Runs asServiceRole so entity RLS cannot block first-time signups.
+// Zaključi onboarding: ustvari Business + bazo znanja (service role, da RLS ne blokira novih uporabnikov).
 
 Deno.serve(async (req) => {
   try {
@@ -12,9 +11,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { form } = body;
     if (!form?.name?.trim()) return Response.json({ error: 'Ime podjetja je obvezno' }, { status: 400 });
-    if (!form.gdpr_confirmed) return Response.json({ error: 'GDPR soglasje je obvezno' }, { status: 400 });
+    if (!form.gdpr_confirmed) return Response.json({ error: 'GDPR soglašje je obvezno' }, { status: 400 });
 
-    // Guard: one business per user (avoid duplicates on double-click/retry)
     const [byOwner, byCreator] = await Promise.all([
       base44.asServiceRole.entities.Business.filter({ owner_email: user.email, is_demo: false }),
       base44.asServiceRole.entities.Business.filter({ created_by: user.email, is_demo: false }),
@@ -24,7 +22,8 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, business_id: existing[0].id, already_exists: true });
     }
 
-    const industryVal = form.industry_template === 'other2' ? 'other' : (form.industry_template || 'other');
+    const allowed = ['gym', 'dental_medspa', 'home_services', 'restaurant', 'salon_barber', 'auto', 'other'];
+    const industryVal = allowed.includes(form.industry_template) ? form.industry_template : 'other';
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
     const business = await base44.asServiceRole.entities.Business.create({
@@ -61,10 +60,10 @@ Deno.serve(async (req) => {
       review_requests_enabled: true,
       review_request_delay_hours: 24,
       created_by: user.email,
-      owner_email: user.email, // owner visibility via RLS data.owner_email
+      owner_email: user.email,
     });
 
-    // Baza znanja: iz skenirane spletne strani (brez izmišljenih podatkov); sicer samo kontakt in storitve, ki jih je vnesel uporabnik.
+    // Baza znanja: iz skenirane spletne strani (brez izmišljenih podatkov); sicer samo to, kar je vnesel uporabnik.
     const kb = (title, content, category) =>
       base44.asServiceRole.entities.KnowledgeBase.create({
         business_id: business.id, title, content, category, active: true, created_by: user.email, owner_email: user.email,
