@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       return Response.json({
         error: 'Google OAuth skrivnosti niso nastavljene. Lastnik naj v Dashboard → Secrets doda GOOGLE_CLIENT_ID in GOOGLE_CLIENT_SECRET.',
         code: 'MISSING_SECRETS',
-      }, { status: 500 });
+      }, { status: 200 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
         client_id: clientId,
         redirect_uri: REDIRECT_URI,
         response_type: 'code',
-        scope: SCOPES.join(' '),
+        scope: [...SCOPES, 'https://www.googleapis.com/auth/userinfo.email'].join(' '),
         access_type: 'offline',
         prompt: 'consent',
         state,
@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ error: 'Neznana akcija' }, { status: 400 });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    // Status 200 z napako v telesu, da UI prikaže pravi vzrok namesto splošnega 500.
+    return Response.json({ error: 'Napaka na strežniku: ' + (error?.message || String(error)) }, { status: 200 });
   }
 });
