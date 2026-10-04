@@ -32,13 +32,13 @@ export default function Sidebar({ collapsed, setCollapsed }) {
 
   const navItems = [
     { path: "/", label: "Pregled", icon: LayoutDashboard, locked: false },
-    { path: "/prejeto", label: "Prejeto", icon: Inbox, locked: false, badge: pendingCount > 0 ? pendingCount : null },
+    { path: "/prejeto", label: "Za odobritev", icon: Inbox, locked: false, badge: pendingCount > 0 ? pendingCount : null },
     { path: "/stranke", label: "Stranke", icon: Users, locked: false },
-    { path: "/pridobivanje", label: "Pridobivanje strank", icon: Globe, locked: !hasModule(business, "pillar_leads"), lockDesc: "Aktivirajte modul Pridobivanje strank v Naročnini." },
-    { path: "/klepet", label: "Klepetalni pomočnik", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "Aktivirajte modul Klepetalni pomočnik v Naročnini." },
-    { path: "/asistent", label: "Asistent", icon: Bot, locked: !hasModule(business, "pillar_assistant"), lockDesc: "Aktivirajte modul Osebni asistent v Naročnini." },
-    { path: "/ocene", label: "Ocene & napotitve", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Aktivirajte modul Ocene & napotitve v Naročnini." },
-    { path: "/ponudbe", label: "Generator ponudb", icon: FileSignature, locked: !hasModule(business, "pillar_offers"), lockDesc: "Aktivirajte modul Generator ponudb v Naročnini." },
+    { path: "/pridobivanje", label: "Nova povpraševanja", icon: Globe, locked: !hasModule(business, "pillar_leads"), lockDesc: "Spletni obrazec in samodejni prvi odgovor novim strankam. Aktivirajte v Naročnini." },
+    { path: "/klepet", label: "Spletni klepet", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "AI klepet na vaši spletni strani, ki odgovarja 24/7. Aktivirajte v Naročnini." },
+    { path: "/asistent", label: "Asistent", icon: Bot, locked: !hasModule(business, "pillar_assistant"), lockDesc: "Dnevni pregled nalog in termini. Aktivirajte v Naročnini." },
+    { path: "/ocene", label: "Google ocene", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Samodejne prošnje za Google ocene in priporočila. Aktivirajte v Naročnini." },
+    { path: "/ponudbe", label: "Ponudbe", icon: FileSignature, locked: !hasModule(business, "pillar_offers"), lockDesc: "Priprava ponudb v PDF v nekaj minutah. Aktivirajte v Naročnini." },
     { path: "/racuni", label: "Računi", icon: FileText, locked: false },
     { path: "/nastavitve", label: "Nastavitve", icon: Settings, locked: false },
   ];
