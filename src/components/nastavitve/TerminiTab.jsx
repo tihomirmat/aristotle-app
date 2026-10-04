@@ -327,11 +327,6 @@ export default function TerminiTab({ business }) {
                   {gcalConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
                   Poveži Google Koledar
                 </Button>
-                <div className="bg-muted/50 rounded-lg p-3 space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5"><Info className="w-3.5 h-3.5 shrink-0" /> Redirect URI za Google Cloud Console:</p>
-                  <p className="text-xs font-mono text-foreground break-all">{gcalRedirectUri || "https://aristotle-smart-growth.base44.app/functions/googleCalendarAuth"}</p>
-                  <p className="text-xs text-muted-foreground">V Google Cloud Console dodajte ta URI pod <em>APIs &amp; Services → Credentials → Authorized redirect URIs</em>.</p>
-                </div>
               </div>
             )}
           </div>
