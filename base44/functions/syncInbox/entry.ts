@@ -19,7 +19,7 @@ const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.c
 const lower = (s) => String(s || '').toLowerCase().trim();
 
 async function classify(items, business) {
-  if (!items.length) return [];
+  if (!items.length) return { results: [], usage: null };
   const sys = `Si asistent slovenskega podjetja "${business.name}" (${business.services ? business.services.split('\n').slice(0, 6).join(', ') : 'storitve'}).
 Za vsako prejeto e-sporočilo ugotovi, ali je POVPRAŠEVANJE potencialne ali obstoječe stranke (želi storitev, ponudbo, ceno, termin, informacijo o storitvi, ali je obvestilo spletnega obrazca s podatki stranke).
 NI povpraševanje: novice, reklame, računi dobaviteljev, sistemska obvestila, potrdila naročil, spam, notranja pošta, odgovori na naše masovne kampanje brez vprašanja.
