@@ -212,6 +212,19 @@
       "type": "boolean",
       "default": false
     },
+    "google_calendar_email": {
+      "type": "string"
+    },
+    "google_calendar_access_token": {
+      "type": "string"
+    },
+    "google_calendar_refresh_token": {
+      "type": "string"
+    },
+    "google_calendar_token_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "booking_enabled": {
       "type": "boolean",
       "default": false
