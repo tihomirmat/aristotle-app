@@ -149,8 +149,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const internal = !!INTERNAL_SECRET && body?.internal_secret === INTERNAL_SECRET;
 
-    if (!internal) {
-      const user = await base44.auth.me().catch(() => null);
+    // Urnik (workflow) teče kot skrbnik aplikacije brez business_id → obdelaj vsa podjetja.
+    const user = internal ? null : await base44.auth.me().catch(() => null);
+    const scheduled = internal || (user?.role === 'admin' && !body.business_id);
+    if (!scheduled) {
       if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
       if (!body.business_id) return Response.json({ error: 'business_id manjka' });
       const business = (await base44.asServiceRole.entities.Business.filter({ id: body.business_id }))[0];
