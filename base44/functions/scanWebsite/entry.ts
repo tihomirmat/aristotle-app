@@ -7,7 +7,8 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const MAX_PAGES = 8;
 const MAX_CHARS_PER_PAGE = 7000;
-const INTERESTING = /(storit|cenik|cene|ponudb|kontakt|o-nas|o_nas|onas|about|faq|vprašanj|vprasanj|delovni|urnik|paket|rezerv|termin|services|pricing|contact)/i;
+const INTERESTING = /(storit|cenik|cene|ponudb|kontakt|o-nas|o_nas|onas|about|faq|vprašanj|vprasanj|delovni|urnik|paket|rezerv|termin|services|pricing|contact|oglas|marketing|izdelav|izobra)/i;
+const BORING = /\/(project|projekt|portfolio|blog|novice|news|category|tag|author|page|wp-|feed|reference)\b/i;
 
 const normalizeUrl = (u) => {
   let s = String(u || '').trim();
@@ -39,7 +40,7 @@ function htmlToText(html) {
   const metaDesc = (s.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i)?.[1] || '').trim();
   s = s.replace(/<(br|p|div|li|h[1-6]|tr|section|article|header|footer)[^>]*>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&[a-z]+;/gi, ' ')
     .replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
   return { title, metaDesc, text: s.slice(0, MAX_CHARS_PER_PAGE) };
 }
@@ -76,6 +77,7 @@ Deno.serve(async (req) => {
     const links = extractLinks(homeHtml, url);
     const ranked = links
       .filter((l) => l !== url && l !== url.replace(/\/$/, ''))
+      .filter((l) => !BORING.test(l))
       .sort((a, b) => (INTERESTING.test(b) ? 1 : 0) - (INTERESTING.test(a) ? 1 : 0) || a.length - b.length)
       .slice(0, MAX_PAGES - 1);
 
