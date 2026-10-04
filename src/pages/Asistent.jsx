@@ -10,7 +10,7 @@ import { Sunrise, MessageSquare, Calendar, Send, Loader2, Bot, RefreshCw, AlertT
 import StatusBanner from "@/components/ui/StatusBanner";
 import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
-import { generateBriefing } from "@/functions/generateBriefing";
+import { assistantContext } from "@/functions/assistantContext";
 
 import { fnError } from "@/lib/fn-error";
 import { toast } from "sonner";
@@ -30,7 +30,9 @@ function BriefingTab({ business }) {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      await generateBriefing({ business_id: business.id });
+      const res = await assistantContext({ business_id: business.id, action: "briefing" });
+      const data = res?.data ?? res;
+      if (data?.error) throw new Error(data.error);
       queryClient.invalidateQueries({ queryKey: ["briefings", business?.id] });
     } catch (err) {
       toast.error("Napaka pri pripravi povzetka: " + fnError(err));
@@ -44,16 +46,16 @@ function BriefingTab({ business }) {
     <div>
       {!todaysBriefing ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <Sunrise className="w-12 h-12 text-muted-foreground/40 mb-4" />
-          <p className="font-medium text-muted-foreground">Jutro poročilo za danes še ni pripravljeno.</p>
-          <p className="text-sm text-muted-foreground mt-1 mb-5">Kliknite gumb za generiranje ali počakajte na jutranjo avtomatizacijo.</p>
+          <Sunrise className="w-12 h-12 text-primary/60 mb-4" />
+          <p className="font-display text-xl font-semibold">Kaj je ta teden pomembno?</p>
+          <p className="text-sm text-muted-foreground mt-2 mb-6 max-w-md">Asistent pregleda vaše stranke, sporočila, ki čakajo, ponudbe in koledar za naslednjih 7 dni ter vam pove, kaj narediti najprej.</p>
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-5 h-11 rounded-xl btn-brand text-sm font-medium disabled:opacity-50"
           >
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sunrise className="w-4 h-4" />}
-            Generiraj jutranjo poročilo
+            {generating ? "Pregledujem …" : "Pripravi pregled tedna"}
           </button>
         </div>
       ) : (
@@ -61,7 +63,7 @@ function BriefingTab({ business }) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Sunrise className="w-5 h-5 text-amber-500" />
-              <span className="font-semibold">Jutro poročilo — {format(new Date(todaysBriefing.date), "d. M. yyyy")}</span>
+              <span className="font-semibold">Pregled — {format(new Date(todaysBriefing.generated_at || todaysBriefing.date), "d. M. yyyy HH:mm")}</span>
             </div>
             <button
               onClick={handleGenerate}
@@ -72,7 +74,7 @@ function BriefingTab({ business }) {
               Osveži
             </button>
           </div>
-          <div className="bg-card border rounded-xl p-6 shadow-sm prose prose-sm max-w-none">
+          <div className="card-elevated p-7 prose prose-sm max-w-none prose-headings:font-display prose-h2:text-lg prose-h2:mt-6 first:prose-h2:mt-0">
             <ReactMarkdown>{todaysBriefing.content}</ReactMarkdown>
           </div>
         </div>
@@ -109,20 +111,17 @@ function ChatTab({ business, user }) {
     setInput("");
     setThinking(true);
 
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Si osebni AI asistent slovenskega podjetja "${business?.name}". Odgovarjaj formalno (vikanje) v slovenščini.
-      
-Kontekst podjetja:
-- Dejavnost: ${business?.industry_template || "splošno"}
-- Storitve: ${business?.services || "—"}
-- Delovni čas: ${business?.hours || "—"}
-- Trenutna ponudba: ${business?.current_offer || "—"}
-
-Zgodovina pogovora:
-${updatedMessages.map((m) => `${m.role === "user" ? "Lastnik" : "Asistent"}: ${m.content}`).join("\n")}
-
-Odgovori na zadnje sporočilo lastnika.`,
-    });
+    let result;
+    try {
+      const res = await assistantContext({ business_id: business.id, action: "chat", messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })) });
+      const data = res?.data ?? res;
+      if (data?.error) throw new Error(data.error);
+      result = data.reply;
+    } catch (e) {
+      toast.error(fnError(e));
+      setThinking(false);
+      return;
+    }
 
     const assistantMsg = { role: "assistant", content: result, ts: new Date().toISOString() };
     const finalMessages = [...updatedMessages, assistantMsg];
@@ -143,8 +142,14 @@ Odgovori na zadnje sporočilo lastnika.`,
       <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <Bot className="w-12 h-12 text-muted-foreground/40 mb-4" />
-            <p className="font-medium text-muted-foreground">Pozdravljen/a! Kako vam lahko pomagam danes?</p>
+            <Bot className="w-12 h-12 text-primary/60 mb-4" />
+            <p className="font-display text-lg font-semibold">Vprašajte me o svojem poslu</p>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">Vidim vaše stranke, sporočila, ponudbe in koledar.</p>
+            <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+              {["Komu moram danes odgovoriti?", "Pokaži vsa nova povpraševanja", "Kaj imam ta teden v koledarju?", "Katere ponudbe so brez odgovora?"].map((q) => (
+                <button key={q} onClick={() => setInput(q)} className="text-xs px-3 py-1.5 rounded-full border hover:border-primary/50 hover:bg-accent">{q}</button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -245,16 +250,16 @@ export default function Asistent() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Asistent</h1>
-        <p className="text-muted-foreground mt-1">Vaš osebni AI asistent za upravljanje terminov in komunikacije.</p>
+        <h1>Asistent</h1>
+        <p className="text-muted-foreground mt-1 max-w-2xl">Pove vam, kaj je ta teden pomembno: komu odgovoriti, kaj imate v koledarju in kje čaka posel. Vprašate ga lahko karkoli o svojih strankah.</p>
       </div>
       {!calendarConnected && (
-        <StatusBanner variant="info" message="Google Koledar ni povezan — predlogi terminov ne delujejo. Povežite ga v Nastavitvah → Integracije." action={{ label: "Nastavi", href: "/nastavitve?tab=integracije" }} />
+        <StatusBanner variant="info" message="Google Koledar ni povezan, zato asistent ne vidi vaših terminov." action={{ label: "Poveži koledar", href: "/nastavitve?tab=termini" }} />
       )}
       <Tabs defaultValue="briefing">
         <TabsList className="mb-6">
-          <TabsTrigger value="briefing" className="flex items-center gap-2"><Sunrise className="w-4 h-4" /> Jutro</TabsTrigger>
-          <TabsTrigger value="chat" className="flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Klepet</TabsTrigger>
+          <TabsTrigger value="briefing" className="flex items-center gap-2"><Sunrise className="w-4 h-4" /> Ta teden</TabsTrigger>
+          <TabsTrigger value="chat" className="flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Vprašaj asistenta</TabsTrigger>
           <TabsTrigger value="bookings" className="flex items-center gap-2"><Calendar className="w-4 h-4" /> Termini</TabsTrigger>
         </TabsList>
         <TabsContent value="briefing"><BriefingTab business={business} /></TabsContent>
