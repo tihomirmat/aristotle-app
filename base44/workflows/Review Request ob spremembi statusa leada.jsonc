@@ -2,7 +2,7 @@
   "name": "Review Request ob spremembi statusa leada",
   "description": "",
   "trigger": {
-    "condition": "${ ((.trigger.changed_fields | index(\"status\") != null) and (.trigger.data.status == \"converted\" or .trigger.data.status == \"replied\")) }",
+    "condition": "${ ((.trigger.changed_fields | index(\"status\") != null) and (.trigger.data.status == \"converted\")) }",
     "config": {
       "trigger_type": "entity",
       "events": [
