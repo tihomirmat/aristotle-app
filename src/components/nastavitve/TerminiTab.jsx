@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Save, Loader2, Plus, Trash2, Calendar, Info } from "lucide-react";
+import { Save, Loader2, Plus, Trash2, Calendar, Info, Unlink, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { googleCalendarAuth } from "@/functions/googleCalendarAuth";
 
 const DAYS = [
   { key: "mon", label: "Pon" },
@@ -57,6 +58,42 @@ export default function TerminiTab({ business }) {
     booking_blackout_periods: [],
   });
   const [errors, setErrors] = useState({});
+  const [gcalConnecting, setGcalConnecting] = useState(false);
+  const [gcalDisconnecting, setGcalDisconnecting] = useState(false);
+  const [gcalRedirectUri, setGcalRedirectUri] = useState("");
+
+  const handleConnectGcal = async () => {
+    setGcalConnecting(true);
+    try {
+      const res = await googleCalendarAuth({ action: "start", business_id: business.id });
+      const data = res?.data ?? res;
+      if (data?.error) throw new Error(data.error);
+      if (data?.redirect_uri) setGcalRedirectUri(data.redirect_uri);
+      if (data?.auth_url) {
+        window.location.href = data.auth_url;
+      } else {
+        setGcalConnecting(false);
+      }
+    } catch (err) {
+      toast.error("Napaka pri povezovanju: " + (err?.message || "Neznana napaka"));
+      setGcalConnecting(false);
+    }
+  };
+
+  const handleDisconnectGcal = async () => {
+    setGcalDisconnecting(true);
+    try {
+      const res = await googleCalendarAuth({ action: "disconnect", business_id: business.id });
+      const data = res?.data ?? res;
+      if (data?.error) throw new Error(data.error);
+      queryClient.invalidateQueries({ queryKey: ["business"] });
+      toast.success("Google Koledar je prekinjen.");
+    } catch (err) {
+      toast.error("Napaka pri prekinitvi: " + (err?.message || "Neznana napaka"));
+    } finally {
+      setGcalDisconnecting(false);
+    }
+  };
 
   useEffect(() => {
     if (business) {
@@ -273,10 +310,30 @@ export default function TerminiTab({ business }) {
                 : <Badge variant="outline" className="text-muted-foreground text-xs">Ni povezano</Badge>}
             </div>
             <p className="text-xs text-muted-foreground mb-3">Povežite Google Koledar za samodejno branje razpoložljivosti in potrjevanje terminov.</p>
-            <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-3">
-              <Info className="w-4 h-4 text-muted-foreground shrink-0" />
-              <p className="text-xs text-muted-foreground">OAuth integracija bo na voljo v naslednji različici. Za zdaj upravljajte termine ročno.</p>
-            </div>
+            {business?.google_calendar_connected ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-medium break-all">{business?.google_calendar_email || "Povezan Google račun"}</span>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleDisconnectGcal} disabled={gcalDisconnecting} className="gap-1.5">
+                  {gcalDisconnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Unlink className="w-3.5 h-3.5" />}
+                  Prekini povezavo
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Button onClick={handleConnectGcal} disabled={gcalConnecting} className="gap-2">
+                  {gcalConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
+                  Poveži Google Koledar
+                </Button>
+                <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5"><Info className="w-3.5 h-3.5 shrink-0" /> Redirect URI za Google Cloud Console:</p>
+                  <p className="text-xs font-mono text-foreground break-all">{gcalRedirectUri || "https://aristotle-smart-growth.base44.app/functions/googleCalendarAuth"}</p>
+                  <p className="text-xs text-muted-foreground">V Google Cloud Console dodajte ta URI pod <em>APIs &amp; Services → Credentials → Authorized redirect URIs</em>.</p>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

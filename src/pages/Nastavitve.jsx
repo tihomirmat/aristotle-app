@@ -77,6 +77,18 @@ export default function Nastavitve() {
     }
   }, [business]);
 
+  // Toast po OAuth callbacku Google Koledarja (?gcal=connected|error)
+  useEffect(() => {
+    const gcal = searchParams.get("gcal");
+    if (gcal === "connected") {
+      sonnerToast.success("Google Koledar je povezan.");
+      navigate("/nastavitve?tab=termini", { replace: true });
+    } else if (gcal === "error") {
+      sonnerToast.error("Povezovanje Google Koledarja ni uspelo. Poskusite znova.");
+      navigate("/nastavitve?tab=termini", { replace: true });
+    }
+  }, [searchParams]);
+
   const PHONE_RE = /^(\+386[\s]?|0)[1-9][\s]?[0-9]{2}[\s]?[0-9]{3}[\s]?[0-9]{3}$/;
   const URL_RE = /^https?:\/\/.+/;
 
