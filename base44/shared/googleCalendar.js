@@ -20,11 +20,11 @@ async function getKey() {
   while (b64.length % 4 !== 0) b64 += '=';
   // Če še vedno ni veljaven base64, izpelji 32-bajtni ključ iz SHA-256(vrednost)
   try {
-    return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  } catch {
-    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(b64));
-    return new Uint8Array(hash).slice(0, 32);
-  }
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    if ([16, 24, 32].includes(bytes.length)) return bytes;
+  } catch { /* ni veljaven base64 */ }
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(b64));
+  return new Uint8Array(hash).slice(0, 32);
 }
 
 export async function encryptToken(plaintext) {
