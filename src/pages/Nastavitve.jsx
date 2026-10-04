@@ -18,6 +18,7 @@ import { testSmtp } from "@/functions/testSmtp";
 import { fnError } from "@/lib/fn-error";
 import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
 import TerminiTab from "@/components/nastavitve/TerminiTab";
+import MailboxCard from "@/components/nastavitve/MailboxCard";
 import { toast as sonnerToast } from "sonner";
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -309,92 +310,20 @@ export default function Nastavitve() {
 
         {/* INTEGRACIJE */}
         <TabsContent value="integracije">
-          <div className="max-w-lg space-y-4">
-            <div className="bg-card border rounded-xl p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold">E-poštna integracija</h3>
-                {business?.email_last_health_check_status && (
-                  <div className={`flex items-center gap-1.5 text-xs font-medium ${isHealthOk ? "text-emerald-600" : "text-red-500"}`}>
-                    {isHealthOk ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-                    {isHealthOk ? "Deluje" : "Napaka"}
-                  </div>
-                )}
-              </div>
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label>Ponudnik e-pošte</Label>
-                  <Select value={business?.email_provider || "platform"} onValueChange={(v) => saveMutation.mutate({ email_provider: v })}>
-                    <SelectTrigger><SelectValue placeholder="Izberite ponudnika" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="platform">AI Aristotle (platformski pošiljatelj — privzeto)</SelectItem>
-                      <SelectItem value="smtp">SMTP (lastni strežnik ali Gmail/Outlook prek SMTP)</SelectItem>
-                      <SelectItem value="gmail">Gmail (OAuth — še ni na voljo)</SelectItem>
-                      <SelectItem value="outlook">Outlook / Microsoft 365 (OAuth — še ni na voljo)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {(!business?.email_provider || business?.email_provider === "platform") && (
-                    <p className="text-xs text-muted-foreground">Sporočila se pošiljajo prek sistema AI Aristotle (v imenu vašega podjetja). Za pošiljanje z vašega lastnega naslova izberite SMTP.</p>
-                  )}
-                </div>
-                {business?.email_provider === "smtp" && (
-                  <div className="space-y-3 pt-2 border-t">
-                    {!(business?.smtp_host && business?.smtp_user && business?.smtp_pass) && (
-                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">SMTP še ni popoln (gostitelj, uporabniško ime in geslo so obvezni). Do dopolnitve se sporočila pošiljajo prek platformskega pošiljatelja. Za Gmail: smtp.gmail.com, vrata 587, STARTTLS, geslo za aplikacije.</p>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2"><Label>SMTP gostitelj</Label><Input placeholder="mail.primer.si" defaultValue={business?.smtp_host || ""} onBlur={(e) => saveMutation.mutate({ smtp_host: e.target.value })} /></div>
-                      <div className="space-y-2"><Label>Vrata</Label><Input type="number" placeholder="587" defaultValue={business?.smtp_port || ""} onBlur={(e) => saveMutation.mutate({ smtp_port: parseInt(e.target.value) })} /></div>
-                    </div>
-                    <div className="space-y-2"><Label>Uporabniško ime</Label><Input defaultValue={business?.smtp_user || ""} onBlur={(e) => saveMutation.mutate({ smtp_user: e.target.value })} /></div>
-                    <div className="space-y-2"><Label>Geslo</Label><Input type="password" defaultValue={business?.smtp_pass || ""} onBlur={(e) => saveMutation.mutate({ smtp_pass: e.target.value })} /></div>
-                    <div className="space-y-2"><Label>Pošiljateljev e-naslov</Label><Input placeholder="info@primer.si" defaultValue={business?.smtp_from_email || ""} onBlur={(e) => saveMutation.mutate({ smtp_from_email: e.target.value })} /></div>
-                    <div className="space-y-2"><Label>Ime pošiljatelja</Label><Input placeholder="Studio Fit" defaultValue={business?.smtp_from_name || ""} onBlur={(e) => saveMutation.mutate({ smtp_from_name: e.target.value })} /></div>
-                    <div className="space-y-2">
-                      <Label>Šifriranje</Label>
-                      <Select defaultValue={business?.smtp_encryption || "starttls"} onValueChange={(v) => saveMutation.mutate({ smtp_encryption: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="starttls">STARTTLS</SelectItem>
-                          <SelectItem value="ssl_tls">SSL/TLS</SelectItem>
-                          <SelectItem value="none">Brez</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="pt-2 border-t space-y-2">
-                      <Button variant="outline" size="sm" className="gap-2" onClick={handleTestSmtp} disabled={smtpTesting || !(business?.smtp_host && business?.smtp_user && business?.smtp_pass)}>
-                        {smtpTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                        Pošlji testno e-pošto na {user?.email || "moj naslov"}
-                      </Button>
-                      <p className="text-xs text-muted-foreground">Polja se shranijo, ko kliknete izven njih. Test preveri povezavo s strežnikom in pošlje sporočilo z vašega naslova.</p>
-                      {business?.email_last_health_check_status === "error" && business?.email_last_health_check_error && (
-                        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md p-2 break-words">Zadnja napaka: {business.email_last_health_check_error}</p>
-                      )}
-                      {business?.email_last_health_check_status === "ok" && business?.email_last_health_check_at && (
-                        <p className="text-xs text-emerald-700">Zadnji uspešen test: {new Date(business.email_last_health_check_at).toLocaleString("sl-SI")}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {(business?.email_provider === "gmail" || business?.email_provider === "outlook") && (
-                  <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-                    {business.gmail_email || business.outlook_email
-                      ? <span className="text-emerald-600 font-medium">✓ Povezano: {business.gmail_email || business.outlook_email}</span>
-                      : "Povezava prek OAuth še ni na voljo — do takrat se sporočila pošiljajo prek platformskega pošiljatelja. Za pošiljanje z vašega Gmail/Outlook naslova izberite SMTP (Gmail: smtp.gmail.com, vrata 587, STARTTLS, geslo za aplikacije; Outlook: smtp.office365.com, vrata 587)."}
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="max-w-3xl space-y-5">
+            <MailboxCard business={business} />
 
-            <div className="bg-card border rounded-xl p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">Google Koledar</h3>
-                  <p className="text-sm text-muted-foreground mt-0.5">Za upravljanje terminov z asistentom.</p>
-                </div>
-                {business?.google_calendar_connected
-                  ? <Badge className="bg-emerald-100 text-emerald-700 border-0">Povezano</Badge>
-                  : <Badge variant="outline" className="text-muted-foreground">Ni povezano</Badge>}
+            <div className="card-elevated p-6 flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[hsl(229,88%,31%)] to-[hsl(258,92%,40%)] flex items-center justify-center shrink-0">
+                <Calendar className="w-5 h-5 text-white" />
               </div>
+              <div className="flex-1">
+                <h3 className="text-lg">Google Koledar</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">{business?.google_calendar_connected ? `Povezan: ${business?.google_calendar_email || "Google račun"}. Asistent vidi vaše proste termine.` : "Asistent bo strankam predlagal proste termine iz vašega koledarja."}</p>
+              </div>
+              <Button variant={business?.google_calendar_connected ? "outline" : "default"} className={business?.google_calendar_connected ? "" : "btn-brand"} onClick={() => navigate("/nastavitve?tab=termini")}>
+                {business?.google_calendar_connected ? "Nastavitve terminov" : "Poveži koledar"}
+              </Button>
             </div>
 
             {/* AI model & Draft mode */}
