@@ -13,12 +13,12 @@ import TrialBanner from "@/components/dashboard/TrialBanner";
 import StatusBanner from "@/components/ui/StatusBanner";
 
 const PILLARS = [
-  { key: "pillar_reactivation", label: "Reaktivacija strank", desc: "Avtomatska reaktivacija neaktivnih strank po e-pošti.", icon: Mail, color: "bg-blue-500", href: "/prejeto", stat_label: "sporočil ta teden", plans: ["starter","growth","scale"] },
-  { key: "pillar_reviews", label: "Ocene & napotitve", desc: "Avtomatske prošnje za Google ocene in napotitve.", icon: Star, color: "bg-amber-500", href: "/ocene", stat_label: "prošenj ta teden", plans: ["starter","growth","scale"] },
-  { key: "pillar_leads", label: "Pridobivanje strank", desc: "Spletni obrazec, webhook in samodejni prvi odgovor novim povpraševanjem.", icon: Globe, color: "bg-emerald-500", href: "/pridobivanje", stat_label: "novih strank ta teden", plans: ["starter","growth","scale"] },
-  { key: "pillar_chatbot", label: "Klepetalni pomočnik", desc: "AI klepetalni widget na vašem spletnem mestu.", icon: MessageSquare, color: "bg-violet-500", href: "/klepet", stat_label: "pogovorov ta teden", plans: ["starter","growth","scale"] },
-  { key: "pillar_assistant", label: "Osebni asistent", desc: "AI asistent za upravljanje terminov in dnevnih nalog.", icon: Bot, color: "bg-rose-500", href: "/asistent", stat_label: "akcij ta teden", plans: ["growth","scale"], min_plan: "growth" },
-  { key: "pillar_offers", label: "Generator ponudb", desc: "Skeniranje obstoječih ponudb, predloge in AI generiranje PDF/DOCX ponudb.", icon: BarChart3, color: "bg-indigo-500", href: "/ponudbe", stat_label: "ponudb", plans: ["starter","growth","scale"] },
+  { key: "pillar_leads", label: "Nova povpraševanja", desc: "Obrazec za vašo spletno stran. Vsaka nova stranka v nekaj minutah dobi oseben odgovor, ki ga vi samo odobrite.", icon: Globe, color: "bg-emerald-500", href: "/pridobivanje" },
+  { key: "pillar_chatbot", label: "Spletni klepet", desc: "AI odgovarja obiskovalcem vaše spletne strani 24/7 in vam preda tiste, ki pustijo kontakt.", icon: MessageSquare, color: "bg-violet-500", href: "/klepet" },
+  { key: "pillar_reactivation", label: "Vrnite stare stranke", desc: "Strankam, ki jih dolgo ni bilo, AI napiše osebno vabilo. Vi pregledate in pošljete z enim klikom.", icon: Mail, color: "bg-blue-500", href: "/prejeto" },
+  { key: "pillar_reviews", label: "Google ocene", desc: "Po opravljeni storitvi AI prosi stranko za Google oceno in za priporočilo prijateljem.", icon: Star, color: "bg-amber-500", href: "/ocene" },
+  { key: "pillar_assistant", label: "Asistent", desc: "Dnevni pregled: kaj vas čaka, kateri termini so odprti, komu morate odgovoriti.", icon: Bot, color: "bg-rose-500", href: "/asistent" },
+  { key: "pillar_offers", label: "Ponudbe", desc: "Iz vaše obstoječe ponudbe naredi predlogo; nova ponudba v PDF je pripravljena v nekaj minutah.", icon: BarChart3, color: "bg-indigo-500", href: "/ponudbe" },
 ];
 
 
@@ -65,9 +65,9 @@ export default function Dashboard() {
 
   const kpis = [
     { label: "Stranke skupaj", value: leads.length, icon: Users, color: "text-blue-600", bg: "bg-blue-50", delta: leads.filter((l) => new Date(l.created_date) >= weekAgo).length > 0 ? `+${leads.filter((l) => new Date(l.created_date) >= weekAgo).length} ta teden` : null },
-    { label: "Leadi ta mesec", value: leadsThisMonth, icon: UserPlus, color: "text-emerald-600", bg: "bg-emerald-50", delta: null },
-    { label: "Čakajoči drafts", value: drafts.length, icon: Mail, color: "text-amber-600", bg: "bg-amber-50", delta: drafts.length > 0 ? "čaka na odobritev" : null },
-    { label: "Rezervacije ta teden", value: bookingsThisWeek, icon: Calendar, color: "text-violet-600", bg: "bg-violet-50", delta: null },
+    { label: "Nova povpraševanja ta mesec", value: leadsThisMonth, icon: UserPlus, color: "text-emerald-600", bg: "bg-emerald-50", delta: null },
+    { label: "Sporočila za odobritev", value: drafts.length, icon: Mail, color: "text-amber-600", bg: "bg-amber-50", delta: drafts.length > 0 ? "čakajo na vaš klik" : "nič ne čaka" },
+    { label: "Termini ta teden", value: bookingsThisWeek, icon: Calendar, color: "text-violet-600", bg: "bg-violet-50", delta: null },
   ];
 
   // Trial exhaustion banners
@@ -90,7 +90,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Pregled</h1>
-          <p className="text-muted-foreground mt-1">Dobrodošli. Tukaj je pregled vašega sistema.</p>
+          <p className="text-muted-foreground mt-1">{business?.name ? `${business.name} — ` : ""}kaj se dogaja z vašimi strankami.</p>
         </div>
         <ReactivationPanel />
       </div>
@@ -118,8 +118,8 @@ export default function Dashboard() {
         <Link to="/prejeto" className="block mb-6">
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between hover:bg-amber-100 transition-colors">
             <div>
-              <p className="font-semibold text-amber-900">Imate {drafts.length} sporočil za pregled</p>
-              <p className="text-sm text-amber-700">Kliknite za odobritev ali urejanje.</p>
+              <p className="font-semibold text-amber-900">{drafts.length} {drafts.length === 1 ? "sporočilo čaka" : drafts.length < 5 ? "sporočila čakajo" : "sporočil čaka"} na vašo odobritev</p>
+              <p className="text-sm text-amber-700">AI jih je pripravil za vaše stranke. Nič se ne pošlje brez vašega klika.</p>
             </div>
             <ArrowRight className="w-5 h-5 text-amber-700 shrink-0" />
           </div>
