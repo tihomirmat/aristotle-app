@@ -37,6 +37,8 @@ Deno.serve(async (req) => {
       services: form.services || '',
       current_offer: form.current_offer || '',
       google_review_link: form.google_review_link || '',
+      brand_voice: form.brand_voice || '',
+      tone_preset: form.brand_voice ? 'warm_personal' : 'industry_default',
       onboarding_complete: true,
       draft_mode: true,
       locale: 'sl',
@@ -62,22 +64,24 @@ Deno.serve(async (req) => {
       owner_email: user.email, // owner visibility via RLS data.owner_email
     });
 
-    // Auto-seed Knowledge Base
-    const phone = form.phone || 'še ni vneseno';
-    const address = form.address || 'še ni vneseno';
-    const website = form.website || 'še ni vneseno';
-    const services = form.services || 'naše storitve';
-    const email = user.email || 'še ni vneseno';
+    // Baza znanja: iz skenirane spletne strani (brez izmišljenih podatkov); sicer samo kontakt in storitve, ki jih je vnesel uporabnik.
     const kb = (title, content, category) =>
       base44.asServiceRole.entities.KnowledgeBase.create({
         business_id: business.id, title, content, category, active: true, created_by: user.email, owner_email: user.email,
       });
-    await Promise.all([
-      kb('Naše storitve', `Pri ${form.name} ponujamo: ${services}. Za info pišite na ${email} ali pokličite ${phone}. Termini in cene se prilagajajo. Z veseljem vam pripravimo personaliziran predlog.`, 'Storitve'),
-      kb('Rezervacija termina', `Termin lahko rezervirate na 3 načine: 1) Kliknete spodaj na Rezerviraj termin. 2) Pokličete ${phone}. 3) Pišete na ${email} s preferenco. Delovni čas pon-pet od 09:00 do 17:00. Potrditev v isti delovni dan.`, 'Termini'),
-      kb('Pogosta vprašanja', `Ali ponujate brezplačno posvetovanje? Da, prvi razgovor je brezplačen. Kako poteka prvo srečanje? Spoznamo potrebe, predstavimo storitve, določimo naslednje korake. Ali izdajate račune? Da, s pravilno izdanim računom (z DDV kjer relevantno). Kako prekličem termin? Brezplačno do 24 ur pred rezervacijo. Kakšen rok za odgovor? V naslednjih delovnih dneh, običajno isti dan.`, 'FAQ'),
-      kb('Kontaktni podatki', `Naslov: ${address}. Telefon: ${phone}. Email: ${email}. Spletna stran: ${website}. Delovni čas: pon-pet, 09:00-17:00.`, 'Kontakt'),
-    ]);
+    const scanned = Array.isArray(form.knowledge) ? form.knowledge.filter((k) => k?.title && k?.content).slice(0, 8) : [];
+    if (scanned.length > 0) {
+      await Promise.all(scanned.map((k) => kb(String(k.title).slice(0, 120), String(k.content).slice(0, 4000), k.category || 'O podjetju')));
+    } else {
+      const parts = [];
+      if (form.services) parts.push(`Storitve: ${form.services}.`);
+      if (form.hours) parts.push(`Delovni čas: ${form.hours}.`);
+      if (form.phone) parts.push(`Telefon: ${form.phone}.`);
+      if (form.address) parts.push(`Naslov: ${form.address}.`);
+      if (form.website) parts.push(`Spletna stran: ${form.website}.`);
+      if (form.current_offer) parts.push(`Trenutna ponudba: ${form.current_offer}.`);
+      if (parts.length) await kb('O podjetju', `${form.name}. ${parts.join(' ')}`, 'O podjetju');
+    }
 
     return Response.json({ success: true, business_id: business.id });
   } catch (error) {
