@@ -2,8 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 import { listEvents } from '../../shared/googleCalendar.js';
 
-// Asistent, ki vidi prave podatke: stranke (faze, kdo čaka na odgovor), sporočila za odobritev,
-// koledar (naslednjih 7 dni), ponudbe. Akcije: briefing (tedenski/dnevni pregled z nalogami) | chat (vprašanje lastnika).
+// Asistent, ki vidi prave podatke: stranke, sporočila za odobritev, koledar (7 dni), ponudbe.
+// Akcije: briefing | chat.
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
@@ -95,7 +95,6 @@ Brez uvoda in brez zaključnih fraz.`,
       return Response.json({ success: true, briefing: { ...briefing, content } });
     }
 
-    // chat
     const history = Array.isArray(body.messages) ? body.messages.slice(-12) : [];
     const msgs = history.map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '') })).filter((m) => m.content);
     if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return Response.json({ error: 'Ni vprašanja.' });
