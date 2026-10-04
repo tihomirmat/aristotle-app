@@ -4,7 +4,7 @@ import nodemailer from 'npm:nodemailer@6.9.9';
 
 // Poveže poštni predal podjetja z enim e-naslovom in geslom.
 // Strežnike poišče sam (mail.<domena>, imap./smtp.<domena>, <domena>), preveri IMAP (branje) in SMTP (pošiljanje),
-// shrani nastavitve in zažene prvo branje pošte. Akcije: connect | disconnect | status.
+// shrani nastavitve in zažene prvo branje pošte. Akcije: connect | disconnect.
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
@@ -55,7 +55,6 @@ Deno.serve(async (req) => {
     const imapHosts = body.imap_host ? [String(body.imap_host).trim()] : [`mail.${domain}`, `imap.${domain}`, domain];
     const smtpHosts = body.smtp_host ? [String(body.smtp_host).trim()] : [`mail.${domain}`, `smtp.${domain}`, domain];
 
-    // IMAP (branje)
     let imap = null; let imapErr = null;
     for (const h of imapHosts) {
       for (const p of body.imap_port ? [Number(body.imap_port)] : [993, 143]) {
@@ -68,7 +67,6 @@ Deno.serve(async (req) => {
     }
     if (imapErr === 'auth' && !imap) return Response.json({ error: 'Strežnik je zavrnil prijavo. Preverite geslo e-poštnega predala.', code: 'AUTH' });
 
-    // SMTP (pošiljanje)
     let smtp = null; let smtpErr = null;
     for (const h of smtpHosts) {
       for (const p of body.smtp_port ? [Number(body.smtp_port)] : [587, 465]) {
@@ -97,7 +95,6 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.Business.update(business.id, updates);
 
-    // Prvo branje pošte v ozadju (zadnjih 7 dni)
     if (imap) base44.asServiceRole.functions.invoke('syncInbox', { business_id: business.id, internal_secret: INTERNAL_SECRET }).catch(() => {});
 
     return Response.json({ success: true, imap, smtp, warning: !smtp ? 'Branje pošte deluje, pošiljanja pa nismo mogli nastaviti. Sporočila bo do takrat pošiljal AI Aristotle v vašem imenu.' : (!imap ? 'Pošiljanje deluje, branja pošte pa nismo mogli nastaviti.' : null) });
