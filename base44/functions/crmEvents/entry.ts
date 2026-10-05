@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
           const camp = (await sr.Campaign.filter({ id: data.campaign_id }))[0];
           allowed = !!camp?.auto_send;
         }
+        if (business.subscription_status === 'trialing') allowed = false;
         if (allowed && (data.quality_score ?? 7) >= 7) {
           await sr.DraftMessage.update(data.id, { status: 'approved', reviewer_notes: `${data.reviewer_notes ? data.reviewer_notes + ' ' : ''}Samodejno poslano (nastavitev za to vrsto sporočil).` });
           return Response.json({ success: true, auto_approved: key });
