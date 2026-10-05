@@ -169,7 +169,7 @@ export default function Stranke() {
           </div>
 
           {view === "pipeline" ? (
-            <div className="grid grid-flow-col auto-cols-[minmax(230px,1fr)] gap-3 overflow-x-auto pb-3 -mx-1 px-1">
+            <div className="grid grid-flow-col auto-cols-[minmax(200px,1fr)] gap-3 overflow-x-auto pb-3 -mx-1 px-1">
               {STAGES.map((st) => {
                 const items = filtered.filter((l) => (l.status || "new") === st.key);
                 const total = items.reduce((s, l) => s + (Number(l.value) || 0), 0);
