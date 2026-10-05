@@ -15,6 +15,7 @@ import Timeline from "@/components/crm/Timeline";
 import TaskRow from "@/components/crm/TaskRow";
 import { TaskDialog, LogActivityDialog, SendEmailDialog, useCrmInvalidate } from "@/components/crm/CrmDialogs";
 import GenerateDraftButton from "@/components/stranke/GenerateDraftButton";
+import ReplyReview from "@/components/crm/ReplyReview";
 
 const ENROLL_STATUS = { active: "Teče", completed: "Končano", stopped_replied: "Ustavljeno — odgovoril", stopped_unsubscribed: "Ustavljeno — odjava", stopped_manual: "Ustavljeno ročno" };
 
@@ -126,7 +127,13 @@ export default function StrankaDetail() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-5 items-start">
+      {pending.length > 0 && (
+        <div className="space-y-4">
+          {pending.map((d) => <ReplyReview key={d.id} draft={d} lead={lead} activities={activities} />)}
+        </div>
+      )}
+
+      <div className="grid lg:grid-cols-[1fr_340px] 2xl:grid-cols-[1fr_400px] gap-5 items-start">
         {/* Levo: zavihki */}
         <div className="card-elevated">
           <div className="flex gap-1 border-b px-3 overflow-x-auto">
@@ -135,7 +142,7 @@ export default function StrankaDetail() {
             ))}
           </div>
           <div className="p-5">
-            {tab === "timeline" && <Timeline activities={activities} pendingDrafts={pending} emptyText="Tu se bodo pokazala vsa sporočila, klici, opombe in spremembe." />}
+            {tab === "timeline" && <Timeline activities={activities} emptyText="Tu se bodo pokazala vsa sporočila, klici, opombe in spremembe." />}
 
             {tab === "tasks" && (
               <div>
