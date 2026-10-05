@@ -8,7 +8,7 @@ import { Search } from "lucide-react";
 
 // Naslovi strani za zgornjo vrstico (brezhibno ujemanje z menijem)
 const TITLES = [
-  ["/prejeto", "Za odobritev"], ["/stranke", "Stranke"], 
+  ["/prejeto", "Za odobritev"], ["/stranke", "Stranke"], ["/podjetja", "Podjetja"], ["/opravila", "Opravila"], ["/kampanje", "Kampanje"],
   ["/klepet", "Spletni klepet"], ["/asistent", "Asistent"], ["/ocene", "Google ocene"],
   ["/ponudbe", "Ponudbe"], ["/racuni", "Računi"], ["/nastavitve", "Nastavitve"],
   ["/admin/businesses", "Podjetja"], ["/admin/usage", "Poraba"],
@@ -35,7 +35,7 @@ export default function AppLayout() {
           </div>
           <UserMenu />
         </div>
-        <div className="p-6 md:p-8 max-w-6xl">
+        <div className="p-4 md:p-6 xl:p-8 w-full max-w-[1920px]">
           <Outlet />
         </div>
       </main>
