@@ -11,6 +11,8 @@ import StatusBanner from "@/components/ui/StatusBanner";
 import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import { assistantContext } from "@/functions/assistantContext";
+import { dailyDigest } from "@/functions/dailyDigest";
+import { Mail } from "lucide-react";
 
 import { fnError } from "@/lib/fn-error";
 import { toast } from "sonner";
@@ -26,6 +28,22 @@ function BriefingTab({ business }) {
   });
 
   const todaysBriefing = briefings.find((b) => b.date === today);
+  const [mailing, setMailing] = useState(false);
+  const sendDigest = async () => {
+    setMailing(true);
+    try {
+      const res = await dailyDigest({ business_id: business.id });
+      const data = res?.data ?? res;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Kratek povzetek poslan na ${data.sent_to}.`);
+    } catch (err) { toast.error(fnError(err)); }
+    setMailing(false);
+  };
+  const MailBtn = () => (
+    <button onClick={sendDigest} disabled={mailing} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium hover:bg-muted disabled:opacity-50" title="Enak povzetek dobite vsak delovni dan zjutraj (Nastavitve → Integracije)">
+      {mailing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}Pošlji mi kratek povzetek
+    </button>
+  );
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -57,6 +75,7 @@ function BriefingTab({ business }) {
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sunrise className="w-4 h-4" />}
             {generating ? "Pregledujem …" : "Pripravi pregled tedna"}
           </button>
+          <div className="mt-3"><MailBtn /></div>
         </div>
       ) : (
         <div>
@@ -65,6 +84,7 @@ function BriefingTab({ business }) {
               <Sunrise className="w-5 h-5 text-amber-500" />
               <span className="font-semibold">Pregled — {format(new Date(todaysBriefing.generated_at || todaysBriefing.date), "d. M. yyyy HH:mm")}</span>
             </div>
+            <div className="flex gap-2"><MailBtn />
             <button
               onClick={handleGenerate}
               disabled={generating}
@@ -73,6 +93,7 @@ function BriefingTab({ business }) {
               {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               Osveži
             </button>
+            </div>
           </div>
           <div className="card-elevated p-7 prose prose-sm max-w-none prose-headings:font-display prose-h2:text-lg prose-h2:mt-6 first:prose-h2:mt-0">
             <ReactMarkdown>{todaysBriefing.content}</ReactMarkdown>
