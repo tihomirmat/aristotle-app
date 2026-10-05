@@ -1,5 +1,6 @@
 {
   "name": "Lead",
+  "description": "Stranka (oseba) v CRM; lahko pripada podjetju (company_id)",
   "type": "object",
   "properties": {
     "business_id": {
@@ -48,11 +49,11 @@
     },
     "email_subject": {
       "type": "string",
-      "description": "Zadeva zadnjega prejetega e-sporočila (vir email)"
+      "description": "Zadeva zadnjega prejetega e-sporo\u010dila (vir email)"
     },
     "email_message_id": {
       "type": "string",
-      "description": "Message-ID zadnjega prejetega e-sporočila (dedupe)"
+      "description": "Message-ID zadnjega prejetega e-sporo\u010dila (dedupe)"
     },
     "last_inbound_at": {
       "type": "string",
