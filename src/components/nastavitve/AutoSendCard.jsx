@@ -35,7 +35,7 @@ export default function AutoSendCard({ business, isTrialing }) {
           <div className="w-11 h-11 rounded-xl bg-accent text-primary flex items-center justify-center shrink-0"><Send className="w-5 h-5" /></div>
           <div className="flex-1">
             <h3 className="text-lg">Kaj AI pošlje sam</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">Privzeto vsako sporočilo počaka v »Za odobritev«. Za vrste, ki jim zaupate, vklopite samodejno pošiljanje. AI pošlje sam samo sporočila, ki jih oceni kot dobra (7/10 ali več); ostala vseeno počakajo na vas.</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Privzeto vsak odgovor počaka na vas (Stranke → Čaka na vaš odgovor). Za vrste, ki jim zaupate, vklopite samodejno pošiljanje. AI pošlje sam samo sporočila, ki jih oceni kot dobra (7/10 ali več); ostala vseeno počakajo na vas.</p>
           </div>
         </div>
         {isTrialing && <p className="mt-4 text-xs rounded-lg bg-muted px-3 py-2 flex items-center gap-1.5"><Info className="w-3.5 h-3.5 shrink-0" />Samodejno pošiljanje je na voljo po aktivaciji naročnine. Med preizkusom vse počaka na vašo odobritev.</p>}

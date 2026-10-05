@@ -65,7 +65,7 @@ export default function Ocene() {
     try {
       await generateDraft({ business_id: business.id, lead_id: lead.id, pillar: "review_request", sequence_step: 1 });
       queryClient.invalidateQueries({ queryKey: ["ocene-drafts", business?.id] });
-      toast.success(`Prošnja za oceno ustvarjena za ${lead.name}. Najdete jo v »Za odobritev«.`);
+      toast.success(`Prošnja za oceno ustvarjena za ${lead.name}. Najdete jo v Stranke → Čaka na vaš odgovor.`);
     } catch (e) {
       toast.error("Napaka pri generiranju: " + fnError(e));
     } finally {
@@ -87,7 +87,7 @@ export default function Ocene() {
     try {
       await generateDraft({ business_id: business.id, lead_id: testLead.id, pillar: "review_request", sequence_step: 1 });
       queryClient.invalidateQueries({ queryKey: ["ocene-drafts", business?.id] });
-      toast.success("Testna prošnja ustvarjena. Najdete jo v »Za odobritev«.");
+      toast.success("Testna prošnja ustvarjena. Najdete jo v Stranke → Čaka na vaš odgovor.");
     } catch (e) {
       toast.error("Napaka: " + fnError(e));
     } finally {
@@ -288,10 +288,10 @@ export default function Ocene() {
           <Star className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="font-medium text-muted-foreground">Avtomatske prošnje za ocene</p>
           <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-            Ko bo AI ustvaril prošnjo za oceno, se bo prikazala tukaj. Pregledate jo v <strong>Za odobritev</strong>.
+            Ko bo AI ustvaril prošnjo za oceno, se bo prikazala tukaj. Pregledate jo v <strong>Stranke → Čaka na vaš odgovor</strong>.
           </p>
           <Button className="mt-4" asChild>
-            <Link to="/prejeto">Odpri Za odobritev</Link>
+            <Link to="/stranke?tab=odgovori">Odpri pripravljene odgovore</Link>
           </Button>
         </div>
       )}
@@ -301,7 +301,7 @@ export default function Ocene() {
         <h3 className="font-semibold mb-2">Napotitve</h3>
         <p className="text-sm text-muted-foreground mb-3">
           AI samodejno pošlje prošnjo za napotitev zadovoljnim strankam.
-          Prošnje najdete v <Link to="/prejeto" className="text-primary hover:underline">Za odobritev</Link>.
+          Prošnje najdete v <Link to="/stranke?tab=odgovori" className="text-primary hover:underline">Čaka na vaš odgovor</Link>.
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-muted/50 rounded-lg p-3 text-center">

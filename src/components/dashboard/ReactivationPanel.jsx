@@ -34,7 +34,7 @@ export default function ReactivationPanel() {
       const data = res?.data || res;
       if (data?.error) throw new Error(data.error);
       if (data.created > 0) {
-        toast.success(`Pripravljenih ${data.created} sporočil. Preglejte jih v »Za odobritev«.`);
+        toast.success(`Pripravljenih ${data.created} sporočil. Pregledate jih v Stranke → Čaka na vaš odgovor.`);
         ["drafts", "drafts-all", "drafts-sidebar"].forEach((k) => queryClient.invalidateQueries({ queryKey: [k, business?.id] }));
         setOpen(false);
       } else {
@@ -63,7 +63,7 @@ export default function ReactivationPanel() {
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>
               AI napiše osebno sporočilo vsaki stranki, s katero niste bili v stiku <strong className="text-foreground">30 dni ali več</strong>,
-              in jo vljudno povabi nazaj. Sporočila najprej pregledate v »Za odobritev«; nič se ne pošlje samo od sebe.
+              in jo vljudno povabi nazaj. Sporočila najprej pregledate v Stranke → Čaka na vaš odgovor; nič se ne pošlje samo od sebe.
             </p>
             <p className="bg-muted/60 rounded-lg px-3 py-2">
               {eligible.length === 0

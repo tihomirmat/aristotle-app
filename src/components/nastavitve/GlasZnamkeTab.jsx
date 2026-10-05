@@ -109,8 +109,8 @@ export default function GlasZnamkeTab({ business }) {
   };
 
   const sections = [
-    ["good", "Primeri dobrih sporočil", form.example_good_messages, addGood, "Najhitreje: v »Za odobritev« pri sporočilu, ki vam je všeč, kliknite »Dober primer«. AI se po teh primerih zgleduje. Največ 5 — nov primer zamenja najstarejšega."],
-    ["bad", "Primeri slabih sporočil", form.example_bad_messages, addBad, "Najhitreje: v »Za odobritev« pri sporočilu, ki vam ni všeč, kliknite »Slab primer« in napišite zakaj. Takim sporočilom se AI izogiba."],
+    ["good", "Primeri dobrih sporočil", form.example_good_messages, addGood, "Najhitreje: v Stranke → Čaka na vaš odgovor pri odgovoru, ki vam je všeč, kliknite »Dober primer«. AI se po teh primerih zgleduje. Največ 5 — nov primer zamenja najstarejšega."],
+    ["bad", "Primeri slabih sporočil", form.example_bad_messages, addBad, "Najhitreje: v Stranke → Čaka na vaš odgovor pri odgovoru, ki vam ni všeč, kliknite »Slab primer« in napišite zakaj. Takim sporočilom se AI izogiba."],
   ];
 
   return (

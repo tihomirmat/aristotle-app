@@ -33,7 +33,7 @@ export default function GenerateDraftButton({ lead, businessId }) {
       if (score && score < 6) {
         toast.warning(`Osnutek ustvarjen (kakovost: ${score}/10) — označen za pregled.`);
       } else {
-        toast.success(`Osnutek za "${lead.name}" čaka v »Za odobritev«.`);
+        toast.success(`Osnutek za "${lead.name}" čaka v Stranke → Čaka na vaš odgovor.`);
       }
     } catch (e) {
       toast.error("Napaka pri generiranju: " + fnError(e));

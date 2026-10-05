@@ -58,7 +58,7 @@ export default function LeadSources({ leads = [], onImport }) {
       const lead = await base44.entities.Lead.create({ business_id: business.id, name: "Testna stranka", email: "test@primer.si", phone: "+386 40 000 000", source: "form", status: "new", consent_email: true, notes: "Testno povpraševanje — zanima me vaša storitev.", is_demo: true });
       await generateDraft({ business_id: business.id, lead_id: lead.id, pillar: "web_form_lead", sequence_step: 1 });
       ["leads", "leads_all", "drafts-all"].forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
-      toast.success("Testna stranka je dodana, AI odgovor čaka v »Za odobritev«.");
+      toast.success("Testna stranka je dodana, AI odgovor čaka v Stranke → Čaka na vaš odgovor.");
     } catch (e) { toast.error(fnError(e)); } finally { setSendingTest(false); }
   };
 

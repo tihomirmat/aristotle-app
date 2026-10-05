@@ -165,7 +165,7 @@ function Builder({ open, onOpenChange, campaign, leads, onLaunch }) {
 
           <div className="rounded-xl border p-4">
             <label className="flex items-start justify-between gap-3 cursor-pointer">
-              <div><p className="text-sm font-medium">Pošlji brez moje odobritve</p><p className="text-xs text-muted-foreground mt-0.5">{c.auto_send ? "Sporočila se pošljejo sama (samo tista, ki jih AI oceni kot dobra)." : "Vsako sporočilo najprej počaka v »Za odobritev«."}</p></div>
+              <div><p className="text-sm font-medium">Pošlji brez moje odobritve</p><p className="text-xs text-muted-foreground mt-0.5">{c.auto_send ? "Sporočila se pošljejo sama (samo tista, ki jih AI oceni kot dobra)." : "Vsako sporočilo najprej počaka v Stranke → Čaka na vaš odgovor."}</p></div>
               <Switch checked={!!c.auto_send} onCheckedChange={(v) => setC({ ...c, auto_send: v })} />
             </label>
           </div>

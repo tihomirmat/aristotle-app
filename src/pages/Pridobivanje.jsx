@@ -95,7 +95,7 @@ export default function Pridobivanje() {
       });
       await generateDraft({ business_id: business.id, lead_id: testLead.id, pillar: "web_form_lead", sequence_step: 1 });
       queryClient.invalidateQueries({ queryKey: ["leads-form", business?.id] });
-      toast.success("Testna stranka je ustvarjena, AI odgovor čaka v »Za odobritev«.");
+      toast.success("Testna stranka je ustvarjena, AI odgovor čaka v Stranke → Čaka na vaš odgovor.");
     } catch (e) {
       toast.error("Napaka: " + fnError(e));
     } finally {

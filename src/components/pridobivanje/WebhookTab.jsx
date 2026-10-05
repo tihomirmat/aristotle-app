@@ -29,7 +29,7 @@ const STEPS = [
   {
     num: "4",
     title: "Odobrite in pošljite",
-    desc: "AI pripravi odgovor, ki ga najdete v »Za odobritev«. Preglejte ga in z enim klikom pošljete stranki.",
+    desc: "AI pripravi odgovor, ki ga najdete v Stranke → Čaka na vaš odgovor. Preglejte ga in z enim klikom pošljete stranki.",
   },
 ];
 

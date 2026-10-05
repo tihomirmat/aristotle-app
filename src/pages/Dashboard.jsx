@@ -77,7 +77,7 @@ export default function Dashboard() {
   const kpis = [
     { label: "Stranke", value: leads.length, sub: leadsThisWeek > 0 ? `+${leadsThisWeek} ta teden` : "brez novih ta teden", icon: Users },
     { label: "Nova povpraševanja ta mesec", value: leadsThisMonth, sub: "iz obrazca in klepeta", icon: UserPlus },
-    { label: "Za odobritev", value: drafts.length, sub: drafts.length > 0 ? "čakajo na vaš klik" : "nič ne čaka", icon: Inbox, href: "/prejeto", highlight: drafts.length > 0 },
+    { label: "Čaka na vaš odgovor", value: drafts.length, sub: drafts.length > 0 ? "čakajo na vaš klik" : "nič ne čaka", icon: Inbox, href: "/stranke?tab=odgovori", highlight: drafts.length > 0 },
     { label: "Termini ta teden", value: bookingsThisWeek, sub: business?.google_calendar_connected ? "iz Google Koledarja" : "koledar ni povezan", icon: Calendar },
   ];
 
@@ -93,7 +93,7 @@ export default function Dashboard() {
     { title: "Spletni klepet", icon: MessageSquare, tone: "from-violet-600 to-indigo-500", href: "/klepet",
       ok: kb.length > 0 && convs.length > 0, state: kb.length === 0 ? "Klepet še ne pozna vašega podjetja" : convs.length === 0 ? "Še ni vstavljen na spletno stran" : "Deluje",
       metric: convsThisWeek, metricLabel: "pogovorov ta teden", cta: kb.length === 0 ? "Naučite ga iz spletne strani" : "Odpri klepet" },
-    { title: "Odgovori strankam", icon: Send, tone: "from-emerald-500 to-teal-400", href: "/prejeto",
+    { title: "Odgovori strankam", icon: Send, tone: "from-emerald-500 to-teal-400", href: "/stranke?tab=odgovori",
       ok: drafts.length === 0, state: drafts.length > 0 ? `${drafts.length} čaka na vašo odobritev` : "Nič ne čaka",
       metric: sentThisWeek.length, metricLabel: "poslanih ta teden", cta: drafts.length > 0 ? "Preglej in pošlji" : "Odpri" },
     { title: "Vrnite stare stranke", icon: RotateCcw, tone: "from-blue-700 to-blue-500", href: "/stranke",
@@ -132,7 +132,7 @@ export default function Dashboard() {
           <div className="flex gap-2 shrink-0">
             {drafts.length > 0 && (
               <Button asChild className="btn-brand h-11 px-5 rounded-xl text-[15px]">
-                <Link to="/prejeto">Preglej sporočila <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
+                <Link to="/stranke?tab=odgovori">Preglej sporočila <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
               </Button>
             )}
             <div className="[&>button]:h-11 [&>button]:rounded-xl [&>button]:bg-white/10 [&>button]:border-white/20 [&>button]:text-white [&>button:hover]:bg-white/20">
