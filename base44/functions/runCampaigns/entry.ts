@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       if (!owns) return Response.json({ error: 'Nimate dostopa.' });
       campaigns = await sr.Campaign.filter({ business_id: biz.id, status: 'active' });
     } else {
-      if (!internal && user?.role !== 'admin') return Response.json({ error: 'Unauthorized' });
+      if (!internal && user?.role !== 'admin') return Response.json({ error: 'Ni dovoljenja.' });
       campaigns = await sr.Campaign.filter({ status: 'active' });
     }
 
