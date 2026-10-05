@@ -32,6 +32,36 @@
     },
     "owner_email": {
       "type": "string"
+    },
+    "supplier_name": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "invoice_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "period": {
+      "type": "string",
+      "description": "YYYY-MM"
+    },
+    "message_id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "email",
+        "upload",
+        "forward"
+      ],
+      "default": "upload"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

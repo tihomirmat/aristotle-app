@@ -1,12 +1,13 @@
 {
-  "name": "Lead",
+  "name": "Company",
   "type": "object",
   "properties": {
     "business_id": {
       "type": "string"
     },
     "name": {
-      "type": "string"
+      "type": "string",
+      "description": "Ime podjetja stranke"
     },
     "email": {
       "type": "string"
@@ -14,52 +15,20 @@
     "phone": {
       "type": "string"
     },
-    "source": {
+    "website": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "tax_id": {
       "type": "string",
-      "enum": [
-        "form",
-        "import",
-        "chatbot",
-        "manual",
-        "email"
-      ],
-      "default": "manual"
+      "description": "Davčna številka"
     },
-    "status": {
-      "type": "string",
-      "enum": [
-        "new",
-        "contacted",
-        "replied",
-        "booked",
-        "converted",
-        "lost",
-        "unsubscribed"
-      ],
-      "default": "new"
+    "industry": {
+      "type": "string"
     },
-    "consent_email": {
-      "type": "boolean",
-      "default": false
-    },
-    "booking_intent": {
-      "type": "boolean",
-      "default": false
-    },
-    "email_subject": {
-      "type": "string",
-      "description": "Zadeva zadnjega prejetega e-sporočila (vir email)"
-    },
-    "email_message_id": {
-      "type": "string",
-      "description": "Message-ID zadnjega prejetega e-sporočila (dedupe)"
-    },
-    "last_inbound_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Kdaj je stranka nazadnje pisala"
-    },
-    "service_requested": {
+    "notes": {
       "type": "string"
     },
     "tags": {
@@ -68,12 +37,9 @@
         "type": "string"
       }
     },
-    "last_contacted_at": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "notes": {
-      "type": "string"
+    "value": {
+      "type": "number",
+      "description": "Potencialna/letna vrednost v EUR"
     },
     "owner_email": {
       "type": "string"
@@ -81,26 +47,6 @@
     "is_demo": {
       "type": "boolean",
       "default": false
-    },
-    "company_id": {
-      "type": "string",
-      "description": "Podjetje, kateremu pripada stranka (neobvezno)"
-    },
-    "position": {
-      "type": "string",
-      "description": "Delovno mesto pri podjetju"
-    },
-    "value": {
-      "type": "number",
-      "description": "Vrednost posla v EUR"
-    },
-    "next_followup_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Naslednji korak"
-    },
-    "address": {
-      "type": "string"
     }
   },
   "required": [

@@ -1,78 +1,68 @@
 {
-  "name": "Lead",
+  "name": "Activity",
   "type": "object",
   "properties": {
     "business_id": {
       "type": "string"
     },
-    "name": {
+    "lead_id": {
       "type": "string"
     },
-    "email": {
+    "company_id": {
       "type": "string"
     },
-    "phone": {
-      "type": "string"
-    },
-    "source": {
+    "type": {
       "type": "string",
       "enum": [
+        "email_in",
+        "email_out",
+        "call",
+        "meeting",
+        "note",
+        "sms",
+        "chat",
         "form",
-        "import",
-        "chatbot",
-        "manual",
-        "email"
+        "task_done",
+        "offer",
+        "booking",
+        "system"
       ],
-      "default": "manual"
+      "description": "Vrsta dogodka na časovnici stranke"
     },
-    "status": {
+    "direction": {
       "type": "string",
       "enum": [
-        "new",
-        "contacted",
-        "replied",
-        "booked",
-        "converted",
-        "lost",
-        "unsubscribed"
+        "inbound",
+        "outbound",
+        "internal"
       ],
-      "default": "new"
+      "default": "internal"
     },
-    "consent_email": {
-      "type": "boolean",
-      "default": false
+    "subject": {
+      "type": "string"
     },
-    "booking_intent": {
-      "type": "boolean",
-      "default": false
+    "content": {
+      "type": "string"
     },
-    "email_subject": {
-      "type": "string",
-      "description": "Zadeva zadnjega prejetega e-sporočila (vir email)"
-    },
-    "email_message_id": {
-      "type": "string",
-      "description": "Message-ID zadnjega prejetega e-sporočila (dedupe)"
-    },
-    "last_inbound_at": {
+    "occurred_at": {
       "type": "string",
       "format": "date-time",
-      "description": "Kdaj je stranka nazadnje pisala"
+      "description": "Kdaj se je zgodilo"
     },
-    "service_requested": {
+    "is_automated": {
+      "type": "boolean",
+      "default": false
+    },
+    "draft_id": {
       "type": "string"
     },
-    "tags": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
+    "offer_id": {
+      "type": "string"
     },
-    "last_contacted_at": {
-      "type": "string",
-      "format": "date-time"
+    "booking_id": {
+      "type": "string"
     },
-    "notes": {
+    "task_id": {
       "type": "string"
     },
     "owner_email": {
@@ -81,31 +71,11 @@
     "is_demo": {
       "type": "boolean",
       "default": false
-    },
-    "company_id": {
-      "type": "string",
-      "description": "Podjetje, kateremu pripada stranka (neobvezno)"
-    },
-    "position": {
-      "type": "string",
-      "description": "Delovno mesto pri podjetju"
-    },
-    "value": {
-      "type": "number",
-      "description": "Vrednost posla v EUR"
-    },
-    "next_followup_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Naslednji korak"
-    },
-    "address": {
-      "type": "string"
     }
   },
   "required": [
     "business_id",
-    "name"
+    "type"
   ],
   "rls": {
     "read": {

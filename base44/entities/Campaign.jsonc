@@ -2,96 +2,154 @@
   "name": "Campaign",
   "type": "object",
   "properties": {
-    "name": {
-      "type": "string",
-      "description": "Campaign name"
+    "business_id": {
+      "type": "string"
     },
-    "type": {
+    "name": {
+      "type": "string"
+    },
+    "goal": {
       "type": "string",
       "enum": [
-        "sms",
-        "email",
-        "both"
+        "reactivation",
+        "nurture",
+        "newsletter",
+        "acquisition",
+        "review"
       ],
-      "default": "both",
-      "description": "Message channel"
+      "default": "reactivation"
     },
-    "sms_message": {
-      "type": "string",
-      "description": "SMS message content"
+    "description": {
+      "type": "string"
     },
-    "email_subject": {
-      "type": "string",
-      "description": "Email subject line"
-    },
-    "email_body": {
-      "type": "string",
-      "description": "Email body content"
-    },
-    "segment_filter": {
+    "audience": {
       "type": "object",
-      "description": "Filter criteria for target segment"
+      "description": "{ stages:[], sources:[], tags:[], inactive_days:number, has_company:bool }"
     },
-    "scheduled_date": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When to send"
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "type": "number"
+          },
+          "delay_days": {
+            "type": "number"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "ai_personalize": {
+            "type": "boolean"
+          }
+        }
+      }
     },
     "status": {
       "type": "string",
       "enum": [
         "draft",
-        "scheduled",
-        "sending",
-        "sent",
-        "cancelled"
+        "active",
+        "paused",
+        "completed"
       ],
       "default": "draft"
     },
-    "total_recipients": {
-      "type": "number",
-      "default": 0
+    "auto_send": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pošlji brez odobritve"
     },
-    "sent_count": {
-      "type": "number",
-      "default": 0
+    "stats": {
+      "type": "object",
+      "description": "{ enrolled, sent, replied, booked, converted }"
     },
-    "replied_count": {
-      "type": "number",
-      "default": 0
+    "last_run_at": {
+      "type": "string",
+      "format": "date-time"
     },
-    "came_back_count": {
-      "type": "number",
-      "default": 0
+    "owner_email": {
+      "type": "string"
     },
-    "revenue_recovered": {
-      "type": "number",
-      "default": 0
+    "is_demo": {
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [
+    "business_id",
     "name"
   ],
   "rls": {
     "read": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     },
     "create": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "created_by_id": "{{user.id}}"
     },
     "update": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     },
     "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     }
   }
 }
