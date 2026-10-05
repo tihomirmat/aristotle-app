@@ -71,7 +71,12 @@ Deno.serve(async (req) => {
       if (evType === 'create' && data.status === 'pending') {
         const key = autoKey(data, lead);
         const auto = business.auto_send || {};
-        if (auto[key] === true && (data.quality_score ?? 7) >= 7) {
+        let allowed = auto[key] === true;
+        if (data.campaign_id) {
+          const camp = (await sr.Campaign.filter({ id: data.campaign_id }))[0];
+          allowed = !!camp?.auto_send;
+        }
+        if (allowed && (data.quality_score ?? 7) >= 7) {
           await sr.DraftMessage.update(data.id, { status: 'approved', reviewer_notes: `${data.reviewer_notes ? data.reviewer_notes + ' ' : ''}Samodejno poslano (nastavitev za to vrsto sporočil).` });
           return Response.json({ success: true, auto_approved: key });
         }
@@ -91,7 +96,7 @@ Deno.serve(async (req) => {
     }
 
     if (entity === 'OfferGeneration' && data.status === 'completed' && (!old || old.status !== 'completed') && data.lead_id) {
-      await log({ lead_id: data.lead_id, type: 'offer', direction: 'internal', subject: 'Pripravljena ponudba', content: short(data.output_markdown, 300), occurred_at: iso(), offer_id: data.id });
+      await log({ lead_id: data.lead_id, company_id: data.company_id || null, type: 'offer', direction: 'internal', subject: `Pripravljena ponudba${data.amount ? ` (${Math.round(data.amount)} €)` : ''}`, content: short(data.output_markdown, 300), occurred_at: iso(), offer_id: data.id });
       return Response.json({ success: true });
     }
 
