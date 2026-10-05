@@ -85,7 +85,7 @@ function Builder({ open, onOpenChange, campaign, leads, onLaunch }) {
   }, [open, campaign?.id]);
   if (!c) return null;
 
-  const pickGoal = (g) => { setGoal(g); if (!campaign) setC({ ...structuredClone(TEMPLATES[g]), goal: g, auto_send: c.auto_send }); };
+  const pickGoal = (g) => { setGoal(g); if (!campaign?.id) setC({ ...structuredClone(TEMPLATES[g]), goal: g, auto_send: c.auto_send }); };
   const setA = (patch) => setC({ ...c, audience: { ...c.audience, ...patch } });
   const toggleIn = (key, v) => { const arr = c.audience[key] || []; setA({ [key]: arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v] }); };
   const setStep = (i, patch) => setC({ ...c, steps: c.steps.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
@@ -113,13 +113,13 @@ function Builder({ open, onOpenChange, campaign, leads, onLaunch }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader className="text-left"><SheetTitle className="font-display text-xl">{campaign ? "Uredi kampanjo" : "Nova kampanja"}</SheetTitle><SheetDescription>Zaporedje sporočil, ki jih sistem pošlje izbranim strankam. Ko stranka odgovori, se zanjo kampanja sama ustavi.</SheetDescription></SheetHeader>
+        <SheetHeader className="text-left"><SheetTitle className="font-display text-xl">{campaign?.id ? "Uredi kampanjo" : "Nova kampanja"}</SheetTitle><SheetDescription>Zaporedje sporočil, ki jih sistem pošlje izbranim strankam. Ko stranka odgovori, se zanjo kampanja sama ustavi.</SheetDescription></SheetHeader>
         <div className="space-y-6 mt-5">
           <div>
             <Label className="text-xs text-muted-foreground">1. Kaj želite doseči?</Label>
             <div className="grid sm:grid-cols-2 gap-2 mt-2">
               {Object.entries(CAMPAIGN_GOALS).map(([k, g]) => { const I = GOAL_ICON[k]; return (
-                <button key={k} disabled={!!campaign && k !== goal} onClick={() => pickGoal(k)} className={`text-left rounded-xl border p-3 transition-all disabled:opacity-40 ${goal === k ? "border-primary ring-2 ring-primary/20 bg-accent/40" : "hover:border-primary/40"}`}>
+                <button key={k} disabled={!!campaign?.id && k !== goal} onClick={() => pickGoal(k)} className={`text-left rounded-xl border p-3 transition-all disabled:opacity-40 ${goal === k ? "border-primary ring-2 ring-primary/20 bg-accent/40" : "hover:border-primary/40"}`}>
                   <p className="text-sm font-semibold flex items-center gap-2"><I className="w-4 h-4 text-primary" />{g.label}</p><p className="text-xs text-muted-foreground mt-1">{g.hint}</p>
                 </button>
               ); })}
