@@ -12,6 +12,8 @@ Deno.serve(async (req) => {
       return Response.json({ skipped: true, reason: 'no data' });
     }
 
+    if (data.is_demo) return Response.json({ skipped: true, reason: 'demo' });
+
     // Samo novi leadi iz obrazca ali klepeta
     if (!["form", "chatbot"].includes(data.source)) {
       return Response.json({ skipped: true, reason: 'not form/chatbot source' });
