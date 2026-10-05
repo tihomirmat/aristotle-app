@@ -40,6 +40,7 @@ Deno.serve(async (req) => {
 
     if (entity === 'Lead') {
       if (evType === 'create') {
+        if (data.is_demo) return Response.json({ skipped: true, reason: 'demo seed' });
         const map = { email: ['email_in', 'Povpraševanje po e-pošti'], form: ['form', 'Povpraševanje prek obrazca na spletni strani'], chatbot: ['chat', 'Kontakt iz spletnega klepeta'], import: ['system', 'Uvožena stranka'], manual: ['note', 'Stranka dodana ročno'] };
         const [type, title] = map[data.source] || ['system', 'Nova stranka'];
         await log({ lead_id: data.id, company_id: data.company_id || null, type, direction: ['email', 'form', 'chatbot'].includes(data.source) ? 'inbound' : 'internal', subject: data.email_subject || title, content: short(data.notes), occurred_at: iso(data.last_inbound_at || data.created_date), is_automated: data.source !== 'manual' });
