@@ -91,6 +91,13 @@ Deno.serve(async (req) => {
     if (user && !ownsBusiness(user, business)) {
       return Response.json({ error: 'Nimate dostopa do tega podjetja.', code: 'FORBIDDEN' }, { status: 403 });
     }
+    // Testni (demo) podatki: nikoli ne pošiljamo zares, tok pa se obnaša kot pri pravem pošiljanju.
+    if (lead.is_demo || draft.is_demo) {
+      const nowDemo = new Date().toISOString();
+      await base44.asServiceRole.entities.DraftMessage.update(draftId, { status: 'sent', sent_at: nowDemo, reviewer_notes: 'Testni podatki: sporočilo ni bilo zares poslano.' });
+      await base44.asServiceRole.entities.Lead.update(lead.id, { last_contacted_at: nowDemo, status: lead.status === 'new' ? 'contacted' : lead.status });
+      return Response.json({ success: true, demo: true, draft_id: draftId });
+    }
     if (lead.business_id !== draft.business_id) {
       await base44.asServiceRole.entities.DraftMessage.update(draftId, { status: 'failed', reviewer_notes: 'Varnostna zavrnitev: stranka ne pripada podjetju osnutka.' });
       return Response.json({ error: 'Lead/business mismatch', code: 'FORBIDDEN' }, { status: 403 });
