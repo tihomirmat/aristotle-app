@@ -26,6 +26,8 @@ const PILLAR_MODULE = {
   web_form_lead: 'pillar_leads',
   chatbot_handoff: 'pillar_leads',
   booking_proposal: 'pillar_leads',
+  manual: 'pillar_leads',
+  campaign: 'pillar_reactivation',
 };
 
 // Cene v EUR na 1M tokenov (list price USD × ~0,92). Preveri ob menjavi modelov.
@@ -67,6 +69,10 @@ const PILLAR_PROMPTS = {
   booking_proposal: `BOOKING_AI_AGENT: Email s 3 termini iz available_slots (backend pošlje, ti ne računaš). Korak 1: zahvala, omemba storitve, 3 bullet termini iz label polja, vprašanje "Kateri ustreza?", alternativa "Če noben, predlagajte vi". Korak 2 (+1 dan): krajši opomnik. Prilagodi (dental "termini za pregled", gym "termini za trening", salon "termini za striženje", auto "termini za servis", home "termin za obisk", restaurant "rezervacija mize"). IZHOD JSON: {"subject": "(4-7 besed)", "body_text": "...", "proposed_slots_summary": "...", "ai_reasoning": "..."}`,
 
   referral_ask: `Napiši kratko e-pošto, ki zadovoljno stranko prosi, da priporoči podjetje prijateljem. V slovenščini, vikanje. Kratko, prijazno (3 stavki). IZHOD JSON: {"subject": "(3-5 besed)", "body_text": "...", "ai_reasoning": "..."}`,
+
+  manual: `PERSONAL_EMAIL_AGENT: Lastnik podjetja želi stranki poslati osebno sporočilo. Navodilo lastnika je v polju "instruction" — sledi mu natančno, ne dodajaj ponudb ali obljub, ki jih ni v navodilu ali podatkih. Upoštevaj zgodovino komunikacije ("history"), da sporočilo nadaljuje pogovor in se ne ponavlja. Če navodila ni, napiši kratek vljuden ponovni stik glede na zadnjo komunikacijo. Kratko (pod 110 besed). IZHOD JSON: {"subject": "(3-7 besed)", "body_text": "(brez podpisa)", "ai_reasoning": "..."}`,
+
+  campaign: `CAMPAIGN_AGENT: Personaliziraj predlogo sporočila kampanje ("template": subject, body) za to stranko. Ohrani namen, ponudbo in vse dejstva iz predloge — nič ne dodajaj. Prilagodi nagovor (ime, sklon), po potrebi omeni lead.notes ali podjetje stranke v enem stavku. Če je predloga že dobra, jo vrni skoraj nespremenjeno. IZHOD JSON: {"subject": "...", "body_text": "(brez podpisa)", "ai_reasoning": "..."}`,
 };
 
 const QUALITY_REVIEWER_PROMPT = `Pregled v 7 točkah: 1)slovnica (sklanjatve, vikanje, č/š/ž), 2)oblikovanje (35,50 €, 1.000 €, "20. maj", 14:30), 3)ton (brez "NUJNO!", VELIKIH ČRK, emojiji glede na panogo), 4)personalizacija (merge tokeni izpolnjeni, "vaš" mala), 5)struktura (pozdrav+vejica+prazna+telo+Lep pozdrav), 6)subject (pod 50 znakov, brez !!!), 7)brez odjavne povezave v body. Score 7+ approved=true, sicer revised verzije. IZHOD JSON: {"approved": true/false, "quality_score": 1-10, "issues_found": [], "revised_subject": "...", "revised_body": "...", "reviewer_notes": "..."}`;
@@ -85,7 +91,7 @@ Deno.serve(async (req) => {
       if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { business_id, lead_id, pillar, sequence_step = 1, available_slots } = body;
+    const { business_id, lead_id, pillar, sequence_step = 1, available_slots, instruction, template, campaign_id, campaign_step } = body;
 
     if (!pillar || !lead_id || !business_id) {
       return Response.json({ error: 'Manjkajoči parametri: pillar, lead_id, business_id' }, { status: 400 });
@@ -123,7 +129,9 @@ Deno.serve(async (req) => {
     // ─── DEDUPE: isti lead + pillar + korak v zadnjih 15 min (webhook + workflow sprožita generateDraft dvakrat) ───
     const recentSince = new Date(Date.now() - 15 * 60 * 1000).toISOString();
     const existingDrafts = await base44.asServiceRole.entities.DraftMessage.filter({ business_id, lead_id, pillar });
-    const duplicate = existingDrafts.find((d) => d.created_date >= recentSince && !['failed', 'skipped'].includes(d.status));
+    const duplicate = pillar === 'manual' ? null : existingDrafts.find((d) => !['failed', 'skipped'].includes(d.status) && (pillar === 'campaign'
+      ? (d.campaign_id === campaign_id && Number(d.campaign_step) === Number(campaign_step))
+      : d.created_date >= recentSince));
     if (duplicate) {
       return Response.json({ success: true, draft: duplicate, duplicate: true, quality_score: duplicate.quality_score });
     }
@@ -200,6 +208,19 @@ Deno.serve(async (req) => {
       sequence_step,
       available_slots: available_slots || [],
     };
+    if (instruction) userPayload.instruction = String(instruction).slice(0, 2000);
+    if (template) userPayload.template = { subject: String(template.subject || ''), body: String(template.body || '').slice(0, 4000) };
+    if (pillar === 'manual' || pillar === 'campaign') {
+      const acts = await base44.asServiceRole.entities.Activity.filter({ business_id, lead_id }).catch(() => []);
+      userPayload.history = acts
+        .sort((a, b) => new Date(b.occurred_at || b.created_date) - new Date(a.occurred_at || a.created_date))
+        .slice(0, 8)
+        .map((a) => ({ when: a.occurred_at || a.created_date, type: a.type, subject: a.subject, content: String(a.content || '').slice(0, 400) }));
+      if (lead.company_id) {
+        const comp = (await base44.asServiceRole.entities.Company.filter({ id: lead.company_id }).catch(() => []))[0];
+        if (comp) userPayload.lead.company = comp.name;
+      }
+    }
 
     // ─── Klic 1: Primary AI Draft ─────────────────────────────────────────────
     const t1Start = Date.now();
@@ -242,7 +263,7 @@ Deno.serve(async (req) => {
 
     const qualityScore = reviewData.quality_score || 7;
     // If draft_mode is OFF, auto-approve high-quality drafts (skip manual review)
-    const autoApprove = business.draft_mode === false && qualityScore >= 6;
+    const autoApprove = pillar !== 'manual' && pillar !== 'campaign' && business.draft_mode === false && qualityScore >= 6;
     const draftStatus = qualityScore < 6 ? 'flagged_for_review' : (autoApprove ? 'approved' : 'pending');
 
     // ─── Shrani DraftMessage ─────────────────────────────────────────────────
@@ -259,6 +280,7 @@ Deno.serve(async (req) => {
       ai_reasoning: draftData.ai_reasoning || '',
       reviewer_notes: reviewData.reviewer_notes || '',
       scheduled_at: new Date().toISOString(),
+      ...(campaign_id ? { campaign_id, campaign_step: Number(campaign_step) || 1 } : {}),
       created_by: business.created_by,
       owner_email: business.owner_email || business.created_by, // owner visibility via RLS data.owner_email
     });
