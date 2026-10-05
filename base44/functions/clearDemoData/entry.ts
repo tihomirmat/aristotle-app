@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
 
     // Briše SAMO demo zapise TEGA podjetja (business_id + is_demo)
     const filter = { business_id, is_demo: true };
-    const entities = ['Lead', 'DraftMessage', 'KnowledgeBase', 'ChatbotConversation', 'AssistantChat', 'AssistantBriefing', 'BookingProposal', 'ConfirmedBooking', 'ExecutiveDigest'];
+    const entities = ['Lead', 'DraftMessage', 'KnowledgeBase', 'ChatbotConversation', 'AssistantChat', 'AssistantBriefing', 'BookingProposal', 'ConfirmedBooking', 'ExecutiveDigest', 'Company', 'Activity', 'Task', 'Campaign', 'CampaignEnrollment', 'Invoice', 'OfferGeneration'];
 
     let totalDeleted = 0;
     for (const entityName of entities) {
