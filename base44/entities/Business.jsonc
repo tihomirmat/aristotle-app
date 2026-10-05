@@ -1,5 +1,6 @@
 {
   "name": "Business",
+  "description": "Podjetje uporabnika aplikacije (najemnik)",
   "type": "object",
   "properties": {
     "name": {
@@ -211,7 +212,7 @@
     "imap_enabled": {
       "type": "boolean",
       "default": false,
-      "description": "Branje prejete pošte (povpraševanja iz e-pošte)"
+      "description": "Branje prejete po\u0161te (povpra\u0161evanja iz e-po\u0161te)"
     },
     "imap_host": {
       "type": "string"
@@ -243,7 +244,7 @@
     },
     "inquiry_rules": {
       "type": "string",
-      "description": "Neobvezno: pošiljatelji ali zadeve, ki vedno pomenijo povpraševanje (ena na vrstico, npr. obrazec@mojastran.si ali 'Novo povpraševanje')"
+      "description": "Neobvezno: po\u0161iljatelji ali zadeve, ki vedno pomenijo povpra\u0161evanje (ena na vrstico, npr. obrazec@mojastran.si ali 'Novo povpra\u0161evanje')"
     },
     "google_calendar_connected": {
       "type": "boolean",
@@ -332,7 +333,7 @@
       "default": [
         "OOO",
         "Dopust",
-        "Bolniška"
+        "Bolni\u0161ka"
       ]
     },
     "booking_blackout_periods": {
@@ -424,15 +425,15 @@
     },
     "lead_form_title": {
       "type": "string",
-      "default": "Pošljite povpraševanje"
+      "default": "Po\u0161ljite povpra\u0161evanje"
     },
     "lead_form_button_text": {
       "type": "string",
-      "default": "Pošlji povpraševanje"
+      "default": "Po\u0161lji povpra\u0161evanje"
     },
     "lead_form_success_message": {
       "type": "string",
-      "default": "Hvala! Kontaktirali vas bomo v najkrajšem možnem času."
+      "default": "Hvala! Kontaktirali vas bomo v najkraj\u0161em mo\u017enem \u010dasu."
     },
     "lead_form_consent_text": {
       "type": "string"
@@ -553,11 +554,11 @@
     },
     "owner_email": {
       "type": "string",
-      "description": "E-pošta lastnika podjetja. Nujno za RLS vidljivost, ker service-role zapisi dobijo created_by = service+... (completeOnboarding)."
+      "description": "E-po\u0161ta lastnika podjetja. Nujno za RLS vidljivost, ker service-role zapisi dobijo created_by = service+... (completeOnboarding)."
     },
     "auto_send": {
       "type": "object",
-      "description": "Samodejno pošiljanje po vrsti: { web_form_lead, email_inquiry, chatbot_handoff, review_request, reactivation, campaign } (true = brez odobritve)"
+      "description": "Samodejno po\u0161iljanje po vrsti: { web_form_lead, email_inquiry, chatbot_handoff, review_request, reactivation, campaign } (true = brez odobritve)"
     },
     "daily_digest_enabled": {
       "type": "boolean",
