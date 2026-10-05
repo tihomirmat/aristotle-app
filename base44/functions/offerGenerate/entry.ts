@@ -354,6 +354,11 @@ VRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.`;
     const generation = await base44.asServiceRole.entities.OfferGeneration.create({
       business_id,
       template_id: template_id || null,
+      ...(body.lead_id ? { lead_id: String(body.lead_id) } : {}),
+      ...(body.company_id ? { company_id: String(body.company_id) } : {}),
+      client_name: String(mergedVars?.stranka_naziv || resolved_vars?.stranka_naziv || '').slice(0, 200),
+      ...(() => { const n = parseFloat(String(mergedVars?.cena || resolved_vars?.cena || '').replace(/\./g, '').replace(',', '.').replace(/[^0-9.]/g, '')); return Number.isFinite(n) && n > 0 ? { amount: n } : {}; })(),
+      offer_status: 'draft',
       kind,
       input_method,
       inputs_json: resolved_vars || {},
