@@ -8,7 +8,7 @@ import { Search } from "lucide-react";
 
 // Naslovi strani za zgornjo vrstico (brezhibno ujemanje z menijem)
 const TITLES = [
-  ["/prejeto", "Za odobritev"], ["/stranke", "Stranke"], ["/podjetja", "Podjetja"], ["/opravila", "Opravila"], ["/kampanje", "Kampanje"],
+  ["/stranke", "Stranke"], ["/podjetja", "Podjetja"], ["/opravila", "Opravila"], ["/kampanje", "Kampanje"],
   ["/klepet", "Spletni klepet"], ["/asistent", "Asistent"], ["/ocene", "Google ocene"],
   ["/ponudbe", "Ponudbe"], ["/racuni", "Računi"], ["/nastavitve", "Nastavitve"],
   ["/admin/businesses", "Podjetja"], ["/admin/usage", "Poraba"],
