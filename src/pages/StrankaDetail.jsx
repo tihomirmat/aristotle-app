@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { STAGES, STAGE, SOURCES, CAMPAIGN_GOALS, fmtDate, fmtDateTime, eur, initials, ago } from "@/lib/crm";
 import Timeline from "@/components/crm/Timeline";
 import TaskRow from "@/components/crm/TaskRow";
+import TasksPanel from "@/components/crm/TasksPanel";
 import { TaskDialog, LogActivityDialog, SendEmailDialog, useCrmInvalidate } from "@/components/crm/CrmDialogs";
 import GenerateDraftButton from "@/components/stranke/GenerateDraftButton";
 import ReplyReview from "@/components/crm/ReplyReview";
@@ -82,7 +83,7 @@ export default function StrankaDetail() {
 
   const S = SOURCES[lead.source] || SOURCES.manual;
   const st = STAGE[lead.status] || STAGE.new;
-  const TABS = [["timeline", "Časovnica", activities.length], ["tasks", "Opravila", openTasks.length], ["offers", "Ponudbe", offers.length], ["bookings", "Termini", bookings.length]];
+  const TABS = [["timeline", "Časovnica", activities.length], ["offers", "Ponudbe", offers.length], ["bookings", "Termini", bookings.length]];
 
   return (
     <div className="space-y-5">
@@ -133,9 +134,9 @@ export default function StrankaDetail() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[1fr_340px] 2xl:grid-cols-[1fr_400px] gap-5 items-start">
+      <div className="grid md:grid-cols-[1fr_320px] xl:grid-cols-[1fr_380px] 2xl:grid-cols-[1fr_420px] gap-5 items-start">
         {/* Levo: zavihki */}
-        <div className="card-elevated">
+        <div className="card-elevated min-w-0">
           <div className="flex gap-1 border-b px-3 overflow-x-auto">
             {TABS.map(([k, l, n]) => (
               <button key={k} onClick={() => setTab(k)} className={`px-3 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${tab === k ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{l}{n > 0 && <span className="ml-1.5 text-xs text-muted-foreground">{n}</span>}</button>
@@ -143,15 +144,6 @@ export default function StrankaDetail() {
           </div>
           <div className="p-5">
             {tab === "timeline" && <Timeline activities={activities} emptyText="Tu se bodo pokazala vsa sporočila, klici, opombe in spremembe." />}
-
-            {tab === "tasks" && (
-              <div>
-                <div className="flex justify-between items-center mb-2"><p className="text-sm text-muted-foreground">Kaj morate še narediti za to stranko.</p><Button size="sm" variant="outline" onClick={() => { setEditTask(null); setDlg("task"); }}><Plus className="w-4 h-4 mr-1" />Dodaj</Button></div>
-                {openTasks.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">Ni odprtih opravil.</p>}
-                <div className="divide-y">{openTasks.map((t) => <TaskRow key={t.id} task={t} compact onEdit={(x) => { setEditTask(x); setDlg("task"); }} />)}</div>
-                {doneTasks.length > 0 && <><p className="text-xs uppercase tracking-wider text-muted-foreground mt-6 mb-1">Opravljeno</p><div className="divide-y">{doneTasks.map((t) => <TaskRow key={t.id} task={t} compact />)}</div></>}
-              </div>
-            )}
 
             {tab === "offers" && (
               <div className="space-y-2">
@@ -182,8 +174,9 @@ export default function StrankaDetail() {
           </div>
         </div>
 
-        {/* Desno: podatki, opravila, kampanje */}
-        <div className="space-y-4">
+        {/* Desno: opravila (vedno vidna), podatki, opombe, kampanje */}
+        <div className="space-y-4 order-first md:order-none">
+          <TasksPanel tasks={tasks} leadId={lead.id} companyId={lead.company_id} onEdit={(x) => { setEditTask(x); setDlg("task"); }} onAddDetailed={() => { setEditTask(null); setDlg("task"); }} />
           <div className="card-elevated p-4 space-y-1">
             <p className="text-sm font-semibold mb-2">Podatki</p>
             <Field label="Ime" value={lead.name} onSave={(v) => v && save({ name: v })} />
@@ -200,11 +193,6 @@ export default function StrankaDetail() {
             <Field label="Naslov" value={lead.address} onSave={(v) => save({ address: v })} />
             <label className="flex items-center gap-2 text-xs pt-2 cursor-pointer"><input type="checkbox" checked={lead.consent_email !== false} onChange={(e) => save({ consent_email: e.target.checked })} />Strinja se s prejemanjem e-pošte</label>
             <p className="text-[11px] text-muted-foreground pt-2">Dodano {fmtDate(lead.created_date)} · zadnji stik {lead.last_contacted_at ? ago(lead.last_contacted_at) : "še ni bilo"}</p>
-          </div>
-
-          <div className="card-elevated p-4">
-            <div className="flex items-center justify-between mb-1"><p className="text-sm font-semibold">Naslednji koraki</p><button onClick={() => { setEditTask(null); setDlg("task"); }} className="text-xs text-primary inline-flex items-center gap-1"><Plus className="w-3 h-3" />Dodaj</button></div>
-            {openTasks.length === 0 ? <p className="text-xs text-muted-foreground py-2">Ni odprtih opravil.</p> : <div className="divide-y">{openTasks.slice(0, 4).map((t) => <TaskRow key={t.id} task={t} compact onEdit={(x) => { setEditTask(x); setDlg("task"); }} />)}</div>}
           </div>
 
           <div className="card-elevated p-4">
