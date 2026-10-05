@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { offerScan } from "@/functions/offerScan";
 
 import { fnError } from "@/lib/fn-error";
-const STEPS = ["Naložite vir", "Ekstrakcija besedila", "AI analiza", "Shranite template"];
+const STEPS = ["Dodajte ponudbo", "Branje besedila", "AI pripravi vzorec", "Shranite vzorec"];
 const KIND_LABELS = { service: "Storitev", product: "Izdelek", saas: "SaaS", custom: "Po meri" };
 
 export default function PonudbeSkener() {
@@ -111,7 +111,7 @@ export default function PonudbeSkener() {
         is_default: isDefault,
       });
 
-      toast.success("Template je shranjen!");
+      toast.success("Vzorec je shranjen.");
       navigate(`/ponudbe/templati/${template.id}`);
     } catch (err) {
       toast.error("Napaka pri shranjevanju: " + fnError(err));
@@ -123,8 +123,8 @@ export default function PonudbeSkener() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Skeniraj obstoječo ponudbo</h1>
-        <p className="text-muted-foreground mt-1">AI bo iz vaše obstoječe ponudbe ustvaril template z vsemi spremenljivkami.</p>
+        <h1 className="text-2xl font-bold">Dodaj obstoječo ponudbo</h1>
+        <p className="text-muted-foreground mt-1">Naložite PDF ali Word, fotografijo oziroma sken, ali prilepite besedilo ponudbe. AI iz nje pripravi vzorec, ki ga nato samo izpolnite za vsako novo stranko.</p>
       </div>
 
       {/* Steps */}
@@ -207,7 +207,7 @@ export default function PonudbeSkener() {
           <div className="flex flex-col items-center py-8 gap-4">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
             <p className="font-medium">AI analizira ponudbo...</p>
-            <p className="text-sm text-muted-foreground">Ustvarjam template in spremenljivke. Prosim počakajte.</p>
+            <p className="text-sm text-muted-foreground">Pripravljam vzorec in polja, ki jih boste izpolnjevali. Trenutek …</p>
           </div>
           {extractedText && (
             <details className="border rounded-lg">
@@ -231,7 +231,7 @@ export default function PonudbeSkener() {
           <div className="border rounded-xl p-4 bg-card space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Ime template-a</label>
+                <label className="text-xs font-medium text-muted-foreground">Ime vzorca</label>
                 <input
                   className="w-full border rounded-lg px-3 py-1.5 text-sm"
                   value={editedResult.template_name || ""}
@@ -281,7 +281,7 @@ export default function PonudbeSkener() {
           <div className="flex gap-3">
             <Button onClick={handleSaveTemplate} disabled={saving} className="flex-1 gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-              Shrani template
+              Shrani vzorec
             </Button>
             <Button variant="outline" onClick={() => { setStep(0); setUploadedFile(null); setPastedText(""); setExtractedText(""); setScanResult(null); }}>
               <ChevronLeft className="w-4 h-4" />
