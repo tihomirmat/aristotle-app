@@ -16,7 +16,7 @@ import TaskRow from "@/components/crm/TaskRow";
 import TasksPanel from "@/components/crm/TasksPanel";
 import { TaskDialog, LogActivityDialog, SendEmailDialog, useCrmInvalidate } from "@/components/crm/CrmDialogs";
 import GenerateDraftButton from "@/components/stranke/GenerateDraftButton";
-import ReplyReview from "@/components/crm/ReplyReview";
+import ReplyReview, { reasonFor } from "@/components/crm/ReplyReview";
 
 const ENROLL_STATUS = { active: "Teče", completed: "Končano", stopped_replied: "Ustavljeno — odgovoril", stopped_unsubscribed: "Ustavljeno — odjava", stopped_manual: "Ustavljeno ročno" };
 
@@ -40,6 +40,7 @@ export default function StrankaDetail() {
   const [tab, setTab] = useState("timeline");
   const [dlg, setDlg] = useState(null); // 'email' | 'task' | 'log' | 'note' | 'delete'
   const [editTask, setEditTask] = useState(null);
+  const [openReplies, setOpenReplies] = useState([]);
   const bid = business?.id;
 
   const { data: lead, isLoading } = useQuery({ queryKey: ["leads", "one", id], queryFn: () => base44.entities.Lead.filter({ id }).then((r) => r[0] || null), enabled: !!id });
@@ -89,6 +90,8 @@ export default function StrankaDetail() {
     <div className="space-y-5">
       <Link to="/stranke" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" />Vse stranke</Link>
 
+      <div className="grid md:grid-cols-[1fr_320px] xl:grid-cols-[1fr_380px] 2xl:grid-cols-[1fr_420px] gap-5 items-start">
+      <div className="space-y-5 min-w-0">
       {/* Glava */}
       <div className="card-elevated p-5">
         <div className="flex items-start gap-4 flex-wrap">
@@ -129,13 +132,26 @@ export default function StrankaDetail() {
       </div>
 
       {pending.length > 0 && (
-        <div className="space-y-4">
-          {pending.map((d) => <ReplyReview key={d.id} draft={d} lead={lead} activities={activities} />)}
+        <div className="space-y-3">
+          {pending.map((d) => {
+            // Prvi odgovor vsake vrste je odprt, naslednji iste vrste so zaprti (klik odpre).
+            const firstOfKind = pending.find((x) => x.pillar === d.pillar)?.id === d.id;
+            const isOpen = firstOfKind || openReplies.includes(d.id);
+            if (isOpen) return <ReplyReview key={d.id} draft={d} lead={lead} activities={activities} />;
+            const R = reasonFor(d.pillar);
+            return (
+              <button key={d.id} onClick={() => setOpenReplies((o) => [...o, d.id])} className="w-full text-left rounded-xl border bg-card px-4 py-3 flex items-center gap-3 hover:border-primary/40 hover:shadow-sm">
+                <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${R.color}`}><R.icon className="w-3.5 h-3.5" />{R.label}</span>
+                <span className="text-sm font-medium truncate flex-1">{d.subject || "Predlagan odgovor"}</span>
+                <span className="text-xs text-muted-foreground shrink-0">{ago(d.created_date)}</span>
+                <span className="text-xs text-primary font-medium shrink-0 inline-flex items-center gap-1">Odpri<ChevronDown className="w-3.5 h-3.5" /></span>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      <div className="grid md:grid-cols-[1fr_320px] xl:grid-cols-[1fr_380px] 2xl:grid-cols-[1fr_420px] gap-5 items-start">
-        {/* Levo: zavihki */}
+        {/* Zavihki */}
         <div className="card-elevated min-w-0">
           <div className="flex gap-1 border-b px-3 overflow-x-auto">
             {TABS.map(([k, l, n]) => (
@@ -174,7 +190,9 @@ export default function StrankaDetail() {
           </div>
         </div>
 
-        {/* Desno: opravila (vedno vidna), podatki, opombe, kampanje */}
+      </div>
+
+        {/* Desno od vrha strani: opravila (vedno vidna), podatki, opombe, kampanje */}
         <div className="space-y-4 order-first md:order-none">
           <TasksPanel tasks={tasks} leadId={lead.id} companyId={lead.company_id} onEdit={(x) => { setEditTask(x); setDlg("task"); }} onAddDetailed={() => { setEditTask(null); setDlg("task"); }} />
           <div className="card-elevated p-4 space-y-1">
