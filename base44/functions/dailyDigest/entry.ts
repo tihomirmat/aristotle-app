@@ -37,11 +37,11 @@ async function buildDigest(sr, business) {
   const urgent = [...overdue, ...dueToday].sort((a, b) => (a.priority === 'high' ? -1 : 1) - (b.priority === 'high' ? -1 : 1) || a.due_at.localeCompare(b.due_at))[0];
   const oldestPending = [...pending].sort((a, b) => a.created_date.localeCompare(b.created_date))[0];
   if (urgent) first = { text: urgent.title, url: `${APP_URL}/opravila` };
-  else if (oldestPending) first = { text: `Odobrite odgovor za ${leadsById[oldestPending.lead_id]?.name || 'stranko'}`, url: `${APP_URL}/prejeto` };
+  else if (oldestPending) first = { text: `Odgovorite ${leadsById[oldestPending.lead_id]?.name || 'stranki'} (odgovor je pripravljen)`, url: `${APP_URL}/stranke?tab=odgovori` };
   else if (todayBookings[0]) first = { text: `Termin ob ${time(todayBookings[0].booked_at)} — ${leadsById[todayBookings[0].lead_id]?.name || ''}`, url: `${APP_URL}/` };
 
   const lines = [];
-  if (pending.length) lines.push({ n: pending.length, label: pending.length === 1 ? 'sporočilo čaka na odobritev' : 'sporočil čaka na odobritev', url: `${APP_URL}/prejeto`, items: pending.slice(0, 3).map((d) => `${leadsById[d.lead_id]?.name || 'Stranka'}: ${d.subject || ''}`) });
+  if (pending.length) lines.push({ n: pending.length, label: pending.length === 1 ? 'pripravljen odgovor čaka na vas' : 'pripravljenih odgovorov čaka na vas', url: `${APP_URL}/stranke?tab=odgovori`, items: pending.slice(0, 3).map((d) => `${leadsById[d.lead_id]?.name || 'Stranka'}: ${d.subject || ''}`) });
   if (overdue.length) lines.push({ n: overdue.length, label: overdue.length === 1 ? 'opravilo zamuja' : 'opravil zamuja', url: `${APP_URL}/opravila`, items: overdue.slice(0, 3).map((t) => t.title) });
   if (dueToday.length) lines.push({ n: dueToday.length, label: dueToday.length === 1 ? 'opravilo za danes' : 'opravil za danes', url: `${APP_URL}/opravila`, items: dueToday.slice(0, 3).map((t) => t.title) });
   if (fresh.length) lines.push({ n: fresh.length, label: fresh.length === 1 ? 'nov kontakt' : 'novih kontaktov', url: `${APP_URL}/stranke`, items: fresh.slice(0, 3).map((l) => `${l.name}${l.service_requested ? ' — ' + l.service_requested : ''}`) });
