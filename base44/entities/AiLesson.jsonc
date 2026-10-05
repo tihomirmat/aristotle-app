@@ -1,0 +1,132 @@
+{
+  "name": "AiLesson",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "rule": {
+      "type": "string",
+      "description": "Kratko pravilo, ki ga AI upo\u0161teva pri vsakem sporo\u010dilu (npr. 'Ne obljubljaj rokov izvedbe.')"
+    },
+    "applies_to": {
+      "type": "string",
+      "enum": [
+        "all",
+        "emails",
+        "chat"
+      ],
+      "default": "all",
+      "description": "Kje velja: vsa sporo\u010dila, samo e-po\u0161ta, samo spletni klepet"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "edit",
+        "skip",
+        "bad_example",
+        "good_example",
+        "manual",
+        "chat_correction"
+      ],
+      "default": "manual",
+      "description": "Od kod je pravilo: popravek odgovora, zavrnjen odgovor, primer, ro\u010dno"
+    },
+    "evidence": {
+      "type": "string",
+      "description": "Kratek opis primera, iz katerega je pravilo nastalo"
+    },
+    "times_seen": {
+      "type": "number",
+      "default": 1,
+      "description": "Kolikokrat se je ista napaka ponovila"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_seen_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "owner_email": {
+      "type": "string"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "business_id",
+    "rule"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
