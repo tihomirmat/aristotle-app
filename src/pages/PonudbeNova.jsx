@@ -43,7 +43,7 @@ const DEFAULT_GLOBAL_VARS = [
 export default function PonudbeNova() {
   const { business } = useBusiness();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const templateId = searchParams.get("template");
   const duplicateId = searchParams.get("duplicate");
   const crmLeadId = searchParams.get("lead");
@@ -77,6 +77,18 @@ export default function PonudbeNova() {
     enabled: !templateId && !!business?.id,
     select: (d) => d[0],
   });
+
+  // Vsi vzorci podjetja — za izbiro vzorca na prvem koraku.
+  const { data: allTemplates = [] } = useQuery({
+    queryKey: ["offer-templates-all", business?.id],
+    queryFn: () => base44.entities.OfferTemplate.filter({ business_id: business.id }),
+    enabled: !!business?.id,
+  });
+  const chooseTemplate = (id) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("template", id);
+    setSearchParams(next, { replace: true });
+  };
 
   const activeTemplate = template || defaultTemplates;
   // Stabilna referenca: prej je `business?.offers_global_vars || {}` ob vsakem renderju ustvaril nov objekt →
@@ -239,6 +251,35 @@ export default function PonudbeNova() {
       {/* Step 0: Input method selection */}
       {step === 0 && (
         <div className="space-y-5">
+          {/* Vzorec ponudbe: uvoz iz PDF/Word ali izbira obstoječega */}
+          <div className="border rounded-xl p-4 bg-card space-y-3">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <h2 className="font-semibold">Vzorec ponudbe</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {activeTemplate
+                    ? "Nova ponudba bo narejena po tem vzorcu."
+                    : "Vzorca še nimate. Naložite svojo obstoječo ponudbo (PDF ali Word), iz nje nastane vzorec za vse naslednje ponudbe."}
+                </p>
+              </div>
+              <Link to="/ponudbe/skener">
+                <Button variant={activeTemplate ? "outline" : "default"} size="sm" className="gap-2">
+                  <Upload className="w-4 h-4" />Uvozi vzorec iz PDF ali Word
+                </Button>
+              </Link>
+            </div>
+            {allTemplates.length > 1 && activeTemplate ? (
+              <Select value={activeTemplate.id} onValueChange={chooseTemplate}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {allTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            ) : activeTemplate ? (
+              <p className="text-sm flex items-center gap-2"><FileText className="w-4 h-4 text-primary shrink-0" />{activeTemplate.name}</p>
+            ) : null}
+          </div>
+
           <div>
             <h2 className="font-semibold mb-3">Izberite način vnosa</h2>
             <div className="grid grid-cols-2 gap-3">
