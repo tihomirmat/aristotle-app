@@ -19,6 +19,7 @@ import { fnError } from "@/lib/fn-error";
 import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
 import TerminiTab from "@/components/nastavitve/TerminiTab";
 import MailboxCard from "@/components/nastavitve/MailboxCard";
+import AutoSendCard from "@/components/nastavitve/AutoSendCard";
 import { toast as sonnerToast } from "sonner";
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -326,9 +327,12 @@ export default function Nastavitve() {
               </Button>
             </div>
 
-            {/* AI model & Draft mode */}
+            <AutoSendCard business={business} isTrialing={isTrialing} />
+
+            {/* AI model — samo skrbnik */}
+            {user?.role === "admin" && (
             <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
-              <h3 className="font-semibold">AI nastavitve</h3>
+              <h3 className="font-semibold">AI model (skrbnik)</h3>
               <div className="space-y-2">
                 <Label>AI model</Label>
                 <Select
@@ -352,23 +356,8 @@ export default function Nastavitve() {
                   </p>
                 )}
               </div>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-medium text-sm">Osnutek način</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {isTrialing
-                      ? "Avtomatsko pošiljanje je na voljo po aktivaciji naročnine."
-                      : "Ko izklopite, sistem pošilja sporočila avtomatsko brez odobritve."}
-                  </p>
-                </div>
-                <Switch
-                  checked={business?.draft_mode ?? true}
-                  disabled={isTrialing}
-                  onCheckedChange={(v) => !isTrialing && saveMutation.mutate({ draft_mode: v })}
-                  className={isTrialing ? "opacity-50 cursor-not-allowed" : ""}
-                />
-              </div>
             </div>
+            )}
           </div>
         </TabsContent>
 
