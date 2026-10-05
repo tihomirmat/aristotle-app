@@ -176,11 +176,21 @@ Deno.serve(async (req) => {
       business.example_bad_messages?.length ? `PRIMERI SLABIH SPOROČIL (izogni se):\n${business.example_bad_messages.map(m => `Subject: ${m.subject}\nBody: ${m.body}\nZakaj slabo: ${m.why_bad}`).join('\n---\n')}` : '',
     ].filter(Boolean).join('\n\n');
 
+    // ─── Naučena pravila (AiLesson): iz lastnikovih popravkov in zavrnitev — da se napake ne ponavljajo ───
+    const lessons = (await base44.asServiceRole.entities.AiLesson.filter({ business_id }).catch(() => []))
+      .filter((l) => l.active !== false && l.applies_to !== 'chat')
+      .sort((a, b) => (b.times_seen || 1) - (a.times_seen || 1) || String(b.last_seen_at || '').localeCompare(String(a.last_seen_at || '')))
+      .slice(0, 30);
+    const lessonsLayer = lessons.length
+      ? `## PRAVILA LASTNIKA (naučeno iz njegovih popravkov — OBVEZNO upoštevaj, imajo prednost pred splošnimi navodili)\n${lessons.map((l) => `- ${l.rule}`).join('\n')}`
+      : '';
+
     const systemPrompt = [
       `## PLAST 1 – ARISTOTLE PERSONA\n${ARISTOTLE_PERSONA}`,
       `## PLAST 2 – SLOVENE STYLE GUIDE\n${SLOVENE_STYLE_GUIDE}`,
       brandVoiceLayer ? `## PLAST 3 – GLAS ZNAMKE\n${brandVoiceLayer}` : '',
       `## PLAST 4 – PILLAR AGENT\n${PILLAR_PROMPTS[pillar] || PILLAR_PROMPTS.reactivation}`,
+      lessonsLayer,
       `VRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.`,
     ].filter(Boolean).join('\n\n');
 
