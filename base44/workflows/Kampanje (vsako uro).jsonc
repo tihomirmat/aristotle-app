@@ -1,0 +1,41 @@
+{
+  "name": "Kampanje (vsako uro)",
+  "description": "Vsako uro pripravi naslednja sporo\u010dila aktivnih kampanj (v Za odobritev ali samodejno po\u0161lje) in vklju\u010di nove ustrezne stranke.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 1,
+      "interval_unit": "hours",
+      "interval_anchor": "2026-10-05T00:20:00",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "kampanje_vsako_uro",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "runCampaigns",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
