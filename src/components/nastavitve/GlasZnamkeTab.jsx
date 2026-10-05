@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Save, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
+import AiLessonsCard from "@/components/nastavitve/AiLessonsCard";
 
 const TONE_LABELS = {
   industry_default: "Privzeto za panogo",
@@ -117,7 +118,7 @@ export default function GlasZnamkeTab({ business }) {
     <div className="space-y-6 pb-24">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4 lg:col-span-2">
-          <h3 className="font-semibold">Opis tona in glasu znamke</h3>
+          <h3 className="font-semibold">Osnovna navodila za AI <span className="text-sm font-normal text-muted-foreground">— veljajo vedno</span></h3>
           <div className="space-y-2">
             <Label>Kako pišete strankam <span className="text-muted-foreground font-normal">(do 2000 znakov)</span></Label>
             <Textarea value={form.brand_voice} onChange={(e) => setForm({ ...form, brand_voice: e.target.value.slice(0, 2000) })} placeholder="Strankam pišemo toplo in osebno. Vedno vikamo, izogibamo se žargonu ..." className="h-40" />
@@ -137,6 +138,8 @@ export default function GlasZnamkeTab({ business }) {
           <Textarea value={form.email_signature} onChange={(e) => setForm({ ...form, email_signature: e.target.value })} placeholder={"Lep pozdrav,\nIme Priimek\nPodjetje | +386 40 123 456"} className="flex-1 min-h-[160px] font-mono text-sm" />
         </div>
       </div>
+
+      <AiLessonsCard business={business} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {sections.map(([kind, title, list, add, hint]) => (
