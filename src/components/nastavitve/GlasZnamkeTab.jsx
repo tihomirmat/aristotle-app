@@ -66,7 +66,6 @@ export default function GlasZnamkeTab({ business }) {
     },
   });
 
-  // Good messages helpers
   const addGood = () => {
     if (form.example_good_messages.length >= 5) return;
     setForm({ ...form, example_good_messages: [...form.example_good_messages, emptyGood()] });
@@ -76,11 +75,8 @@ export default function GlasZnamkeTab({ business }) {
     arr[i] = { ...arr[i], [field]: val };
     setForm({ ...form, example_good_messages: arr });
   };
-  const removeGood = (i) => {
-    setForm({ ...form, example_good_messages: form.example_good_messages.filter((_, idx) => idx !== i) });
-  };
+  const removeGood = (i) => setForm({ ...form, example_good_messages: form.example_good_messages.filter((_, idx) => idx !== i) });
 
-  // Bad messages helpers
   const addBad = () => {
     if (form.example_bad_messages.length >= 5) return;
     setForm({ ...form, example_bad_messages: [...form.example_bad_messages, emptyBad()] });
@@ -90,124 +86,72 @@ export default function GlasZnamkeTab({ business }) {
     arr[i] = { ...arr[i], [field]: val };
     setForm({ ...form, example_bad_messages: arr });
   };
-  const removeBad = (i) => {
-    setForm({ ...form, example_bad_messages: form.example_bad_messages.filter((_, idx) => idx !== i) });
+  const removeBad = (i) => setForm({ ...form, example_bad_messages: form.example_bad_messages.filter((_, idx) => idx !== i) });
+
+  // Funkcija (ne komponenta), da polja ob tipkanju ne izgubijo fokusa.
+  const renderExample = (kind, msg, i) => {
+    const good = kind === "good";
+    const upd = good ? updateGood : updateBad;
+    return (
+      <div className={`border rounded-lg p-4 space-y-3 ${good ? "bg-emerald-50/50" : "bg-red-50/50"}`}>
+        <div className="flex items-center justify-between">
+          <span className={`text-xs font-medium ${good ? "text-emerald-700" : "text-red-600"}`}>{good ? "Dobro" : "Slabo"} sporočilo #{i + 1}</span>
+          <button onClick={() => (good ? removeGood(i) : removeBad(i))} className="text-muted-foreground hover:text-destructive" title="Odstrani"><Trash2 className="w-3.5 h-3.5" /></button>
+        </div>
+        <Input value={msg.subject || ""} onChange={(e) => upd(i, "subject", e.target.value)} placeholder="Zadeva" />
+        <Textarea value={msg.body || ""} onChange={(e) => upd(i, "body", e.target.value)} placeholder="Besedilo sporočila" className="h-44" />
+        <div className="space-y-1.5">
+          <Label className="text-xs">{good ? "Zakaj je dobro?" : "Zakaj je slabo?"}</Label>
+          <Input value={(good ? msg.why_good : msg.why_bad) || ""} onChange={(e) => upd(i, good ? "why_good" : "why_bad", e.target.value)} placeholder={good ? "Npr. osebno, kratko, en jasen naslednji korak" : "Npr. preveč prodajno, generično, predolgo"} />
+        </div>
+      </div>
+    );
   };
 
+  const sections = [
+    ["good", "Primeri dobrih sporočil", form.example_good_messages, addGood, "Najhitreje: v »Za odobritev« pri sporočilu, ki vam je všeč, kliknite »Dober primer«. AI se po teh primerih zgleduje. Največ 5 — nov primer zamenja najstarejšega."],
+    ["bad", "Primeri slabih sporočil", form.example_bad_messages, addBad, "Najhitreje: v »Za odobritev« pri sporočilu, ki vam ni všeč, kliknite »Slab primer« in napišite zakaj. Takim sporočilom se AI izogiba."],
+  ];
+
   return (
-    <div className="max-w-lg space-y-6 pb-24">
-
-      {/* Opis tona */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
-        <h3 className="font-semibold">Opis tona in glasu znamke</h3>
-        <div className="space-y-2">
-          <Label>Opis tona <span className="text-muted-foreground font-normal">(do 2000 znakov)</span></Label>
-          <Textarea
-            value={form.brand_voice}
-            onChange={(e) => setForm({ ...form, brand_voice: e.target.value.slice(0, 2000) })}
-            placeholder="Opisujemo stranke toplo in osebno. Vedno vikamo, izogibamo se žargonu..."
-            className="h-32 resize-none"
-          />
-          <p className="text-xs text-muted-foreground text-right">{form.brand_voice.length}/2000</p>
+    <div className="space-y-6 pb-24">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4 lg:col-span-2">
+          <h3 className="font-semibold">Opis tona in glasu znamke</h3>
+          <div className="space-y-2">
+            <Label>Kako pišete strankam <span className="text-muted-foreground font-normal">(do 2000 znakov)</span></Label>
+            <Textarea value={form.brand_voice} onChange={(e) => setForm({ ...form, brand_voice: e.target.value.slice(0, 2000) })} placeholder="Strankam pišemo toplo in osebno. Vedno vikamo, izogibamo se žargonu ..." className="h-40" />
+            <p className="text-xs text-muted-foreground text-right">{form.brand_voice.length}/2000</p>
+          </div>
+          <div className="space-y-2 max-w-md">
+            <Label>Stil komunikacije</Label>
+            <Select value={form.tone_preset} onValueChange={(v) => setForm({ ...form, tone_preset: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{Object.entries(TONE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label>Stil komunikacije</Label>
-          <Select value={form.tone_preset} onValueChange={(v) => setForm({ ...form, tone_preset: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Object.entries(TONE_LABELS).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="bg-card border rounded-xl p-5 shadow-sm space-y-3 flex flex-col">
+          <h3 className="font-semibold">E-poštni podpis</h3>
+          <Label>Podpis na koncu vsake e-pošte</Label>
+          <Textarea value={form.email_signature} onChange={(e) => setForm({ ...form, email_signature: e.target.value })} placeholder={"Lep pozdrav,\nIme Priimek\nPodjetje | +386 40 123 456"} className="flex-1 min-h-[160px] font-mono text-sm" />
         </div>
       </div>
 
-      {/* Primeri dobrih sporočil */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold">Primeri dobrih sporočil</h3>
-          <Button size="sm" variant="outline" onClick={addGood} disabled={form.example_good_messages.length >= 5}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Dodaj
-          </Button>
-        </div>
-        {form.example_good_messages.length === 0 && (
-          <p className="text-sm text-muted-foreground">Ni primerov. Dodajte do 5 zglednih sporočil.</p>
-        )}
-        {form.example_good_messages.map((msg, i) => (
-          <div key={i} className="border rounded-lg p-4 space-y-3 bg-emerald-50/50">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {sections.map(([kind, title, list, add, hint]) => (
+          <div key={kind} className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-emerald-700">Dobro sporočilo #{i + 1}</span>
-              <button onClick={() => removeGood(i)} className="text-muted-foreground hover:text-destructive">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <h3 className="font-semibold">{title} <span className="text-muted-foreground font-normal text-sm">{list.length}/5</span></h3>
+              <Button size="sm" variant="outline" onClick={add} disabled={list.length >= 5}><Plus className="w-3.5 h-3.5 mr-1" /> Dodaj ročno</Button>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Zadeva</Label>
-              <Input value={msg.subject} onChange={(e) => updateGood(i, "subject", e.target.value)} placeholder="Zadeva e-pošte..." />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Vsebina</Label>
-              <Textarea value={msg.body} onChange={(e) => updateGood(i, "body", e.target.value)} placeholder="Vsebina sporočila..." className="h-20 resize-none" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Zakaj je dobro?</Label>
-              <Input value={msg.why_good} onChange={(e) => updateGood(i, "why_good", e.target.value)} placeholder="Npr. Osebno nagovarjanje, jasna poziv k dejanju..." />
-            </div>
+            <p className="text-xs text-muted-foreground">{hint}</p>
+            {list.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center border border-dashed rounded-lg">Še ni primerov.</p>}
+            {list.map((msg, i) => <React.Fragment key={i}>{renderExample(kind, msg, i)}</React.Fragment>)}
           </div>
         ))}
       </div>
 
-      {/* Primeri slabih sporočil */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold">Primeri slabih sporočil</h3>
-          <Button size="sm" variant="outline" onClick={addBad} disabled={form.example_bad_messages.length >= 5}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Dodaj
-          </Button>
-        </div>
-        {form.example_bad_messages.length === 0 && (
-          <p className="text-sm text-muted-foreground">Ni primerov. Dodajte do 5 sporočil, ki se jim AI izogiba.</p>
-        )}
-        {form.example_bad_messages.map((msg, i) => (
-          <div key={i} className="border rounded-lg p-4 space-y-3 bg-red-50/50">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-red-600">Slabo sporočilo #{i + 1}</span>
-              <button onClick={() => removeBad(i)} className="text-muted-foreground hover:text-destructive">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Zadeva</Label>
-              <Input value={msg.subject} onChange={(e) => updateBad(i, "subject", e.target.value)} placeholder="Zadeva e-pošte..." />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Vsebina</Label>
-              <Textarea value={msg.body} onChange={(e) => updateBad(i, "body", e.target.value)} placeholder="Vsebina sporočila..." className="h-20 resize-none" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Zakaj je slabo?</Label>
-              <Input value={msg.why_bad} onChange={(e) => updateBad(i, "why_bad", e.target.value)} placeholder="Npr. Preveč prodajno, generično, ni osebnega nagovora..." />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* E-poštni podpis */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-3">
-        <h3 className="font-semibold">E-poštni podpis</h3>
-        <div className="space-y-2">
-          <Label>Podpis, ki ga AI doda na konec e-pošte</Label>
-          <Textarea
-            value={form.email_signature}
-            onChange={(e) => setForm({ ...form, email_signature: e.target.value })}
-            placeholder="Lep pozdrav,&#10;Ime Priimek&#10;Studio Fit | +386 40 123 456"
-            className="h-24 resize-none font-mono text-sm"
-          />
-        </div>
-      </div>
-
-      {/* Sticky save bar */}
       {isDirty && (
         <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm px-6 py-3 flex items-center justify-between gap-4">
           <span className="text-sm text-muted-foreground">Imate neshranjene spremembe</span>
