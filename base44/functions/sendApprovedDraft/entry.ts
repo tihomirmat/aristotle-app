@@ -164,19 +164,27 @@ Deno.serve(async (req) => {
       // NOTE: decrement happens after a successful send (see below), per Faza 5 spec.
     }
 
-    // ─── Build email body (add signature + unsubscribe footer) ────────────────
+    // ─── Build email body ────────────────────────────────────────────────────────────
+    // Odgovor na povpraševanje (obrazec, klepet, e-pošta, termin) = osebno sporočilo: brez odjavne noge in brez »novičnikarske« glave.
+    // Trženjska sporočila (vabilo nazaj, prošnja za oceno, priporočilo) = z odjavno nogo (ZEPT-1).
+    const MARKETING = ['reactivation', 'review_request', 'referral_ask'].includes(draft.pillar);
+    // Stranka iz e-pošte → odgovor v isti niti (In-Reply-To/References + »Re:« zadeva), da ga stranka vidi pod svojim sporočilom.
+    const threadReply = !MARKETING && lead.source === 'email' && !!lead.email_message_id;
     const signature = business.email_signature ? `\n\n${business.email_signature}` : `\n\nLep pozdrav,\n${business.name}`;
     const unsubUrl = `${APP_URL}/api/apps/${APP_ID}/functions/unsubscribe?lead=${encodeURIComponent(lead.id)}&t=${await unsubscribeToken(lead.id)}`;
-    const footer = `\n\n---\nČe teh sporočil ne želite več prejemati, se lahko odjavite tukaj: ${unsubUrl}\nali odgovorite na to sporočilo z besedo »Odjava«.`;
+    const footer = MARKETING ? `\n\n---\nČe teh sporočil ne želite več prejemati, se lahko odjavite tukaj: ${unsubUrl}\nali odgovorite na to sporočilo z besedo »Odjava«.` : '';
     const fullBody = (draft.body || '') + signature + footer;
-    // HTML različica: glava s podjetjem, besedilo osnutka kot odstavki, odjavna povezava v nogi
-    const fullHtml = emailHtml({
+    const personalHtml = `<!doctype html><html lang="sl"><head><meta charset="utf-8"></head><body style="margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#111827">${textToHtml((draft.body || '') + signature)}</body></html>`;
+    const fullHtml = !MARKETING ? personalHtml : emailHtml({
       brand: business.name,
       brandSub: business.phone ? String(business.phone) : '',
       title: '',
       bodyHtml: textToHtml((draft.body || '') + signature),
       footerNote: `Če teh sporočil ne želite več prejemati, se lahko <a href="${escHtml(unsubUrl)}" style="color:#6b7280">odjavite tukaj</a> ali odgovorite na to sporočilo z besedo »Odjava«.`,
     });
+    const origSubject = String(lead.email_subject || '').trim();
+    const subject = threadReply && origSubject ? (/^(re|odg|odgovor)\s*:/i.test(origSubject) ? origSubject : `Re: ${origSubject}`) : (draft.subject || '(brez zadeve)');
+    const threadHeaders = threadReply ? { inReplyTo: lead.email_message_id, references: [lead.email_message_id] } : {};
 
     // ─── Send via configured provider ────────────────────────────────────────
     // SMTP samo, če je konfiguracija POPOLNA (prej se je pri pol-nastavljenem SMTP osnutek označil kot poslan brez pošiljanja).
@@ -205,16 +213,17 @@ Deno.serve(async (req) => {
       await transporter.sendMail({
         from: `"${(business.smtp_from_name || business.name).replace(/"/g, '')}" <${business.smtp_from_email || business.smtp_user}>`,
         to: lead.email,
-        subject: draft.subject || '(brez zadeve)',
+        subject,
         text: fullBody,
         html: fullHtml,
+        ...threadHeaders,
       }).catch(e => { sendError = e.message; return null; });
     } else {
       // Platform SendEmail (tudi za gmail/outlook, dokler OAuth pošiljanje ni implementirano)
       try {
         await base44.asServiceRole.integrations.Core.SendEmail({
           to: lead.email,
-          subject: draft.subject || '(brez zadeve)',
+          subject,
           body: fullHtml,
           from_name: business.name,
         });
