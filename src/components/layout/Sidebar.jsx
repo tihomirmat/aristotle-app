@@ -50,7 +50,6 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       title: "Vsak dan",
       items: [
         { path: "/", label: "Pregled", icon: LayoutDashboard },
-        { path: "/prejeto", label: "Za odobritev", icon: Inbox, badge: pendingCount > 0 ? pendingCount : null },
         { path: "/opravila", label: "Opravila", icon: ListChecks, badge: dueTasksCount > 0 ? dueTasksCount : null },
         { path: "/asistent", label: "Asistent", icon: Bot, locked: !hasModule(business, "pillar_assistant"), lockDesc: "Dnevni pregled nalog in termini." },
       ],
@@ -58,7 +57,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     {
       title: "Stranke",
       items: [
-        { path: "/stranke", label: "Stranke", icon: Users, badge: newLeadsCount > 0 ? newLeadsCount : null },
+        { path: "/stranke", label: "Stranke", icon: Users, badge: pendingCount > 0 ? pendingCount : (newLeadsCount > 0 ? newLeadsCount : null) },
         { path: "/podjetja", label: "Podjetja", icon: Building2 },
         { path: "/kampanje", label: "Kampanje", icon: Megaphone, locked: !hasModule(business, "pillar_reactivation"), lockDesc: "Redna sporočila strankam: vrnite stare stranke, novice, pridobivanje." },
       ],
