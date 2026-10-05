@@ -1,0 +1,36 @@
+{
+  "name": "CRM - nova stranka",
+  "description": "Ob novi stranki zapi\u0161e prvi dogodek na \u010dasovnico (vir: e-po\u0161ta, obrazec, klepet, uvoz, ro\u010dno).",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create"
+      ],
+      "entity_name": "Lead"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "crm_nova_stranka",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "crmEvents",
+            "args": {
+              "entity": "Lead"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
