@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Draft origin not trusted', code: 'FORBIDDEN' }, { status: 403 });
     }
     // Modul mora biti aktiven (trial ali kupljen) — pošiljanje je plačljiva funkcija
-    const PILLAR_MODULE = { reactivation: 'pillar_reactivation', review_request: 'pillar_reviews', referral_ask: 'pillar_reviews', web_form_lead: 'pillar_leads', chatbot_handoff: 'pillar_leads', booking_proposal: 'pillar_leads' };
+    const PILLAR_MODULE = { reactivation: 'pillar_reactivation', review_request: 'pillar_reviews', referral_ask: 'pillar_reviews', web_form_lead: 'pillar_leads', chatbot_handoff: 'pillar_leads', booking_proposal: 'pillar_leads', campaign: 'pillar_reactivation', manual: 'pillar_leads' };
     if (isTrialExpired(business) || !hasModule(business, PILLAR_MODULE[draft.pillar] || 'pillar_reactivation')) {
       await base44.asServiceRole.entities.DraftMessage.update(draftId, { status: 'failed', reviewer_notes: 'Modul ni aktiven (preizkus končan ali modul ni kupljen). Aktivirajte naročnino v Nastavitve → Naročnina.' });
       return Response.json({ skipped: true, reason: 'module_locked', code: 'MODULE_LOCKED', error: 'Modul ni aktiven. Aktivirajte naročnino za nadaljevanje.' }, { status: 402 });
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
     // ─── Build email body ────────────────────────────────────────────────────────────
     // Odgovor na povpraševanje (obrazec, klepet, e-pošta, termin) = osebno sporočilo: brez odjavne noge in brez »novičnikarske« glave.
     // Trženjska sporočila (vabilo nazaj, prošnja za oceno, priporočilo) = z odjavno nogo (ZEPT-1).
-    const MARKETING = ['reactivation', 'review_request', 'referral_ask'].includes(draft.pillar);
+    const MARKETING = ['reactivation', 'review_request', 'referral_ask', 'campaign'].includes(draft.pillar);
     // Stranka iz e-pošte → odgovor v isti niti (In-Reply-To/References + »Re:« zadeva), da ga stranka vidi pod svojim sporočilom.
     const threadReply = !MARKETING && lead.source === 'email' && !!lead.email_message_id;
     const signature = business.email_signature ? `\n\n${business.email_signature}` : `\n\nLep pozdrav,\n${business.name}`;
