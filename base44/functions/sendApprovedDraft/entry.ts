@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import nodemailer from 'npm:nodemailer@6.9.9';
+import { ImapFlow } from 'npm:imapflow@1.0.164';
 
 // ─── HTML predloga e-pošte (kopija v vsaki funkciji — Base44 funkcije nimajo skupnih modulov) ───
 const EMAIL_APP_URL = (Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app').replace(/\/$/, '');
@@ -233,7 +234,6 @@ Deno.serve(async (req) => {
       // Kopija v Poslano (IMAP), da lastnik odgovor vidi v svojem poštnem programu. Napaka tu ne prepreči pošiljanja.
       if (!sendError && raw && business.imap_enabled && business.imap_host && business.imap_user && business.imap_pass) {
         try {
-          const { ImapFlow } = await import('npm:imapflow@1.0.164');
           const c = new ImapFlow({ host: business.imap_host, port: Number(business.imap_port) || 993, secure: business.imap_secure !== false, auth: { user: business.imap_user, pass: business.imap_pass }, logger: false, connectionTimeout: 10000 });
           await c.connect();
           const boxes = await c.list();
