@@ -5,6 +5,13 @@
     "business_id": {
       "type": "string"
     },
+    "campaign_id": {
+      "type": "string",
+      "description": "Kampanja, iz katere je sporo\u010dilo"
+    },
+    "campaign_step": {
+      "type": "number"
+    },
     "lead_id": {
       "type": "string"
     },
@@ -19,7 +26,9 @@
         "chatbot_handoff",
         "assistant_action",
         "booking_proposal",
-        "booking_confirmation"
+        "booking_confirmation",
+        "campaign",
+        "manual"
       ]
     },
     "channel": {
