@@ -13,6 +13,11 @@ import Onboarding from '@/pages/Onboarding';
 import Dashboard from '@/pages/Dashboard';
 import Prejeto from '@/pages/Prejeto';
 import Stranke from '@/pages/Stranke';
+import StrankaDetail from '@/pages/StrankaDetail';
+import Podjetja from '@/pages/Podjetja';
+import PodjetjeDetail from '@/pages/PodjetjeDetail';
+import Opravila from '@/pages/Opravila';
+import Kampanje from '@/pages/Kampanje';
 import Klepet from '@/pages/Klepet';
 import Asistent from '@/pages/Asistent';
 import Ocene from '@/pages/Ocene';
@@ -75,6 +80,11 @@ const AppRoutes = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/prejeto" element={<Prejeto />} />
         <Route path="/stranke" element={<Stranke />} />
+        <Route path="/stranke/:id" element={<StrankaDetail />} />
+        <Route path="/podjetja" element={<Podjetja />} />
+        <Route path="/podjetja/:id" element={<PodjetjeDetail />} />
+        <Route path="/opravila" element={<Opravila />} />
+        <Route path="/kampanje" element={<Kampanje />} />
         <Route path="/klepet" element={<Klepet />} />
         <Route path="/asistent" element={<Asistent />} />
         <Route path="/ocene" element={<Ocene />} />
