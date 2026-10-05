@@ -68,6 +68,8 @@ export default function PodjetjeDetail() {
     <div className="space-y-5">
       <Link to="/podjetja" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" />Vsa podjetja</Link>
 
+      <div className="grid md:grid-cols-[1fr_320px] xl:grid-cols-[1fr_380px] 2xl:grid-cols-[1fr_420px] gap-5 items-start">
+      <div className="space-y-5 min-w-0">
       <div className="card-elevated p-5">
         <div className="flex items-start gap-4 flex-wrap">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[hsl(231,88%,30%)] to-[hsl(262,94%,25%)] text-white font-display font-bold text-lg flex items-center justify-center shrink-0">{initials(company.name)}</div>
@@ -88,7 +90,6 @@ export default function PodjetjeDetail() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-[1fr_320px] xl:grid-cols-[1fr_380px] gap-5 items-start">
         <div className="card-elevated min-w-0">
           <div className="flex gap-1 border-b px-3 overflow-x-auto">
             {TABS.map(([k, l, n]) => <button key={k} onClick={() => setTab(k)} className={`px-3 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${tab === k ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{l}{n > 0 && <span className="ml-1.5 text-xs text-muted-foreground">{n}</span>}</button>)}
@@ -125,6 +126,8 @@ export default function PodjetjeDetail() {
             )}
           </div>
         </div>
+
+      </div>
 
         <div className="space-y-4 order-first md:order-none">
           <TasksPanel tasks={tasks} companyId={company.id} leadsById={leadsById} onEdit={(x) => { setEditTask(x); setDlg("task"); }} onAddDetailed={() => { setEditTask(null); setDlg("task"); }} />
