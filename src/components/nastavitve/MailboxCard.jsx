@@ -88,9 +88,11 @@ export default function MailboxCard({ business }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg">Vaš e-poštni predal</h3>
-            {connected
+            {connectedRead && connectedSend
               ? <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5"><CheckCircle2 className="w-3.5 h-3.5" /> Povezano</span>
-              : <span className="text-xs font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">Ni povezano</span>}
+              : connected
+                ? <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5"><AlertCircle className="w-3.5 h-3.5" /> Delno povezano</span>
+                : <span className="text-xs font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">Ni povezano</span>}
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             AI bere vašo pošto in sam prepozna povpraševanja (tudi obvestila spletnih obrazcev). Nove stranke doda med <strong>Stranke</strong>,
@@ -113,7 +115,13 @@ export default function MailboxCard({ business }) {
                       : business.imap_last_sync_at ? `Zadnjič prebrano ${format(new Date(business.imap_last_sync_at), "d. M. HH:mm")} · samodejno vsakih 10 min` : "Prvo branje v teku …"}
                   </p>
                 </>
-              ) : <p className="text-sm text-amber-700 mt-1">Ni nastavljeno</p>}
+              ) : (
+                <>
+                  <p className="text-sm text-amber-700 mt-1 font-medium">Ni vklopljeno</p>
+                  <p className="text-xs text-muted-foreground mt-1">Brez tega AI ne vidi povpraševanj iz vaše pošte. Potrebujemo samo geslo za {business?.smtp_from_email || business?.smtp_user || "vaš e-naslov"}.</p>
+                  <Button size="sm" className="btn-brand mt-3" onClick={() => { setEmail(business?.smtp_from_email || business?.smtp_user || email); setEditing(true); }}><Inbox className="w-4 h-4 mr-1.5" />Vklopi branje pošte</Button>
+                </>
+              )}
             </div>
             <div className="rounded-xl border p-4">
               <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Send className="w-3.5 h-3.5" /> Pošiljanje</p>
@@ -131,7 +139,7 @@ export default function MailboxCard({ business }) {
                 {busy === "sync" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Preberi pošto zdaj
               </Button>
             )}
-            <Button variant="ghost" onClick={() => setEditing(true)}>Spremeni geslo ali naslov</Button>
+            <Button variant="ghost" onClick={() => { setEmail(business?.imap_user || business?.smtp_from_email || business?.smtp_user || email); setEditing(true); }}>Spremeni geslo ali naslov</Button>
             <Button variant="ghost" className="text-muted-foreground ml-auto" onClick={handleDisconnect} disabled={!!busy}>
               {busy === "disconnect" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Unplug className="w-4 h-4 mr-2" />} Odklopi
             </Button>
@@ -148,6 +156,7 @@ export default function MailboxCard({ business }) {
         </div>
       ) : (
         <div className="px-6 pb-6 space-y-4">
+          {editing && !connectedRead && <p className="text-sm rounded-lg bg-accent/50 border border-primary/20 px-3 py-2">Vpišite geslo, s katerim se prijavite v pošto <strong>{email}</strong>. Z istim geslom vklopimo branje in pošiljanje — strežnike najdemo sami.</p>}
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label>E-naslov podjetja</Label><Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@vase-podjetje.si" autoComplete="off" /></div>
             <div className="space-y-1.5"><Label>Geslo e-pošte</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="geslo, s katerim se prijavite v pošto" autoComplete="new-password" /></div>
