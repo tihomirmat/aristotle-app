@@ -27,7 +27,7 @@
         "booking",
         "system"
       ],
-      "description": "Vrsta dogodka na časovnici stranke"
+      "description": "Vrsta dogodka na \u010dasovnici stranke"
     },
     "direction": {
       "type": "string",
