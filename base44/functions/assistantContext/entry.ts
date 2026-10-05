@@ -14,12 +14,15 @@ const STAGE = { new: 'Novo', contacted: 'Kontaktirano', replied: 'Odgovorili so'
 const SRC = { email: 'e-pošta', form: 'obrazec', chatbot: 'klepet', import: 'uvoz', manual: 'ročno' };
 
 async function gather(base44, business) {
-  const [leads, drafts, offers, bookings] = await Promise.all([
+  const [leads, drafts, offers, bookings, tasks, companies] = await Promise.all([
     base44.asServiceRole.entities.Lead.filter({ business_id: business.id }),
     base44.asServiceRole.entities.DraftMessage.filter({ business_id: business.id }),
     base44.asServiceRole.entities.OfferGeneration.filter({ business_id: business.id }).catch(() => []),
     base44.asServiceRole.entities.ConfirmedBooking.filter({ business_id: business.id }).catch(() => []),
+    base44.asServiceRole.entities.Task.filter({ business_id: business.id, status: 'open' }).catch(() => []),
+    base44.asServiceRole.entities.Company.filter({ business_id: business.id }).catch(() => []),
   ]);
+  const compName = Object.fromEntries(companies.map((c) => [c.id, c.name]));
   const leadName = Object.fromEntries(leads.map((l) => [l.id, l.name]));
   const pending = drafts.filter((d) => d.status === 'pending' || d.status === 'flagged_for_review');
   const lastSentByLead = {};
@@ -29,7 +32,7 @@ async function gather(base44, business) {
   const leadLines = active
     .sort((a, b) => new Date(b.last_inbound_at || b.created_date) - new Date(a.last_inbound_at || a.created_date))
     .slice(0, 60)
-    .map((l) => `- ${l.name} | ${STAGE[l.status] || l.status} | vir ${SRC[l.source] || l.source} | zadnje sporočilo stranke pred ${days(l.last_inbound_at || l.created_date)} dni | naš zadnji odgovor ${lastSentByLead[l.id] ? `pred ${days(lastSentByLead[l.id])} dni` : 'NIKOLI'}${l.service_requested ? ` | želi: ${l.service_requested}` : ''}${l.notes ? ` | ${String(l.notes).replace(/\s+/g, ' ').slice(0, 160)}` : ''}`);
+    .map((l) => `- ${l.name}${l.company_id && compName[l.company_id] ? ` (${compName[l.company_id]})` : ''} | ${STAGE[l.status] || l.status}${l.value ? ` | vrednost ${l.value} €` : ''} | vir ${SRC[l.source] || l.source} | zadnje sporočilo stranke pred ${days(l.last_inbound_at || l.created_date)} dni | naš zadnji odgovor ${lastSentByLead[l.id] ? `pred ${days(lastSentByLead[l.id])} dni` : 'NIKOLI'}${l.service_requested ? ` | želi: ${l.service_requested}` : ''}${l.notes ? ` | ${String(l.notes).replace(/\s+/g, ' ').slice(0, 160)}` : ''}`);
 
   let calendar = 'Google Koledar ni povezan.';
   if (business.google_calendar_connected) {
@@ -39,7 +42,9 @@ async function gather(base44, business) {
       : ev.events.slice(0, 40).map((e) => `- ${fmt(e.start?.dateTime || e.start?.date)}: ${e.summary || '(brez naslova)'}`).join('\n');
   }
 
-  const offerLines = offers.slice(0, 20).map((o) => `- ${o.client_name || o.title || 'Ponudba'} | ${o.status || 'pripravljena'} | pred ${days(o.created_date)} dni`);
+  const offerLines = offers.slice(0, 20).map((o) => `- ${o.client_name || o.title || 'Ponudba'}${o.amount ? ` | ${o.amount} €` : ''} | ${{ draft: 'pripravljena', sent: 'poslana', accepted: 'sprejeta', rejected: 'zavrnjena' }[o.offer_status] || 'pripravljena'} | pred ${days(o.created_date)} dni`);
+  const taskLines = tasks.sort((a, b) => String(a.due_at || '9').localeCompare(String(b.due_at || '9'))).slice(0, 30)
+    .map((t) => `- ${t.title}${t.lead_id && leadName[t.lead_id] ? ` (${leadName[t.lead_id]})` : ''} | rok ${t.due_at ? fmt(t.due_at) : 'brez'}${t.due_at && new Date(t.due_at) < new Date() ? ' | ZAMUJA' : ''}${t.priority === 'high' ? ' | nujno' : ''}`);
   const bookingLines = bookings.filter((b) => b.booked_at && new Date(b.booked_at) >= new Date()).slice(0, 20).map((b) => `- ${fmt(b.booked_at)} ${leadName[b.lead_id] || ''}`);
 
   return `DANES: ${new Date().toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Ljubljana' })}
@@ -47,6 +52,9 @@ PODJETJE: ${business.name}. Storitve: ${(business.services || '').replace(/\n/g,
 
 STRANKE (${active.length} aktivnih, najnovejše prve):
 ${leadLines.join('\n') || '(ni strank)'}
+
+ODPRTA OPRAVILA (${tasks.length}):
+${taskLines.join('\n') || '(ni)'}
 
 SPOROČILA, KI ČAKAJO NA ODOBRITEV (${pending.length}):
 ${pending.slice(0, 20).map((d) => `- za ${leadName[d.lead_id] || '?'}: »${d.subject}«`).join('\n') || '(nič)'}
@@ -71,18 +79,20 @@ Deno.serve(async (req) => {
     if (!business || !ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.' });
 
     const context = await gather(base44, business);
-    const persona = `Si osebni asistent lastnika slovenskega mikro podjetja »${business.name}«. Govoriš slovensko, vikaš, si jedrnat in konkreten. Uporabljaš SAMO podatke spodaj; ničesar ne izmišljuješ. Kadar omenjaš stranko, jo navedi z imenom. Ko predlagaš dejanje, povej, kje v aplikaciji ga naredi (Za odobritev, Stranke, Ponudbe, Nastavitve).`;
+    const persona = `Si osebni asistent lastnika slovenskega mikro podjetja »${business.name}«. Govoriš slovensko, vikaš, si jedrnat in konkreten. Uporabljaš SAMO podatke spodaj; ničesar ne izmišljuješ. Kadar omenjaš stranko, jo navedi z imenom. Ko predlagaš dejanje, povej, kje v aplikaciji ga naredi (Za odobritev, Opravila, Stranke, Kampanje, Ponudbe, Nastavitve).`;
 
     if (body.action === 'briefing') {
       const res = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5', max_tokens: 1400,
+        model: 'claude-sonnet-4-5', max_tokens: 700,
         system: `${persona}
-Pripravi pregled v Markdown s točno temi razdelki:
-## Najprej to (največ 5 nalog, razvrščenih po nujnosti; vsaka: kratek ukaz + zakaj, npr. »Odgovorite Ani Novak — piše že 3 dni, odgovora še ni«)
-## Ta teden v koledarju (kratko, po dnevih; če koledar ni povezan, en stavek)
-## Stranke (koliko novih, kdo čaka na odgovor, kdo je obstal)
-## Predlog (ena konkretna ideja za več posla ta teden na podlagi podatkov)
-Brez uvoda in brez zaključnih fraz.`,
+Pripravi ZELO KRATEK pregled (največ 120 besed) v Markdown s točno temi razdelki:
+## Najprej to
+Največ 3 alineje, razvrščene po nujnosti. Vsaka v eni vrstici: ukaz + kratek razlog (npr. »Odgovorite Ani Novak — čaka 3 dni«).
+## Ta teden
+Ena do dve vrstici: termini/koledar in številke (novi kontakti, čaka na odobritev, zamujena opravila).
+## Ideja
+En stavek: ena konkretna poteza za več posla.
+Brez uvoda, brez zaključka, brez ponavljanja.`,
         messages: [{ role: 'user', content: context }],
       });
       const content = res.content?.[0]?.text || '';
