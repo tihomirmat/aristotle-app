@@ -22,7 +22,8 @@ function changeRatio(a, b) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const body = await req.json().catch(() => ({}));
+    const rawBody = await req.json().catch(() => ({}));
+    const body = rawBody?.args && typeof rawBody.args === 'object' ? { ...rawBody, ...rawBody.args } : rawBody;
     const internal = !!INTERNAL_SECRET && body?.internal_secret === INTERNAL_SECRET;
     const user = internal ? null : await base44.auth.me().catch(() => null);
     const sr = base44.asServiceRole.entities;
