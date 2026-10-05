@@ -1,0 +1,52 @@
+{
+  "name": "Test aiLearn (rocno)",
+  "description": "Za\u010dasno: preizkus u\u010denja iz popravka.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 30,
+      "interval_unit": "days",
+      "interval_anchor": "2026-10-04T00:00:00",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "test_ailearn_rocno",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "aiLearn",
+            "args": {
+              "business_id": "69fdc32dd7a14b17ffa223d1",
+              "kind": "edit",
+              "original": {
+                "subject": "Ponudba za va\u0161o novo spletno stran",
+                "body": "Spo\u0161tovani g. Kos,\n\nhvala za povpra\u0161evanje! Va\u0161o novo spletno stran lahko izdelamo v 14 dneh, cena je 1.990 \u20ac + DDV. Ne zamudite na\u0161e jesenske akcije!\n\nLep pozdrav,\nEkipa Spletnost"
+              },
+              "final": {
+                "subject": "Va\u0161a nova spletna stran",
+                "body": "Spo\u0161tovani g. Kos,\n\nhvala za povpra\u0161evanje. Predlagam kratek 15-minutni klic, da skupaj pogledava, kaj potrebujete \u2014 \u0161ele nato pripravim ponudbo s ceno in rokom.\n\nLep pozdrav,\nTihomir Matijevic"
+              }
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
