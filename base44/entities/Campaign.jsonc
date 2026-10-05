@@ -62,7 +62,7 @@
     "auto_send": {
       "type": "boolean",
       "default": false,
-      "description": "Pošlji brez odobritve"
+      "description": "Po\u0161lji brez odobritve"
     },
     "stats": {
       "type": "object",
