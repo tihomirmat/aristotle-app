@@ -11,7 +11,6 @@ import { BusinessProvider, useBusiness } from '@/lib/business-context';
 import AppLayout from '@/components/layout/AppLayout';
 import Onboarding from '@/pages/Onboarding';
 import Dashboard from '@/pages/Dashboard';
-import Prejeto from '@/pages/Prejeto';
 import Stranke from '@/pages/Stranke';
 import StrankaDetail from '@/pages/StrankaDetail';
 import Podjetja from '@/pages/Podjetja';
@@ -78,7 +77,7 @@ const AppRoutes = () => {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/prejeto" element={<Prejeto />} />
+        <Route path="/prejeto" element={<Navigate to="/stranke?tab=odgovori" replace />} />
         <Route path="/stranke" element={<Stranke />} />
         <Route path="/stranke/:id" element={<StrankaDetail />} />
         <Route path="/podjetja" element={<Podjetja />} />
