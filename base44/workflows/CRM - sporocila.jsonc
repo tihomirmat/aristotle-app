@@ -1,0 +1,37 @@
+{
+  "name": "CRM - sporocila",
+  "description": "Nov osnutek: samodejno po\u0161iljanje, \u010de je za to vrsto vklopljeno. Poslano sporo\u010dilo: zapis na \u010dasovnico stranke.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create",
+        "update"
+      ],
+      "entity_name": "DraftMessage"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "crm_sporocila",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "crmEvents",
+            "args": {
+              "entity": "DraftMessage"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
