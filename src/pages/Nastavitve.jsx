@@ -223,7 +223,7 @@ export default function Nastavitve() {
 
         {/* PROFIL */}
         <TabsContent value="profil">
-          <div className="max-w-lg space-y-4 pb-24">
+          <div className="max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pb-24 items-start">
             <div className="space-y-2"><Label>Ime podjetja *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
             <div className="space-y-2">
               <Label>Panoga</Label>
@@ -244,7 +244,7 @@ export default function Nastavitve() {
               {formErrors.website && <p className="text-xs text-destructive">{formErrors.website}</p>}
             </div>
             <div className="space-y-2"><Label>Delovni čas</Label><Input value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder="Pon–Pet 8:00–18:00" /></div>
-            <div className="space-y-2"><Label>Storitve</Label><Textarea value={form.services} onChange={(e) => setForm({ ...form, services: e.target.value })} placeholder="Navedite vaše storitve..." className="h-24" /></div>
+            <div className="space-y-2 md:col-span-2"><Label>Storitve</Label><Textarea value={form.services} onChange={(e) => setForm({ ...form, services: e.target.value })} placeholder="Navedite vaše storitve..." className="h-24" /></div>
             <div className="space-y-2"><Label>Trenutna ponudba</Label><Input value={form.current_offer} onChange={(e) => setForm({ ...form, current_offer: e.target.value })} placeholder="Npr. 20% popust za nove stranke" /></div>
             <div className="space-y-2"><Label>Povezava za Google ocene</Label><Input value={form.google_review_link} onChange={(e) => setForm({ ...form, google_review_link: e.target.value })} placeholder="https://g.page/r/..." /></div>
 
@@ -266,7 +266,7 @@ export default function Nastavitve() {
 
             {/* DEMO PODATKI — samo admin (porabi AI kredite, ustvari izmišljene stranke) */}
             {user?.role === "admin" && (
-            <div className="border rounded-xl p-5 bg-card shadow-sm mt-6">
+            <div className="border rounded-xl p-5 bg-card shadow-sm mt-6 md:col-span-2">
               <h3 className="font-semibold mb-1">Demo podatki</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Napolnite aplikacijo z primernimi demo podatki za predstavitev ali testiranje. Vse demo zapise lahko kasneje s pritiskom enega gumba popolnoma zbrišete.
@@ -311,7 +311,8 @@ export default function Nastavitve() {
 
         {/* INTEGRACIJE */}
         <TabsContent value="integracije">
-          <div className="max-w-3xl space-y-5">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+            <div className="space-y-5">
             <MailboxCard business={business} />
 
             <div className="card-elevated p-6 flex items-center gap-4">
@@ -327,6 +328,8 @@ export default function Nastavitve() {
               </Button>
             </div>
 
+            </div>
+            <div className="space-y-5">
             <AutoSendCard business={business} isTrialing={isTrialing} />
 
             {/* AI model — samo skrbnik */}
@@ -358,6 +361,7 @@ export default function Nastavitve() {
               </div>
             </div>
             )}
+            </div>
           </div>
         </TabsContent>
 
@@ -373,7 +377,7 @@ export default function Nastavitve() {
 
         {/* RAČUNI */}
         <TabsContent value="racuni">
-          <div className="max-w-lg space-y-5">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
             {/* Enable toggle */}
             <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
               <div className="flex items-start justify-between gap-4">
