@@ -6,7 +6,7 @@ import { useBusiness } from "@/lib/business-context";
 import { hasModule } from "@/lib/entitlements";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Plus, ScanLine, Edit, Download, Copy, AlertCircle, CheckCircle, ChevronRight } from "lucide-react";
+import { FileText, Plus, Upload, Edit, Download, Copy, AlertCircle, CheckCircle, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
 const KIND_LABELS = { service: "Storitev", product: "Izdelek", saas: "SaaS", custom: "Po meri" };
@@ -53,7 +53,7 @@ export default function Ponudbe() {
           <p className="text-muted-foreground mt-1">AI generator ponudb iz obstoječih predlog.</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/ponudbe/skener"><Button variant="outline" className="gap-2"><ScanLine className="w-4 h-4" />Skeniraj obstoječo ponudbo</Button></Link>
+          <Link to="/ponudbe/skener"><Button variant="outline" className="gap-2"><Upload className="w-4 h-4" />Dodaj obstoječo ponudbo</Button></Link>
           <Link to="/ponudbe/nova"><Button className="gap-2"><Plus className="w-4 h-4" />Nova ponudba</Button></Link>
         </div>
       </div>
@@ -63,11 +63,11 @@ export default function Ponudbe() {
           {/* Empty state if no templates */}
           {templates.length === 0 ? (
             <div className="border-2 border-dashed rounded-xl p-12 text-center">
-              <ScanLine className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
-              <h3 className="font-bold text-lg mb-2">Začnite s skeniranjem obstoječe ponudbe</h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">Naložite trenutno ponudbo, ki jo pošiljate strankam. AI bo iz nje izdelal vaš osebni template in vhodna polja.</p>
+              <Upload className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
+              <h3 className="font-bold text-lg mb-2">Začnite z vašo obstoječo ponudbo</h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">Dodajte ponudbo, ki jo že pošiljate strankam — naložite PDF ali Word, fotografijo oziroma sken, ali prilepite besedilo. AI iz nje naredi vaš vzorec za vse naslednje ponudbe.</p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/ponudbe/skener"><Button className="gap-2"><ScanLine className="w-4 h-4" />Skeniraj obstoječo ponudbo</Button></Link>
+                <Link to="/ponudbe/skener"><Button className="gap-2"><Upload className="w-4 h-4" />Dodaj obstoječo ponudbo</Button></Link>
                 <Link to="/ponudbe/templati/novo"><Button variant="outline">Začnem od ničle</Button></Link>
               </div>
             </div>
