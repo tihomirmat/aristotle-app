@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
     const evType = body?.event?.type || (old ? 'update' : 'create');
     if (!data?.id || !data?.business_id) return Response.json({ skipped: true, reason: 'no data' });
     const entity = detect(body);
+    if (data.is_demo && evType === 'create' && ['ConfirmedBooking', 'OfferGeneration'].includes(entity)) return Response.json({ skipped: true, reason: 'demo seed' });
     const sr = base44.asServiceRole.entities;
     const business = (await sr.Business.filter({ id: data.business_id }))[0];
     if (!business) return Response.json({ skipped: true, reason: 'no business' });
