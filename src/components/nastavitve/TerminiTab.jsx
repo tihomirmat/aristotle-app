@@ -163,7 +163,7 @@ export default function TerminiTab({ business }) {
   };
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="max-w-3xl space-y-4">
       {/* Toggle booking */}
       <div className="flex items-center justify-between bg-card border rounded-xl p-4 shadow-sm">
         <div>
