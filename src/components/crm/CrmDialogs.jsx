@@ -13,6 +13,7 @@ import { format, addDays } from "date-fns";
 import { generateDraft } from "@/functions/generateDraft";
 import { fnError } from "@/lib/fn-error";
 import { TASK_TYPES, PRIORITY, logActivity } from "@/lib/crm";
+import { learnInBackground } from "@/lib/learn";
 
 const CRM_KEYS = ["activities", "tasks", "leads", "drafts-all", "drafts", "companies", "drafts-sidebar", "tasks-sidebar", "bookings", "offers", "enrollments", "campaigns", "leads-new-sidebar"];
 export const useCrmInvalidate = () => {
@@ -156,9 +157,11 @@ export function SendEmailDialog({ open, onOpenChange, lead }) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [draftId, setDraftId] = useState(null);
+  const [aiOriginal, setAiOriginal] = useState(null);
+  const qc = useQueryClient();
   const [aiLoading, setAiLoading] = useState(false);
   const [sending, setSending] = useState(false);
-  useEffect(() => { if (open) { setInstruction(""); setSubject(""); setBody(""); setDraftId(null); } }, [open]);
+  useEffect(() => { if (open) { setInstruction(""); setSubject(""); setBody(""); setDraftId(null); setAiOriginal(null); } }, [open]);
 
   const aiWrite = async () => {
     setAiLoading(true);
@@ -166,7 +169,7 @@ export function SendEmailDialog({ open, onOpenChange, lead }) {
       const res = await generateDraft({ business_id: business.id, lead_id: lead.id, pillar: "manual", instruction });
       if (res.data?.error) throw new Error(res.data.error);
       const d = res.data?.draft;
-      if (d) { setSubject(d.subject || ""); setBody(d.body || ""); setDraftId(d.id); }
+      if (d) { setSubject(d.subject || ""); setBody(d.body || ""); setDraftId(d.id); setAiOriginal({ subject: d.subject || "", body: d.body || "" }); }
     } catch (e) { toast.error(fnError(e)); } finally { setAiLoading(false); }
   };
 
@@ -181,6 +184,7 @@ export function SendEmailDialog({ open, onOpenChange, lead }) {
         id = d.id;
       }
       await base44.entities.DraftMessage.update(id, { status: "approved" });
+      if (aiOriginal && (aiOriginal.subject !== subject || aiOriginal.body !== body)) learnInBackground({ business_id: business.id, kind: "edit", original: aiOriginal, final: { subject, body } }, qc);
       invalidate();
       toast.success(`Sporočilo za ${lead.name} se pošilja.`);
       onOpenChange(false);
