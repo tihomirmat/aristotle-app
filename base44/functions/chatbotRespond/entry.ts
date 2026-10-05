@@ -41,6 +41,11 @@ Deno.serve(async (req) => {
     // Pridobi bazo znanja
     const kbDocs = await base44.asServiceRole.entities.KnowledgeBase.filter({ business_id, active: true });
     const knowledgeContext = kbDocs.map(d => `## ${d.title}\n${d.content}`).join('\n\n');
+    // Naučena pravila lastnika (AiLesson) — veljajo tudi za klepet
+    const chatLessons = (await base44.asServiceRole.entities.AiLesson.filter({ business_id }).catch(() => []))
+      .filter((l) => l.active !== false && l.applies_to !== 'emails')
+      .sort((a, b) => (b.times_seen || 1) - (a.times_seen || 1))
+      .slice(0, 25);
 
     // Pridobi ali ustvari pogovor
     let conversation;
@@ -78,7 +83,7 @@ NAVODILA:
 - Bodi jedrnat in prijazen
 - Če ne poznaš odgovora, predlagi, da stranka pokliče ali pošlje e-pošto
 - Če stranka izrazi interes za termin ali storitev, jo vprašaj za ime in email
-- Nikoli ne izmišljuj informacij, ki niso v bazi znanja`;
+- Nikoli ne izmišljuj informacij, ki niso v bazi znanja${chatLessons.length ? `\n\nPRAVILA LASTNIKA (obvezno upoštevaj):\n${chatLessons.map((l) => `- ${l.rule}`).join('\n')}` : ''}${business.brand_voice ? `\n\nTON IN GLAS ZNAMKE:\n${String(business.brand_voice).slice(0, 1500)}` : ''}`;
 
     const fullPrompt = `${systemPrompt}
 
