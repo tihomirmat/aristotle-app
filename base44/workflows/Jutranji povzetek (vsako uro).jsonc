@@ -1,0 +1,41 @@
+{
+  "name": "Jutranji povzetek (vsako uro)",
+  "description": "Vsako uro preveri, katerim podjetjem je ura za jutranji povzetek (privzeto 7:00), in jim po\u0161lje kratko sporo\u010dilo s tem, kar je danes na vrsti.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 1,
+      "interval_unit": "hours",
+      "interval_anchor": "2026-10-05T00:02:00",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "jutranji_povzetek_vsako_uro",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "dailyDigest",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
