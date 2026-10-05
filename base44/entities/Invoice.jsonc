@@ -1,5 +1,6 @@
 {
   "name": "Invoice",
+  "description": "Prejeti ra\u010dun dobavitelja za mese\u010dni paket ra\u010dunovodji",
   "type": "object",
   "properties": {
     "business_id": {
