@@ -23,7 +23,7 @@
     },
     "tax_id": {
       "type": "string",
-      "description": "Davčna številka"
+      "description": "Dav\u010dna \u0161tevilka"
     },
     "industry": {
       "type": "string"
