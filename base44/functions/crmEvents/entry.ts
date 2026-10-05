@@ -95,8 +95,8 @@ Deno.serve(async (req) => {
       return Response.json({ success: true });
     }
 
-    if (entity === 'OfferGeneration' && data.status === 'completed' && (!old || old.status !== 'completed') && data.lead_id) {
-      await log({ lead_id: data.lead_id, company_id: data.company_id || null, type: 'offer', direction: 'internal', subject: `Pripravljena ponudba${data.amount ? ` (${Math.round(data.amount)} €)` : ''}`, content: short(data.output_markdown, 300), occurred_at: iso(), offer_id: data.id });
+    if (entity === 'OfferGeneration' && data.status === 'completed' && (!old || old.status !== 'completed') && (data.lead_id || data.company_id)) {
+      await log({ lead_id: data.lead_id || null, company_id: data.company_id || null, type: 'offer', direction: 'internal', subject: `Pripravljena ponudba${data.amount ? ` (${Math.round(data.amount)} €)` : ''}`, content: short(data.output_markdown, 300), occurred_at: iso(), offer_id: data.id });
       return Response.json({ success: true });
     }
 
