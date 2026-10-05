@@ -55,7 +55,7 @@ export default function MailboxCard({ business }) {
       const data = res?.data ?? res;
       if (data?.error) throw new Error(data.error);
       toast.success(data.new_leads > 0
-        ? `Našli smo ${data.new_leads} ${data.new_leads === 1 ? "novo povpraševanje" : data.new_leads < 5 ? "nova povpraševanja" : "novih povpraševanj"}. Odgovori čakajo v »Za odobritev«.`
+        ? `Našli smo ${data.new_leads} ${data.new_leads === 1 ? "novo povpraševanje" : data.new_leads < 5 ? "nova povpraševanja" : "novih povpraševanj"}. Odgovori čakajo v Stranke → Čaka na vaš odgovor.`
         : `Prebranih ${data.scanned} novih sporočil, novih povpraševanj ni.`);
       refresh();
       ["leads", "leads_all", "drafts-all", "drafts"].forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
