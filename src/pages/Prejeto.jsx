@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, X, Pencil, Mail, Loader2, Inbox, Send, Clock, Globe, MessageSquare, Star, RotateCcw, CalendarDays, Bot, ShieldCheck } from "lucide-react";
+import { CheckCircle2, X, Pencil, Mail, Loader2, Inbox, Send, Clock, Globe, MessageSquare, Star, RotateCcw, CalendarDays, Bot, ShieldCheck, ThumbsUp, ThumbsDown, Megaphone, PenLine } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import StatusBanner from "@/components/ui/StatusBanner";
 import { format } from "date-fns";
 import GenerateDraftButton from "@/components/prejeto/GenerateDraftButton";
@@ -24,6 +26,8 @@ const REASONS = {
   booking_proposal: { label: "Predlog termina", why: "Stranka želi termin. AI je iz koledarja izbral proste termine.", icon: CalendarDays, color: "bg-rose-100 text-rose-700" },
   booking_confirmation: { label: "Potrditev termina", why: "Termin je potrjen. AI je pripravil potrditev.", icon: CalendarDays, color: "bg-rose-100 text-rose-700" },
   assistant_action: { label: "Predlog asistenta", why: "Asistent je predlagal to sporočilo.", icon: Bot, color: "bg-slate-100 text-slate-700" },
+  campaign: { label: "Kampanja", why: "Sporočilo iz vaše kampanje. Ko stranka odgovori, se kampanja zanjo ustavi.", icon: Megaphone, color: "bg-orange-100 text-orange-700" },
+  manual: { label: "Vaše sporočilo", why: "Sporočilo ste pripravili na strani stranke.", icon: PenLine, color: "bg-slate-100 text-slate-700" },
 };
 const reasonFor = (p) => REASONS[p] || { label: p || "Sporočilo", why: "AI je pripravil to sporočilo.", icon: Mail, color: "bg-slate-100 text-slate-700" };
 
@@ -39,6 +43,31 @@ export default function Prejeto() {
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [tab, setTab] = useState("pending");
+  const [exampleDlg, setExampleDlg] = useState(null); // { msg, kind: 'good'|'bad', why }
+  const [savingExample, setSavingExample] = useState(false);
+
+  // Sporočilo shrani kot primer za glas znamke (največ 5; nov zamenja najstarejšega).
+  const saveExample = async () => {
+    const { msg, kind, why } = exampleDlg;
+    if (kind === "bad" && !why.trim()) { toast.error("Na kratko napišite, kaj je narobe — po tem se AI ravna."); return; }
+    setSavingExample(true);
+    try {
+      const key = kind === "good" ? "example_good_messages" : "example_bad_messages";
+      const fresh = (await base44.entities.Business.filter({ id: business.id }))[0] || business;
+      const item = kind === "good" ? { subject: msg.subject || "", body: msg.body || "", why_good: why.trim() } : { subject: msg.subject || "", body: msg.body || "", why_bad: why.trim() };
+      const list = [...(fresh[key] || []).filter((x) => x.body !== item.body), item].slice(-5);
+      await base44.entities.Business.update(business.id, { [key]: list });
+      queryClient.invalidateQueries({ queryKey: ["business"] });
+      toast.success(kind === "good" ? "Shranjeno kot dober primer. AI se bo po njem zgledoval." : "Shranjeno kot slab primer. AI se bo takim sporočilom izogibal.");
+      setExampleDlg(null);
+    } catch (e) { toast.error(e.message); } finally { setSavingExample(false); }
+  };
+  const ExampleButtons = ({ msg }) => (
+    <span className="inline-flex gap-1">
+      <Button size="sm" variant="ghost" className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50" title="AI naj piše tako kot v tem sporočilu" onClick={() => setExampleDlg({ msg, kind: "good", why: "" })}><ThumbsUp className="w-4 h-4 mr-1" /> Dober primer</Button>
+      <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" title="AI naj se takemu pisanju izogiba" onClick={() => setExampleDlg({ msg, kind: "bad", why: "" })}><ThumbsDown className="w-4 h-4 mr-1" /> Slab primer</Button>
+    </span>
+  );
 
   const { data: allDrafts = [], isLoading } = useQuery({
     queryKey: ["drafts-all", business?.id],
@@ -131,7 +160,7 @@ export default function Prejeto() {
           )}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
           {drafts.map((msg) => {
             const lead = leadsMap[msg.lead_id];
             const isEditing = editing === msg.id;
@@ -196,7 +225,8 @@ export default function Prejeto() {
                           <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => skip(msg)} disabled={updateMutation.isPending}>
                             <X className="w-4 h-4 mr-1" /> Ne pošlji
                           </Button>
-                          <span className="text-xs text-muted-foreground ml-auto">
+                          <span className="ml-auto"><ExampleButtons msg={msg} /></span>
+                          <span className="w-full text-xs text-muted-foreground">
                             Pošlje se na {lead?.email || "e-naslov stranke"}{fromAddress ? ` z naslova ${fromAddress}` : ""}.
                           </span>
                         </div>
@@ -206,6 +236,7 @@ export default function Prejeto() {
                           {msg.status === "approved" && <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Odobreno, pošiljanje v teku</>}
                           {msg.status === "skipped" && <><X className="w-3.5 h-3.5" /> Niste poslali</>}
                           {msg.status === "failed" && <><X className="w-3.5 h-3.5 text-red-600" /> Pošiljanje ni uspelo{msg.reviewer_notes ? `: ${msg.reviewer_notes}` : ""}</>}
+                          <span className="ml-auto"><ExampleButtons msg={msg} /></span>
                         </div>
                       )}
                     </>
@@ -216,6 +247,29 @@ export default function Prejeto() {
           })}
         </div>
       )}
+
+      <Dialog open={!!exampleDlg} onOpenChange={(o) => !o && setExampleDlg(null)}>
+        <DialogContent className="max-w-xl">
+          {exampleDlg && (<>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">{exampleDlg.kind === "good" ? <><ThumbsUp className="w-5 h-5 text-emerald-600" /> Shrani kot dober primer</> : <><ThumbsDown className="w-5 h-5 text-red-600" /> Shrani kot slab primer</>}</DialogTitle>
+              <DialogDescription>{exampleDlg.kind === "good" ? "AI se bo pri novih sporočilih zgledoval po tem." : "AI se bo takemu pisanju izogibal."} Primere vidite in urejate v Nastavitve → Glas znamke.</DialogDescription>
+            </DialogHeader>
+            <div className="rounded-lg border bg-muted/30 p-3 max-h-48 overflow-y-auto">
+              <p className="text-sm font-medium">{exampleDlg.msg.subject}</p>
+              <p className="text-xs text-muted-foreground whitespace-pre-wrap mt-1">{exampleDlg.msg.body}</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>{exampleDlg.kind === "good" ? "Kaj vam je všeč? (neobvezno)" : "Kaj je narobe?"}</Label>
+              <Input autoFocus value={exampleDlg.why} onChange={(e) => setExampleDlg({ ...exampleDlg, why: e.target.value })} placeholder={exampleDlg.kind === "good" ? "Npr. kratko, osebno, jasen naslednji korak" : "Npr. preveč formalno, predolgo, obljublja popust"} onKeyDown={(e) => e.key === "Enter" && saveExample()} />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setExampleDlg(null)}>Prekliči</Button>
+              <Button className="btn-brand" onClick={saveExample} disabled={savingExample}>{savingExample && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Shrani primer</Button>
+            </div>
+          </>)}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
