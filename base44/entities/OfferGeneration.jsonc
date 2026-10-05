@@ -8,6 +8,31 @@
     "template_id": {
       "type": "string"
     },
+    "lead_id": {
+      "type": "string",
+      "description": "Stranka (CRM), za katero je ponudba"
+    },
+    "company_id": {
+      "type": "string",
+      "description": "Podjetje (CRM), za katero je ponudba"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Vrednost ponudbe v EUR"
+    },
+    "offer_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "sent",
+        "accepted",
+        "rejected"
+      ],
+      "default": "draft"
+    },
     "kind": {
       "type": "string",
       "enum": [
