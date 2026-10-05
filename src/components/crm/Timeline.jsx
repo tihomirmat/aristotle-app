@@ -54,10 +54,10 @@ export default function Timeline({ activities = [], pendingDrafts = [], leadsByI
         ))}
       </div>
       {pendingDrafts.length > 0 && (
-        <Link to="/prejeto" className="flex items-center gap-3 rounded-xl border border-primary/30 bg-accent/50 px-4 py-3 hover:bg-accent">
+        <Link to="/stranke?tab=odgovori" className="flex items-center gap-3 rounded-xl border border-primary/30 bg-accent/50 px-4 py-3 hover:bg-accent">
           <Inbox className="w-5 h-5 text-primary" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">{pendingDrafts.length === 1 ? "1 sporočilo čaka na vašo odobritev" : `${pendingDrafts.length} sporočila čakajo na vašo odobritev`}</p>
+            <p className="text-sm font-medium">{pendingDrafts.length === 1 ? "Pripravljen odgovor čaka na vas" : `${pendingDrafts.length} pripravljeni odgovori čakajo na vas`}</p>
             <p className="text-xs text-muted-foreground truncate">{pendingDrafts[0].subject}</p>
           </div>
           <span className="text-xs font-medium text-primary">Preglej →</span>
