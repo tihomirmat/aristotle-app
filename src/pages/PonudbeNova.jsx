@@ -46,6 +46,9 @@ export default function PonudbeNova() {
   const [searchParams] = useSearchParams();
   const templateId = searchParams.get("template");
   const duplicateId = searchParams.get("duplicate");
+  const crmLeadId = searchParams.get("lead");
+  const crmCompanyId = searchParams.get("company");
+  const crmClientName = searchParams.get("client");
 
   const [step, setStep] = useState(0);
   const [inputMethod, setInputMethod] = useState("form");
@@ -96,6 +99,7 @@ export default function PonudbeNova() {
     initial.podjetje_naziv = globalVars.podjetje_naziv || business?.name || "";
     initial.podjetje_naslov = globalVars.podjetje_naslov || business?.address || "";
     initial.podpisnik_ime = globalVars.podpisnik_ime || "";
+    if (crmClientName) initial.stranka_naziv = crmClientName;
     setFormValues((fv) => ({ ...initial, ...fv, podjetje_naziv: fv.podjetje_naziv || initial.podjetje_naziv, podjetje_naslov: fv.podjetje_naslov || initial.podjetje_naslov }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business?.id, globalVarsJson]);
@@ -143,7 +147,7 @@ export default function PonudbeNova() {
     setGenerating(true);
     setStep(2);
     try {
-      const res = await offerGenerate({ business_id: business.id, template_id: activeTemplate?.id, kind: "full", resolved_vars: formValues, input_method: inputMethod });
+      const res = await offerGenerate({ business_id: business.id, template_id: activeTemplate?.id, kind: "full", resolved_vars: formValues, input_method: inputMethod, ...(crmLeadId ? { lead_id: crmLeadId } : {}), ...(crmCompanyId ? { company_id: crmCompanyId } : {}) });
       if (res.data?.error) throw new Error(res.data.error);
       setGenerationResult(res.data);
       setGenerationId(res.data.generation_id);
