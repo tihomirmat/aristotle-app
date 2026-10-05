@@ -14,7 +14,7 @@ import { generateDraft } from "@/functions/generateDraft";
 import { fnError } from "@/lib/fn-error";
 import { TASK_TYPES, PRIORITY, logActivity } from "@/lib/crm";
 
-const CRM_KEYS = ["activities", "tasks", "leads", "drafts-all", "companies", "drafts-sidebar", "tasks-sidebar"];
+const CRM_KEYS = ["activities", "tasks", "leads", "drafts-all", "drafts", "companies", "drafts-sidebar", "tasks-sidebar", "bookings", "offers", "enrollments", "campaigns", "leads-new-sidebar"];
 export const useCrmInvalidate = () => {
   const qc = useQueryClient();
   return () => CRM_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
