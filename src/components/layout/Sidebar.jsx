@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Inbox, Users, MessageSquare, Bot,
   Star, Settings, ChevronLeft, ChevronRight,
-  Building2, BarChart3, Lock, FileText, FileSignature, Globe, Rocket
+  Building2, BarChart3, Lock, FileText, FileSignature, Globe, Rocket, ListChecks, Megaphone
 } from "lucide-react";
 import { useBusiness } from "@/lib/business-context";
 import { hasModule } from "@/lib/entitlements";
@@ -36,6 +36,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     refetchInterval: 60000,
   });
   const newLeadsCount = newLeads.length;
+  const { data: openTasks = [] } = useQuery({
+    queryKey: ["tasks-sidebar", business?.id],
+    queryFn: () => base44.entities.Task.filter({ business_id: business.id, status: "open" }),
+    enabled: !!business?.id,
+    refetchInterval: 60000,
+  });
+  const endOfToday = new Date(); endOfToday.setHours(23, 59, 59, 999);
+  const dueTasksCount = openTasks.filter((t) => t.due_at && new Date(t.due_at) <= endOfToday).length;
 
   const groups = [
     {
@@ -43,6 +51,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       items: [
         { path: "/", label: "Pregled", icon: LayoutDashboard },
         { path: "/prejeto", label: "Za odobritev", icon: Inbox, badge: pendingCount > 0 ? pendingCount : null },
+        { path: "/opravila", label: "Opravila", icon: ListChecks, badge: dueTasksCount > 0 ? dueTasksCount : null },
         { path: "/asistent", label: "Asistent", icon: Bot, locked: !hasModule(business, "pillar_assistant"), lockDesc: "Dnevni pregled nalog in termini." },
       ],
     },
@@ -50,13 +59,15 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       title: "Stranke",
       items: [
         { path: "/stranke", label: "Stranke", icon: Users, badge: newLeadsCount > 0 ? newLeadsCount : null },
-        { path: "/klepet", label: "Spletni klepet", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "AI klepet na vaši spletni strani, ki odgovarja 24/7." },
-        { path: "/ocene", label: "Google ocene", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Samodejne prošnje za Google ocene in priporočila." },
+        { path: "/podjetja", label: "Podjetja", icon: Building2 },
+        { path: "/kampanje", label: "Kampanje", icon: Megaphone, locked: !hasModule(business, "pillar_reactivation"), lockDesc: "Redna sporočila strankam: vrnite stare stranke, novice, pridobivanje." },
       ],
     },
     {
-      title: "Dokumenti",
+      title: "Pomočniki",
       items: [
+        { path: "/klepet", label: "Spletni klepet", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "AI klepet na vaši spletni strani, ki odgovarja 24/7." },
+        { path: "/ocene", label: "Google ocene", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Samodejne prošnje za Google ocene in priporočila." },
         { path: "/ponudbe", label: "Ponudbe", icon: FileSignature, locked: !hasModule(business, "pillar_offers"), lockDesc: "Priprava ponudb v PDF v nekaj minutah." },
         { path: "/racuni", label: "Računi", icon: FileText },
       ],
