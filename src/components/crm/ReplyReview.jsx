@@ -12,6 +12,17 @@ import { Send, X, Pencil, Loader2, ThumbsUp, ThumbsDown, Globe, MessageSquare, R
 import { toast } from "sonner";
 import { SOURCES, ACTIVITY, ago, fmtDateTime } from "@/lib/crm";
 import { useCrmInvalidate } from "@/components/crm/CrmDialogs";
+import { aiLearn } from "@/functions/aiLearn";
+
+// Učenje v ozadju: ne blokira pošiljanja; ko AI zapiše novo pravilo, to pove.
+export const learnInBackground = (payload, qc) => {
+  aiLearn(payload).then((res) => {
+    const d = res?.data ?? res;
+    if (d?.learned?.length) toast.success(`AI se je naučil: »${d.learned[0]}«`, { description: "Pravila vidite v Nastavitve → Glas znamke." });
+    else if (d?.reinforced?.length) toast(`Isto napako ste že popravili — pravilo »${d.reinforced[0]}« ima zdaj večjo težo.`);
+    qc?.invalidateQueries({ queryKey: ["ai-lessons"] });
+  }).catch(() => {});
+};
 
 // Zakaj je AI pripravil odgovor — v jeziku stranke.
 export const REASONS = {
@@ -52,6 +63,8 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
   const [body, setBody] = useState(draft.body || "");
   const [busy, setBusy] = useState(null);
   const [example, setExample] = useState(null); // { kind, why }
+  const [skipOpen, setSkipOpen] = useState(false);
+  const [skipReason, setSkipReason] = useState("");
   useEffect(() => { setSubject(draft.subject || ""); setBody(draft.body || ""); setEditing(false); }, [draft.id]);
 
   const { data: campaign } = useQuery({
@@ -73,12 +86,18 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
     try {
       await base44.entities.DraftMessage.update(draft.id, { ...(changed ? { subject, body } : {}), status: "approved" });
       toast.success(`Odgovor za ${lead?.name || "stranko"} se pošilja.`);
+      if (changed) learnInBackground({ business_id: business.id, kind: "edit", original: { subject: draft.subject, body: draft.body }, final: { subject, body } }, qc);
       done();
     } catch (e) { toast.error(e.message); } finally { setBusy(null); }
   };
   const skip = async () => {
     setBusy("skip");
-    try { await base44.entities.DraftMessage.update(draft.id, { status: "skipped" }); toast("Sporočilo ne bo poslano."); done(); }
+    try {
+      await base44.entities.DraftMessage.update(draft.id, { status: "skipped", ...(skipReason.trim() ? { reviewer_notes: `Lastnik: ${skipReason.trim()}` } : {}) });
+      toast("Sporočilo ne bo poslano.");
+      if (skipReason.trim()) learnInBackground({ business_id: business.id, kind: "skip", original: { subject: draft.subject, body: draft.body }, reason: skipReason.trim() }, qc);
+      setSkipOpen(false); done();
+    }
     catch (e) { toast.error(e.message); } finally { setBusy(null); }
   };
   const saveExample = async () => {
@@ -93,6 +112,7 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
       await base44.entities.Business.update(business.id, { [key]: list });
       qc.invalidateQueries({ queryKey: ["business"] });
       toast.success(kind === "good" ? "Shranjeno kot dober primer — AI se bo zgledoval po njem." : "Shranjeno kot slab primer — AI se bo temu izogibal.");
+      learnInBackground({ business_id: business.id, kind: kind === "good" ? "good_example" : "bad_example", original: { subject, body }, reason: why.trim() }, qc);
       setExample(null);
     } catch (e) { toast.error(e.message); } finally { setBusy(null); }
   };
@@ -159,13 +179,23 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
           )}
           <div className="flex items-center gap-2 flex-wrap pt-1">
             <Button className="btn-brand" onClick={send} disabled={!!busy || !lead?.email}>{busy === "send" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}{changed ? "Shrani in pošlji" : "Pošlji"}</Button>
-            <Button variant="ghost" className="text-muted-foreground" onClick={skip} disabled={!!busy}><X className="w-4 h-4 mr-1" />Ne pošlji</Button>
+            <Button variant="ghost" className="text-muted-foreground" onClick={() => setSkipOpen(true)} disabled={!!busy}><X className="w-4 h-4 mr-1" />Ne pošlji</Button>
             <span className="ml-auto inline-flex gap-1">
               <Button size="sm" variant="ghost" className="text-emerald-700 hover:bg-emerald-50" title="AI naj piše tako" onClick={() => setExample({ kind: "good", why: "" })}><ThumbsUp className="w-4 h-4 mr-1" />Dober primer</Button>
               <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50" title="AI naj se temu izogiba" onClick={() => setExample({ kind: "bad", why: "" })}><ThumbsDown className="w-4 h-4 mr-1" />Slab primer</Button>
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground">{lead?.email ? `Pošlje se na ${lead.email} z vašega e-naslova, podpis doda sistem.` : "Stranka nima e-naslova — dodajte ga v podatkih stranke."}</p>
+          {skipOpen && (
+            <div className="rounded-xl border bg-card p-3 space-y-2">
+              <Label className="text-xs">Zakaj ne? <span className="text-muted-foreground font-normal">(neobvezno — AI se iz tega nauči in naslednjič ne ponovi)</span></Label>
+              <Input autoFocus value={skipReason} onChange={(e) => setSkipReason(e.target.value)} onKeyDown={(e) => e.key === "Enter" && skip()} placeholder="Npr. tej stranki ne pišemo, preveč vsiljivo, napačna cena …" />
+              <div className="flex gap-2 justify-end">
+                <Button size="sm" variant="ghost" onClick={() => setSkipOpen(false)}>Prekliči</Button>
+                <Button size="sm" variant="outline" onClick={skip} disabled={!!busy}>{busy === "skip" && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}Ne pošlji</Button>
+              </div>
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground">{changed && <span className="text-primary">AI si bo zapomnil vaš popravek. </span>}{lead?.email ? `Pošlje se na ${lead.email} z vašega e-naslova, podpis doda sistem.` : "Stranka nima e-naslova — dodajte ga v podatkih stranke."}</p>
         </div>
       </div>
 
