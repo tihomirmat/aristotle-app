@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { STAGE, fmtDate, eur, initials, ago } from "@/lib/crm";
 import Timeline from "@/components/crm/Timeline";
 import TaskRow from "@/components/crm/TaskRow";
+import TasksPanel from "@/components/crm/TasksPanel";
 import { TaskDialog, LogActivityDialog, useCrmInvalidate } from "@/components/crm/CrmDialogs";
 import { CompanyDialog } from "@/pages/Podjetja";
 
@@ -60,7 +61,7 @@ export default function PodjetjeDetail() {
   if (!company) return <div className="card-elevated p-10 text-center"><h2 className="text-xl">Podjetja ni mogoče najti</h2><Button asChild variant="outline" className="mt-4"><Link to="/podjetja">Nazaj</Link></Button></div>;
 
   const offerLink = `/ponudbe/nova?company=${company.id}${contacts[0] ? `&lead=${contacts[0].id}` : ""}&client=${encodeURIComponent(company.name)}`;
-  const TABS = [["timeline", "Časovnica", activities.length], ["people", "Kontaktne osebe", contacts.length], ["tasks", "Opravila", openTasks.length], ["offers", "Ponudbe", offers.length]];
+  const TABS = [["timeline", "Časovnica", activities.length], ["people", "Kontaktne osebe", contacts.length], ["offers", "Ponudbe", offers.length]];
   const info = [[Mail, company.email, company.email && `mailto:${company.email}`], [Phone, company.phone, company.phone && `tel:${company.phone}`], [Globe, company.website, company.website && (company.website.startsWith("http") ? company.website : `https://${company.website}`)], [MapPin, company.address], [Hash, company.tax_id], [Briefcase, company.industry]].filter(([, v]) => v);
 
   return (
@@ -87,8 +88,8 @@ export default function PodjetjeDetail() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-5 items-start">
-        <div className="card-elevated">
+      <div className="grid md:grid-cols-[1fr_320px] xl:grid-cols-[1fr_380px] gap-5 items-start">
+        <div className="card-elevated min-w-0">
           <div className="flex gap-1 border-b px-3 overflow-x-auto">
             {TABS.map(([k, l, n]) => <button key={k} onClick={() => setTab(k)} className={`px-3 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${tab === k ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{l}{n > 0 && <span className="ml-1.5 text-xs text-muted-foreground">{n}</span>}</button>)}
           </div>
@@ -110,14 +111,6 @@ export default function PodjetjeDetail() {
                 })}
               </div>
             )}
-            {tab === "tasks" && (
-              <div>
-                <div className="flex justify-end mb-2"><Button size="sm" variant="outline" onClick={() => { setEditTask(null); setDlg("task"); }}><Plus className="w-4 h-4 mr-1" />Dodaj</Button></div>
-                {openTasks.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">Ni odprtih opravil.</p>}
-                <div className="divide-y">{openTasks.map((t) => <TaskRow key={t.id} task={t} lead={leadsById[t.lead_id]} compact onEdit={(x) => { setEditTask(x); setDlg("task"); }} />)}</div>
-                {doneTasks.length > 0 && <><p className="text-xs uppercase tracking-wider text-muted-foreground mt-6 mb-1">Opravljeno</p><div className="divide-y">{doneTasks.map((t) => <TaskRow key={t.id} task={t} compact />)}</div></>}
-              </div>
-            )}
             {tab === "offers" && (
               <div className="space-y-2">
                 {offers.length === 0 ? <div className="text-center py-6"><p className="text-sm text-muted-foreground">Za to podjetje še ni ponudb.</p><Button asChild className="btn-brand mt-3"><Link to={offerLink}>Pripravi ponudbo</Link></Button></div>
@@ -133,7 +126,8 @@ export default function PodjetjeDetail() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 order-first md:order-none">
+          <TasksPanel tasks={tasks} companyId={company.id} leadsById={leadsById} onEdit={(x) => { setEditTask(x); setDlg("task"); }} onAddDetailed={() => { setEditTask(null); setDlg("task"); }} />
           <div className="card-elevated p-4">
             <p className="text-sm font-semibold mb-2">Podatki</p>
             {info.length === 0 ? <button onClick={() => setDlg("edit")} className="text-xs text-primary">Dodajte podatke podjetja →</button> : (
@@ -142,10 +136,6 @@ export default function PodjetjeDetail() {
               </div>
             )}
             {company.notes && <p className="text-xs text-muted-foreground mt-3 pt-3 border-t whitespace-pre-wrap">{company.notes}</p>}
-          </div>
-          <div className="card-elevated p-4">
-            <div className="flex items-center justify-between mb-1"><p className="text-sm font-semibold">Naslednji koraki</p><button onClick={() => { setEditTask(null); setDlg("task"); }} className="text-xs text-primary inline-flex items-center gap-1"><Plus className="w-3 h-3" />Dodaj</button></div>
-            {openTasks.length === 0 ? <p className="text-xs text-muted-foreground py-2">Ni odprtih opravil.</p> : <div className="divide-y">{openTasks.slice(0, 5).map((t) => <TaskRow key={t.id} task={t} compact />)}</div>}
           </div>
         </div>
       </div>
