@@ -1,0 +1,36 @@
+{
+  "name": "CRM - ponudba",
+  "description": "Pripravljena ponudba se zapi\u0161e na \u010dasovnico stranke oziroma podjetja.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create"
+      ],
+      "entity_name": "OfferGeneration"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "crm_ponudba",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "crmEvents",
+            "args": {
+              "entity": "OfferGeneration"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
