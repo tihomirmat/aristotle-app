@@ -30,6 +30,8 @@ export const REASONS = {
 export const reasonFor = (p) => REASONS[p] || { label: "Sporočilo", why: "AI je pripravil to sporočilo.", icon: Mail, color: "bg-slate-100 text-slate-700" };
 
 const INBOUND = ["email_in", "form", "chat"];
+// Pri teh vrstah je odgovor na sporočilo stranke; pri ostalih (ocena, vabilo, kampanja) pokažemo razlog.
+const REPLY_PILLARS = ["web_form_lead", "chatbot_handoff", "booking_proposal", "booking_confirmation", "manual", "assistant_action"];
 // Kaj je stranka nazadnje poslala: zadnji prejeti dogodek ali izvirno sporočilo iz opomb.
 export const lastInbound = (lead, activities = []) => {
   const a = activities.filter((x) => x.lead_id === lead?.id && INBOUND.includes(x.type))
@@ -59,7 +61,8 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
   });
 
   const r = reasonFor(draft.pillar);
-  const inbound = draft.pillar === "campaign" ? null : lastInbound(lead, activities);
+  const isReply = REPLY_PILLARS.includes(draft.pillar);
+  const inbound = isReply ? lastInbound(lead, activities) : null;
   const S = SOURCES[lead?.source] || SOURCES.manual;
   const lowQuality = draft.status === "flagged_for_review";
   const changed = subject !== (draft.subject || "") || body !== (draft.body || "");
@@ -108,10 +111,10 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
         <span className="text-xs text-muted-foreground ml-auto">pripravljeno {ago(draft.created_date)}</span>
       </div>
 
-      <div className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x">
+      <div className="grid xl:grid-cols-[2fr_3fr] divide-y xl:divide-y-0 xl:divide-x">
         {/* Levo: kaj je stranka poslala */}
         <div className="p-5 space-y-3">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{draft.pillar === "campaign" ? "Zakaj to sporočilo" : "Stranka vam je pisala"}</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{isReply ? "Stranka vam je pisala" : "Zakaj to sporočilo"}</p>
           {draft.pillar === "campaign" ? (
             <div className="rounded-xl bg-orange-50 border border-orange-100 p-4 text-sm">
               <p className="font-medium">{campaign?.name || "Kampanja"}</p>
@@ -125,7 +128,11 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
               <p className="text-sm whitespace-pre-wrap mt-1.5 max-h-72 overflow-y-auto">{inbound.content || "—"}</p>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground rounded-xl border border-dashed p-4">{r.why}{lead?.notes ? ` Opombe: ${lead.notes}` : ""}</p>
+            <div className="rounded-xl border border-dashed p-4 text-sm space-y-2">
+              <p>{r.why}</p>
+              {lead?.status && <p className="text-xs text-muted-foreground">Faza stranke: {({ new: "Novo", contacted: "Kontaktirano", replied: "Odgovorili so", booked: "Termin", converted: "Stranka", lost: "Izgubljeno" })[lead.status] || lead.status}{lead.last_contacted_at ? ` · zadnji stik ${ago(lead.last_contacted_at)}` : ""}</p>}
+              {lead?.notes && <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-5">O stranki: {lead.notes}</p>}
+            </div>
           )}
           {lead?.service_requested && <p className="text-xs text-muted-foreground">Kaj želi: <span className="text-foreground">{lead.service_requested}</span></p>}
         </div>
