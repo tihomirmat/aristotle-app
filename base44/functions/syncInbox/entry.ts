@@ -24,8 +24,9 @@ async function classify(items, business) {
 Za vsako prejeto e-sporočilo ugotovi, ali je POVPRAŠEVANJE potencialne ali obstoječe stranke (želi storitev, ponudbo, ceno, termin, informacijo o storitvi, ali je obvestilo spletnega obrazca s podatki stranke).
 NI povpraševanje: novice, reklame, računi dobaviteljev, sistemska obvestila, potrdila naročil, spam, notranja pošta, odgovori na naše masovne kampanje brez vprašanja.
 Pri obvestilih spletnih obrazcev (pošiljatelj je spletna stran ali no-reply) vzemi ime, e-naslov in telefon STRANKE iz telesa, ne pošiljatelja.
-Vrni ZGOLJ JSON tabelo v istem vrstnem redu: [{"i":0,"is_inquiry":true,"name":"","email":"","phone":"","service":"","summary":"1-2 stavka v slovenščini, kaj stranka želi"}]. Ne izmišljuj podatkov.`;
-  const user = items.map((m, i) => `#${i}\nOD: ${m.fromName} <${m.fromEmail}>\nZADEVA: ${m.subject}\nBESEDILO:\n${m.text.slice(0, 1500)}`).join('\n\n---\n\n');
+Posebej označi PREJETI RAČUN (is_invoice=true): dobavitelj nam pošilja račun/fakturo/e-račun za plačilo (npr. telekom, elektrika, računovodstvo, gostovanje, material). Ne velja za ponudbe, opomine brez računa ali račune, ki jih mi izdajamo. Pri računu izpolni supplier (naziv dobavitelja), amount (znesek z DDV kot število, če je naveden) in invoice_date (YYYY-MM-DD, če je naveden).
+Vrni ZGOLJ JSON tabelo v istem vrstnem redu: [{"i":0,"is_inquiry":true,"is_invoice":false,"supplier":"","amount":null,"invoice_date":"","name":"","email":"","phone":"","service":"","summary":"1-2 stavka v slovenščini, kaj stranka želi"}]. Ne izmišljuj podatkov.`;
+  const user = items.map((m, i) => `#${i}\nOD: ${m.fromName} <${m.fromEmail}>\nZADEVA: ${m.subject}${m.attachments?.length ? `\nPRILOGE: ${m.attachments.map((a) => a.filename).join(', ')}` : ''}\nBESEDILO:\n${m.text.slice(0, 1500)}`).join('\n\n---\n\n');
   const res = await anthropic.messages.create({ model: 'claude-haiku-4-5', max_tokens: 2500, system: sys, messages: [{ role: 'user', content: user }] });
   const raw = (res.content?.[0]?.text || '[]').trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
   let arr = [];
@@ -34,7 +35,7 @@ Vrni ZGOLJ JSON tabelo v istem vrstnem redu: [{"i":0,"is_inquiry":true,"name":""
 }
 
 async function syncOne(base44, business) {
-  const out = { business_id: business.id, scanned: 0, inquiries: 0, new_leads: 0, updated_leads: 0, error: null };
+  const out = { business_id: business.id, scanned: 0, inquiries: 0, new_leads: 0, updated_leads: 0, invoices: 0, error: null };
   if (!business.imap_host || !business.imap_user || !business.imap_pass) { out.error = 'Poštni predal ni povezan.'; return out; }
 
   const client = new ImapFlow({
@@ -70,9 +71,14 @@ async function syncOne(base44, business) {
           const subject = parsed.subject || '';
           const text = (parsed.text || (parsed.html ? String(parsed.html).replace(/<[^>]+>/g, ' ') : '')).replace(/\s+\n/g, '\n').trim();
           const forced = rules.some((r) => fromEmail.includes(r) || lower(subject).includes(r));
+          const attachments = (parsed.attachments || [])
+            .filter((a) => a.content && a.size < 8_000_000 && (/pdf|xml/i.test(a.contentType || '') || /\.(pdf|xml)$/i.test(a.filename || '')))
+            .slice(0, 3)
+            .map((a) => ({ filename: a.filename || 'racun.pdf', contentType: a.contentType || 'application/pdf', content: a.content }));
+          const invoiceLike = attachments.length > 0 && /račun|racun|faktur|invoice|e-račun|eracun|bill/i.test(`${subject} ${attachments.map((a) => a.filename).join(' ')}`);
           const bulk = !!headers.get('list-unsubscribe') || ['bulk', 'list', 'junk'].includes(precedence) || (autoSubmitted && autoSubmitted !== 'no');
-          if (bulk && !forced && !/obrazec|povpra|form|kontakt|inquiry|naročil/i.test(subject)) continue;
-          mails.push({ uid: msg.uid, messageId: parsed.messageId || `${business.id}-${msg.uid}`, fromName: from.name || '', fromEmail, subject, text, date: parsed.date || new Date(), forced });
+          if (bulk && !forced && !invoiceLike && !/obrazec|povpra|form|kontakt|inquiry|naročil/i.test(subject)) continue;
+          mails.push({ uid: msg.uid, messageId: parsed.messageId || `${business.id}-${msg.uid}`, fromName: from.name || '', fromEmail, subject, text, date: parsed.date || new Date(), forced, attachments });
         }
       }
     } finally { lock.release(); }
@@ -88,6 +94,9 @@ async function syncOne(base44, business) {
   const leads = await base44.asServiceRole.entities.Lead.filter({ business_id: business.id });
   const byEmail = new Map(leads.filter((l) => l.email).map((l) => [lower(l.email), l]));
   const seenIds = new Set(leads.map((l) => l.email_message_id).filter(Boolean));
+  const invoices = business.invoice_enabled === false ? [] : await base44.asServiceRole.entities.Invoice.filter({ business_id: business.id }).catch(() => []);
+  const seenInvoices = new Set(invoices.map((x) => x.message_id).filter(Boolean));
+  const owner = business.owner_email || business.created_by;
   let tokensIn = 0, tokensOut = 0;
   for (let i = 0; i < mails.length; i += 10) {
     const batch = mails.slice(i, i + 10).filter((m) => !seenIds.has(m.messageId));
@@ -97,6 +106,25 @@ async function syncOne(base44, business) {
     for (const r of results) {
       const m = batch[r?.i];
       if (!m) continue;
+      if (r.is_invoice && !r.is_inquiry) {
+        if (business.invoice_enabled === false || !m.attachments?.length || seenInvoices.has(m.messageId)) continue;
+        for (const a of m.attachments) {
+          try {
+            const up = await base44.asServiceRole.integrations.Core.UploadFile({ file: new File([a.content], a.filename, { type: a.contentType }) });
+            const d = /^\d{4}-\d{2}-\d{2}$/.test(String(r.invoice_date || '')) ? r.invoice_date : new Date(m.date).toISOString().slice(0, 10);
+            const amount = typeof r.amount === 'number' ? r.amount : parseFloat(String(r.amount || '').replace(/\./g, '').replace(',', '.'));
+            await base44.asServiceRole.entities.Invoice.create({
+              business_id: business.id, source: 'email', source_email_from: m.fromEmail, subject: m.subject, received_date: new Date(m.date).toISOString(),
+              file_url: up?.file_url || null, file_name: a.filename, status: 'captured', supplier_name: String(r.supplier || m.fromName || m.fromEmail).slice(0, 200),
+              ...(Number.isFinite(amount) && amount > 0 ? { amount } : {}), invoice_date: d, period: d.slice(0, 7), message_id: m.messageId,
+              created_by: business.created_by, owner_email: owner,
+            });
+            out.invoices++;
+          } catch (e) { console.error('invoice save failed', a.filename, e?.message); }
+        }
+        seenInvoices.add(m.messageId);
+        continue;
+      }
       if (!r.is_inquiry && !m.forced) continue;
       const email = lower(r.email) || m.fromEmail;
       if (!email || ownAddresses.has(email)) continue;
@@ -112,7 +140,6 @@ async function syncOne(base44, business) {
         });
         out.updated_leads++;
       } else {
-        const owner = business.owner_email || business.created_by;
         const lead = await base44.asServiceRole.entities.Lead.create({
           business_id: business.id, name: (r.name || m.fromName || email.split('@')[0]).trim(), email,
           phone: r.phone || '', notes: `${note}\n\nIzvirno sporočilo:\n${m.text.slice(0, 2500)}`,
