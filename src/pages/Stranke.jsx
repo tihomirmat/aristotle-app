@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import CustomerImportModal from "@/components/stranke/CustomerImportModal";
 import LeadSources from "@/components/stranke/LeadSources";
+import ReplyInbox from "@/components/stranke/ReplyInbox";
 import { STAGES, STAGE, SOURCES, ago, firstLine, eur } from "@/lib/crm";
 import { useCrmInvalidate } from "@/components/crm/CrmDialogs";
 
@@ -22,7 +23,6 @@ export default function Stranke() {
   const navigate = useNavigate();
   const invalidate = useCrmInvalidate();
   const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") === "viri" ? "viri" : "stranke";
   const [view, setView] = useState("pipeline");
   const [search, setSearch] = useState(params.get("q") || "");
   const [sourceFilter, setSourceFilter] = useState("all");
@@ -36,6 +36,10 @@ export default function Stranke() {
   const { data: leads = [], isLoading } = useQuery({ queryKey: ["leads", bid], queryFn: () => base44.entities.Lead.filter({ business_id: bid }), enabled: !!bid });
   const { data: drafts = [] } = useQuery({ queryKey: ["drafts-all", bid], queryFn: () => base44.entities.DraftMessage.filter({ business_id: bid }), enabled: !!bid });
   const { data: companies = [] } = useQuery({ queryKey: ["companies", bid], queryFn: () => base44.entities.Company.filter({ business_id: bid }), enabled: !!bid });
+  const { data: activities = [] } = useQuery({ queryKey: ["activities", bid], queryFn: () => base44.entities.Activity.filter({ business_id: bid }), enabled: !!bid });
+  const pendingCount = drafts.filter((d) => ["pending", "flagged_for_review"].includes(d.status)).length;
+  const tabParam = params.get("tab");
+  const tab = ["viri", "odgovori", "stranke"].includes(tabParam) ? tabParam : (pendingCount > 0 ? "odgovori" : "stranke");
   const { data: tasks = [] } = useQuery({ queryKey: ["tasks", bid], queryFn: () => base44.entities.Task.filter({ business_id: bid, status: "open" }), enabled: !!bid });
   const companiesById = useMemo(() => Object.fromEntries(companies.map((c) => [c.id, c])), [companies]);
   const pendingByLead = useMemo(() => {
@@ -106,7 +110,7 @@ export default function Stranke() {
           <span className="flex items-center gap-1.5">
             {lead.value ? <span className="text-[11px] font-medium">{eur(lead.value)}</span> : null}
             {nTasks > 0 && <span title="Odprta opravila" className="text-[10px] font-medium text-slate-700 bg-slate-100 rounded-full px-1.5 py-0.5 inline-flex items-center gap-0.5"><ListChecks className="w-3 h-3" />{nTasks}</span>}
-            {pending > 0 && <span className="text-[10px] font-semibold text-white bg-primary rounded-full px-1.5 py-0.5">{pending} za odobritev</span>}
+            {pending > 0 && <span className="text-[10px] font-semibold text-white bg-primary rounded-full px-1.5 py-0.5">odgovor pripravljen</span>}
           </span>
         </div>
       </button>
@@ -129,15 +133,17 @@ export default function Stranke() {
       </div>
 
       <div className="flex gap-1 border-b">
-        {[["stranke", `Stranke (${leads.length})`], ["viri", "Od kod pridejo stranke"]].map(([k, l]) => (
-          <button key={k} onClick={() => setParams(k === "viri" ? { tab: "viri" } : {})}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${tab === k ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{l}</button>
+        {[["odgovori", "Čaka na vaš odgovor", pendingCount], ["stranke", `Vse stranke (${leads.length})`], ["viri", "Od kod pridejo stranke"]].map(([k, l, n]) => (
+          <button key={k} onClick={() => setParams({ tab: k })}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px inline-flex items-center gap-2 ${tab === k ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{l}{n > 0 && <span className="text-[11px] font-bold text-white bg-primary rounded-full min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center">{n}</span>}</button>
         ))}
         <Link to="/podjetja" className="px-4 py-2 text-sm font-medium border-b-2 border-transparent -mb-px text-muted-foreground hover:text-foreground">Podjetja ({companies.length})</Link>
       </div>
 
       {tab === "viri" ? (
         <LeadSources leads={leads} onImport={() => setShowImport(true)} />
+      ) : tab === "odgovori" ? (
+        <ReplyInbox drafts={drafts} leads={leads} activities={activities} />
       ) : leads.length === 0 ? (
         <div className="card-elevated p-10 text-center">
           <Users className="w-12 h-12 mx-auto text-muted-foreground/40" />
