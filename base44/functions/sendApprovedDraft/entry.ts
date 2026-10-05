@@ -210,14 +210,38 @@ Deno.serve(async (req) => {
         connectionTimeout: 15000,
         auth: { user: business.smtp_user, pass: business.smtp_pass },
       });
-      await transporter.sendMail({
-        from: `"${(business.smtp_from_name || business.name).replace(/"/g, '')}" <${business.smtp_from_email || business.smtp_user}>`,
+      const fromAddr = business.smtp_from_email || business.smtp_user;
+      const mailOpts = {
+        from: `"${(business.smtp_from_name || business.name).replace(/"/g, '')}" <${fromAddr}>`,
         to: lead.email,
         subject,
         text: fullBody,
         html: fullHtml,
         ...threadHeaders,
-      }).catch(e => { sendError = e.message; return null; });
+      };
+      // Sporočilo najprej sestavimo (raw), da ga lahko po pošiljanju shranimo tudi v mapo Poslano v lastnikovem predalu.
+      let raw = null;
+      try {
+        const composer = nodemailer.createTransport({ streamTransport: true, buffer: true });
+        raw = (await composer.sendMail(mailOpts)).message;
+      } catch { raw = null; }
+      if (raw) {
+        await transporter.sendMail({ envelope: { from: fromAddr, to: [lead.email] }, raw }).catch((e) => { sendError = e.message; return null; });
+      } else {
+        await transporter.sendMail(mailOpts).catch((e) => { sendError = e.message; return null; });
+      }
+      // Kopija v Poslano (IMAP), da lastnik odgovor vidi v svojem poštnem programu. Napaka tu ne prepreči pošiljanja.
+      if (!sendError && raw && business.imap_enabled && business.imap_host && business.imap_user && business.imap_pass) {
+        try {
+          const { ImapFlow } = await import('npm:imapflow@1.0.164');
+          const c = new ImapFlow({ host: business.imap_host, port: Number(business.imap_port) || 993, secure: business.imap_secure !== false, auth: { user: business.imap_user, pass: business.imap_pass }, logger: false, connectionTimeout: 10000 });
+          await c.connect();
+          const boxes = await c.list();
+          const sent = boxes.find((b) => b.specialUse === '\\Sent') || boxes.find((b) => /^(inbox[./])?(sent|sent items|sent messages|poslano|poslana pošta)$/i.test(b.path));
+          if (sent) await c.append(sent.path, raw, ['\\Seen']);
+          await c.logout();
+        } catch { /* ignore */ }
+      }
     } else {
       // Platform SendEmail (tudi za gmail/outlook, dokler OAuth pošiljanje ni implementirano)
       try {
