@@ -1,0 +1,36 @@
+{
+  "name": "CRM - sprememba stranke",
+  "description": "Ko stranka ponovno pi\u0161e ali se ji spremeni faza: zapis na \u010dasovnico, ustavitev kampanj, opravilo za odgovor.",
+  "trigger": {
+    "condition": "${ ((.trigger.changed_fields | index(\"status\") != null) or (.trigger.changed_fields | index(\"last_inbound_at\") != null)) }",
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update"
+      ],
+      "entity_name": "Lead"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "crm_sprememba_stranke",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "crmEvents",
+            "args": {
+              "entity": "Lead"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
