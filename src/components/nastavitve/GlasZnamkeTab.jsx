@@ -95,10 +95,10 @@ export default function GlasZnamkeTab({ business }) {
   };
 
   return (
-    <div className="max-w-lg space-y-6 pb-24">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start max-w-6xl pb-24">
 
       {/* Opis tona */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
+      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4 lg:order-1">
         <h3 className="font-semibold">Opis tona in glasu znamke</h3>
         <div className="space-y-2">
           <Label>Opis tona <span className="text-muted-foreground font-normal">(do 2000 znakov)</span></Label>
@@ -124,13 +124,14 @@ export default function GlasZnamkeTab({ business }) {
       </div>
 
       {/* Primeri dobrih sporočil */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
+      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4 lg:order-3">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Primeri dobrih sporočil</h3>
           <Button size="sm" variant="outline" onClick={addGood} disabled={form.example_good_messages.length >= 5}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Dodaj
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground">Primer lahko dodate tudi z enim klikom pri sporočilu v »Za odobritev« (gumb »Dober primer«). AI se po teh primerih zgleduje pri pisanju novih sporočil.</p>
         {form.example_good_messages.length === 0 && (
           <p className="text-sm text-muted-foreground">Ni primerov. Dodajte do 5 zglednih sporočil.</p>
         )}
@@ -159,13 +160,14 @@ export default function GlasZnamkeTab({ business }) {
       </div>
 
       {/* Primeri slabih sporočil */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
+      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4 lg:order-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Primeri slabih sporočil</h3>
           <Button size="sm" variant="outline" onClick={addBad} disabled={form.example_bad_messages.length >= 5}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Dodaj
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground">Primer lahko dodate tudi z enim klikom pri sporočilu v »Za odobritev« (gumb »Slab primer«). Takim sporočilom se AI izogiba.</p>
         {form.example_bad_messages.length === 0 && (
           <p className="text-sm text-muted-foreground">Ni primerov. Dodajte do 5 sporočil, ki se jim AI izogiba.</p>
         )}
@@ -194,7 +196,7 @@ export default function GlasZnamkeTab({ business }) {
       </div>
 
       {/* E-poštni podpis */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-3">
+      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-3 lg:order-2">
         <h3 className="font-semibold">E-poštni podpis</h3>
         <div className="space-y-2">
           <Label>Podpis, ki ga AI doda na konec e-pošte</Label>
