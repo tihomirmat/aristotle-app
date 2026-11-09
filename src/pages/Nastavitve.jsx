@@ -20,6 +20,8 @@ import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
 import TerminiTab from "@/components/nastavitve/TerminiTab";
 import MailboxCard from "@/components/nastavitve/MailboxCard";
 import AutoSendCard from "@/components/nastavitve/AutoSendCard";
+import FeaturesCard from "@/components/nastavitve/FeaturesCard";
+import { LayoutGrid } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -215,6 +217,7 @@ export default function Nastavitve() {
         <TabsList className="mb-6 flex-wrap h-auto gap-1">
           <TabsTrigger value="profil" className="gap-2"><User className="w-4 h-4" /> Profil</TabsTrigger>
           <TabsTrigger value="glas" className="gap-2"><Mic className="w-4 h-4" /> Glas znamke</TabsTrigger>
+          <TabsTrigger value="pomocniki" className="gap-2"><LayoutGrid className="w-4 h-4" /> Pomočniki</TabsTrigger>
           <TabsTrigger value="integracije" className="gap-2"><Mail className="w-4 h-4" /> Integracije</TabsTrigger>
           <TabsTrigger value="termini" className="gap-2"><Calendar className="w-4 h-4" /> Termini</TabsTrigger>
           <TabsTrigger value="billing" className="gap-2"><CreditCard className="w-4 h-4" /> Naročnina</TabsTrigger>
@@ -305,6 +308,10 @@ export default function Nastavitve() {
         </TabsContent>
 
         {/* GLAS ZNAMKE */}
+        <TabsContent value="pomocniki">
+          {business && <FeaturesCard business={business} />}
+        </TabsContent>
+
         <TabsContent value="glas">
           <GlasZnamkeTab business={business} />
         </TabsContent>
