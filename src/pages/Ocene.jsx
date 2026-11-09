@@ -1,323 +1,211 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useBusiness } from "@/lib/business-context";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { Star, ExternalLink, Mail, TrendingUp, Zap, Send, Loader2, AlertCircle, Save } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+import { Star, ExternalLink, Loader2, Send, ArrowRight, Settings2, Link2, UserRound } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { generateDraft } from "@/functions/generateDraft";
-
 import { fnError } from "@/lib/fn-error";
+import { HelperHeader, PillTabs, Stepper, StepCard, Stat, Empty } from "@/components/pomocniki/HelperKit";
+
+const DELAYS = [[2, "Še isti dan", "Čez 2 uri"], [24, "Naslednji dan", "Priporočamo"], [72, "Čez 3 dni", "Ko se vtisi poležejo"]];
+const STATUS = {
+  pending: ["Čaka na vašo potrditev", "bg-amber-100 text-amber-800"], flagged_for_review: ["Čaka na vašo potrditev", "bg-amber-100 text-amber-800"],
+  approved: ["Potrjena, kmalu poslana", "bg-blue-100 text-blue-700"], sent: ["Poslana", "bg-emerald-100 text-emerald-700"],
+  failed: ["Pošiljanje ni uspelo", "bg-red-100 text-red-700"], skipped: ["Niste je poslali", "bg-slate-100 text-slate-600"],
+};
+
+// Primer prošnje, kot jo vidi stranka (ilustracija, pravo besedilo napiše AI v vašem slogu).
+function RequestPreview({ business }) {
+  return (
+    <div className="rounded-3xl border shadow-xl bg-white overflow-hidden">
+      <div className="px-5 py-3 border-b bg-slate-50 text-xs text-slate-500"><p><span className="font-medium text-slate-700">Od:</span> {business?.name || "Vaše podjetje"}</p><p><span className="font-medium text-slate-700">Zadeva:</span> Kako ste zadovoljni?</p></div>
+      <div className="p-5 text-sm text-slate-800 space-y-3 leading-relaxed">
+        <p>Pozdravljeni,</p>
+        <p>hvala, da ste nam zaupali. Upamo, da ste z opravljenim delom zadovoljni.</p>
+        <p>Če imate minuto časa, nam bo vaša ocena na Googlu zelo pomagala.</p>
+        <div className="rounded-2xl bg-[#fff6dd] p-4 text-center">
+          <div className="flex justify-center gap-1">{[1, 2, 3, 4, 5].map((i) => <Star key={i} className="w-6 h-6 fill-[#ffb50e] text-[#ffb50e]" />)}</div>
+          <span className="inline-block mt-3 rounded-full bg-[#f84214] text-white text-sm font-semibold px-5 py-2">Napišite oceno</span>
+        </div>
+        <p>Lep pozdrav,<br />{business?.name || "Vaše podjetje"}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function Ocene() {
   const { business } = useBusiness();
-  const queryClient = useQueryClient();
-  const [generatingFor, setGeneratingFor] = useState(null);
+  const qc = useQueryClient();
+  const bid = business?.id;
+  const [tab, setTab] = useState("work");
+  const [step, setStep] = useState("link");
+  const [linkInput, setLinkInput] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [busyFor, setBusyFor] = useState(null);
 
-  const { data: drafts = [] } = useQuery({
-    queryKey: ["ocene-drafts", business?.id],
-    queryFn: () => base44.entities.DraftMessage.filter({ business_id: business.id }),
-    enabled: !!business?.id,
-  });
+  const { data: drafts = [] } = useQuery({ queryKey: ["ocene-drafts", bid], queryFn: () => base44.entities.DraftMessage.filter({ business_id: bid }), enabled: !!bid });
+  const { data: customers = [] } = useQuery({ queryKey: ["converted-leads", bid], queryFn: () => base44.entities.Lead.filter({ business_id: bid, status: "converted" }), enabled: !!bid });
 
-  const { data: convertedLeads = [] } = useQuery({
-    queryKey: ["converted-leads", business?.id],
-    queryFn: () => base44.entities.Lead.filter({ business_id: business.id, status: "converted" }),
-    enabled: !!business?.id,
-  });
+  useEffect(() => { setLinkInput(business?.google_review_link || ""); }, [business?.google_review_link]);
 
-  const saveSettingsMutation = useMutation({
-    mutationFn: (data) => base44.entities.Business.update(business.id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["business"] });
-      toast.success("Nastavitve shranjene");
-    },
-  });
+  const hasLink = !!business?.google_review_link;
+  const auto = !!business?.review_requests_enabled;
+  const delay = business?.review_request_delay_hours || 24;
+  const reqs = drafts.filter((d) => d.pillar === "review_request").sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+  const sent = reqs.filter((d) => d.status === "sent").length;
+  const pending = reqs.filter((d) => d.status === "pending" || d.status === "flagged_for_review").length;
+  const asked = new Set(reqs.map((d) => d.lead_id));
+  const toAsk = customers.filter((l) => !asked.has(l.id));
+  const nameOf = (id) => customers.find((l) => l.id === id)?.name;
 
-  const reviewDrafts = drafts.filter(d => d.pillar === "review_request");
-  const sent = reviewDrafts.filter(d => d.status === "sent").length;
-  const pending = reviewDrafts.filter(d => d.status === "pending").length;
-  const approved = reviewDrafts.filter(d => d.status === "approved").length;
-
-  const recentAll = reviewDrafts
-    .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))
-    .slice(0, 10);
-
-  const STATUS_COLOR = { pending: "bg-amber-100 text-amber-700", approved: "bg-blue-100 text-blue-700", sent: "bg-emerald-100 text-emerald-700", failed: "bg-red-100 text-red-700", skipped: "bg-gray-100 text-gray-500", flagged_for_review: "bg-orange-100 text-orange-700" };
-  const STATUS_LABEL = { pending: "Čaka", approved: "Odobreno", sent: "Poslano", failed: "Napaka", skipped: "Preskočeno", flagged_for_review: "Pregled" };
-
-  const handleManualReview = async (lead) => {
-    if (!business?.google_review_link) {
-      toast.error("Najprej nastavite Google ocena povezavo v Nastavitvah.");
-      return;
-    }
-    if (!lead.consent_email) {
-      toast.error("Stranka nima soglasja za e-pošto.");
-      return;
-    }
-    setGeneratingFor(lead.id);
+  const save = async (data, msg = "Shranjeno.") => {
+    setSaving(true);
+    try { await base44.entities.Business.update(bid, data); qc.invalidateQueries({ queryKey: ["business"] }); if (msg) toast.success(msg); return true; }
+    catch (e) { toast.error(fnError(e)); return false; } finally { setSaving(false); }
+  };
+  const saveLink = async () => {
+    const url = linkInput.trim();
+    if (!/^https:\/\/.+\..+/.test(url)) { toast.error("Povezava se mora začeti s https://"); return false; }
+    return save({ google_review_link: url }, "Povezava je shranjena.");
+  };
+  const askFor = async (lead) => {
+    if (!lead.email) { toast.error("Ta stranka nima e-naslova."); return; }
+    if (lead.consent_email === false) { toast.error("Ta stranka ne želi prejemati e-pošte."); return; }
+    setBusyFor(lead.id);
     try {
-      await generateDraft({ business_id: business.id, lead_id: lead.id, pillar: "review_request", sequence_step: 1 });
-      queryClient.invalidateQueries({ queryKey: ["ocene-drafts", business?.id] });
-      toast.success(`Prošnja za oceno ustvarjena za ${lead.name}. Najdete jo v Stranke → Čaka na vaš odgovor.`);
-    } catch (e) {
-      toast.error("Napaka pri generiranju: " + fnError(e));
-    } finally {
-      setGeneratingFor(null);
-    }
+      const res = await generateDraft({ business_id: bid, lead_id: lead.id, pillar: "review_request", sequence_step: 1 });
+      const d = res?.data ?? res; if (d?.error) throw new Error(d.error);
+      qc.invalidateQueries({ queryKey: ["ocene-drafts", bid] }); qc.invalidateQueries({ queryKey: ["drafts-all", bid] });
+      toast.success(`Prošnja za ${lead.name} je pripravljena. Preberite in pošljite jo v Strankah.`);
+    } catch (e) { toast.error(fnError(e)); } finally { setBusyFor(null); }
   };
 
-  const handleTestEmail = async () => {
-    if (!business?.google_review_link) {
-      toast.error("Najprej nastavite Google ocena povezavo.");
-      return;
-    }
-    const testLead = convertedLeads[0];
-    if (!testLead) {
-      toast.error("Ni pretvorjenih strank za test.");
-      return;
-    }
-    setGeneratingFor("test");
-    try {
-      await generateDraft({ business_id: business.id, lead_id: testLead.id, pillar: "review_request", sequence_step: 1 });
-      queryClient.invalidateQueries({ queryKey: ["ocene-drafts", business?.id] });
-      toast.success("Testna prošnja ustvarjena. Najdete jo v Stranke → Čaka na vaš odgovor.");
-    } catch (e) {
-      toast.error("Napaka: " + fnError(e));
-    } finally {
-      setGeneratingFor(null);
-    }
-  };
+  const LinkField = (
+    <div className="flex gap-2 flex-wrap sm:flex-nowrap max-w-2xl">
+      <div className="relative flex-1 min-w-[220px]"><Link2 className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input value={linkInput} onChange={(e) => setLinkInput(e.target.value)} placeholder="https://g.page/r/…/review" className="h-12 pl-12 text-base rounded-xl" /></div>
+    </div>
+  );
+  const DelayPicker = (
+    <div className="grid sm:grid-cols-3 gap-3 max-w-2xl">
+      {DELAYS.map(([h, l, d]) => <button key={h} onClick={() => save({ review_request_delay_hours: h }, "")} className={`rounded-2xl border-2 p-4 text-left transition-colors ${delay === h ? "border-primary bg-accent/40" : "hover:border-primary/40"}`}><span className="font-semibold block">{l}</span><span className="text-sm text-muted-foreground">{d}</span></button>)}
+    </div>
+  );
+  const AutoSwitch = (
+    <label className="flex items-start gap-3 rounded-2xl border p-4 max-w-2xl cursor-pointer">
+      <Switch checked={auto} onCheckedChange={(v) => save({ review_requests_enabled: v }, v ? "Prošnje se bodo pripravljale same." : "Prošnje pripravite sami, ko želite.")} className="mt-0.5" />
+      <span><span className="font-semibold block">Prošnjo pripravi samodejno</span><span className="text-sm text-muted-foreground">Ko stranko v Strankah premaknete v »Stranka«, se prošnja pripravi sama. Pred pošiljanjem jo vedno potrdite vi.</span></span>
+    </label>
+  );
 
-  const delayHours = business?.review_request_delay_hours || 24;
-  const [reviewLinkInput, setReviewLinkInput] = useState("");
-  const [savingLink, setSavingLink] = useState(false);
-
-  const handleSaveReviewLink = async () => {
-    const url = reviewLinkInput.trim();
-    if (!url.startsWith("https://")) {
-      toast.error("URL mora začeti z https://");
-      return;
-    }
-    setSavingLink(true);
-    await base44.entities.Business.update(business.id, { google_review_link: url });
-    queryClient.invalidateQueries({ queryKey: ["business"] });
-    toast.success("Google ocena povezava shranjena!");
-    setSavingLink(false);
-    setReviewLinkInput("");
-  };
+  const steps = [{ key: "link", title: "Povezava do ocen", done: hasLink }, { key: "when", title: "Kdaj prosimo", done: hasLink && auto }, { key: "done", title: "Preglejte", done: false }];
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Google ocene</h1>
-        <p className="text-muted-foreground mt-1">Avtomatske prošnje za Google ocene in napotitve.</p>
-      </div>
+    <div className="space-y-6">
+      <HelperHeader icon={Star} tone="amber" title="Google ocene" subtitle="Po opravljenem delu stranko vljudno prosi za oceno na Googlu. Več ocen pomeni več novih strank."
+        ok={hasLink} statusLabel={!hasLink ? "Še ni nastavljeno" : auto ? "Deluje samodejno" : "Pripravljeno — prosite sami"}>
+        {hasLink && <PillTabs value={tab} onChange={setTab} tabs={[{ key: "work", label: "Prošnje", icon: Star, badge: pending }, { key: "settings", label: "Nastavitve", icon: Settings2 }]} />}
+      </HelperHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* Google ocene kartica */}
-        <div className="bg-card border rounded-xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center">
-              <Star className="w-4 h-4 text-white" />
+      {/* Čarovnik, dokler ni povezave */}
+      {!hasLink && (
+        <div className="space-y-5">
+          <div className="overflow-x-auto pb-1"><Stepper steps={steps} current={step} onStep={setStep} /></div>
+          <div className="grid xl:grid-cols-[minmax(0,1fr)_400px] gap-6 items-start">
+            <div className="min-w-0">
+              {step === "link" && (
+                <StepCard n={1} total={3} title="Prilepite povezavo do svojih Google ocen" text="To je povezava, ki stranko pripelje naravnost do okenca za oceno vašega podjetja." onNext={async () => { if (await saveLink()) setStep("when"); }} nextLabel={saving ? "Shranjujem …" : "Shrani in naprej"} nextDisabled={saving || !linkInput.trim()}>
+                  <ol className="space-y-3 max-w-2xl mb-6">
+                    {["Na Googlu poiščite svoje podjetje (prijavljeni kot lastnik).", "Kliknite gumb za mnenja (»Ask for reviews«).", "Kopirajte povezavo in jo prilepite spodaj."].map((t, i) => <li key={i} className="flex gap-3 items-start"><span className="w-7 h-7 rounded-full bg-muted text-sm font-bold flex items-center justify-center shrink-0">{i + 1}</span><span className="pt-0.5">{t}</span></li>)}
+                  </ol>
+                  {LinkField}
+                  <a href="https://business.google.com/" target="_blank" rel="noreferrer" className="text-sm text-muted-foreground underline underline-offset-4 inline-flex items-center gap-1.5 mt-4"><ExternalLink className="w-3.5 h-3.5" />Odpri Google profil podjetja</a>
+                </StepCard>
+              )}
+              {step === "when" && (
+                <StepCard n={2} total={3} title="Kdaj naj stranko prosimo za oceno?" text="Štejemo od trenutka, ko stranko označite kot »Stranka« (delo je opravljeno)." onBack={() => setStep("link")} onNext={() => setStep("done")}>
+                  <div className="space-y-4">{DelayPicker}{AutoSwitch}</div>
+                </StepCard>
+              )}
+              {step === "done" && (
+                <StepCard n={3} total={3} title="Tako deluje" text="Nič se ne pošlje brez vas." onBack={() => setStep("when")}>
+                  <ol className="space-y-3 max-w-2xl">
+                    {["Delo je opravljeno — stranko v Strankah premaknete v »Stranka«.", "Pripravi se prošnja za oceno v vašem slogu (primer je na desni).", "Prošnjo preberete in kliknete »Pošlji«. Stranka dobi e-pošto s povezavo do ocene."].map((t, i) => <li key={i} className="flex gap-3 items-start"><span className="w-7 h-7 rounded-full bg-primary text-white text-sm font-bold flex items-center justify-center shrink-0">{i + 1}</span><span className="pt-0.5">{t}</span></li>)}
+                  </ol>
+                  {!linkInput.trim() && <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3 mt-5 max-w-2xl">Manjka še povezava do ocen (korak 1).</p>}
+                </StepCard>
+              )}
             </div>
-            <h3 className="font-semibold">Google ocene</h3>
+            <div className="xl:sticky xl:top-20"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 text-center">Primer prošnje, ki jo dobi stranka</p><RequestPreview business={business} /></div>
           </div>
-          {business?.google_review_link ? (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">Vaša povezava za ocene je nastavljena.</p>
-              <a href={business.google_review_link} target="_blank" rel="noreferrer">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <ExternalLink className="w-4 h-4" /> Odpri Google ocene
-                </Button>
-              </a>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-start gap-2 text-amber-600 bg-amber-50 rounded-lg p-3">
-                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                <p className="text-sm">Dodajte Google ocena povezavo (format: https://g.page/r/...).</p>
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  value={reviewLinkInput}
-                  onChange={(e) => setReviewLinkInput(e.target.value)}
-                  placeholder="https://g.page/r/..."
-                  className="text-sm"
-                />
-                <Button size="sm" onClick={handleSaveReviewLink} disabled={savingLink || !reviewLinkInput.trim()} className="shrink-0 gap-1.5">
-                  {savingLink ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  Shrani
-                </Button>
-              </div>
-            </div>
+        </div>
+      )}
+
+      {/* Delo */}
+      {hasLink && tab === "work" && (
+        <div className="space-y-6">
+          <div className="grid sm:grid-cols-3 gap-3">
+            <Stat value={toAsk.length} label="strank še niste prosili za oceno" tone={toAsk.length ? "text-primary" : ""} />
+            <Stat value={pending} label="prošenj čaka na vašo potrditev" tone={pending ? "text-amber-600" : ""} />
+            <Stat value={sent} label="prošenj poslanih doslej" />
+          </div>
+          {pending > 0 && (
+            <Link to="/stranke?tab=odgovori" className="flex items-center gap-3 rounded-2xl border-2 border-primary/30 bg-accent/50 px-5 py-4 hover:bg-accent">
+              <Send className="w-5 h-5 text-primary" /><span className="font-semibold flex-1">Pripravljene prošnje čakajo, da jih preberete in pošljete.</span><span className="text-primary font-semibold inline-flex items-center gap-1">Odpri<ArrowRight className="w-4 h-4" /></span>
+            </Link>
           )}
-        </div>
-
-        {/* Statistika */}
-        <div className="bg-card border rounded-xl p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold">Statistika</h3>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-muted/50 rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-amber-500">{sent}</p>
-              <p className="text-xs text-muted-foreground mt-1">Poslanih</p>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-blue-500">{pending}</p>
-              <p className="text-xs text-muted-foreground mt-1">Čaka</p>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-3 text-center">
-              <p className="text-2xl font-bold text-emerald-500">{approved}</p>
-              <p className="text-xs text-muted-foreground mt-1">Odobrenih</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Avtomatika */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Zap className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold">Avtomatika</h3>
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between py-2 border-b">
-            <div>
-              <p className="text-sm font-medium">Po pretvorbi stranke</p>
-              <p className="text-xs text-muted-foreground">Ko Lead.status → converted/replied, samodejno ustvari prošnjo</p>
-            </div>
-            <Switch
-              checked={!!business?.review_requests_enabled}
-              onCheckedChange={(v) => saveSettingsMutation.mutate({ review_requests_enabled: v })}
-            />
-          </div>
-          <div className="space-y-2 py-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Zamik pošiljanja</Label>
-              <span className="text-sm font-semibold text-primary">{delayHours} ur</span>
-            </div>
-            <Slider
-              min={1} max={72} step={1}
-              value={[delayHours]}
-              onValueChange={([v]) => saveSettingsMutation.mutate({ review_request_delay_hours: v })}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>1 ura</span><span>24 ur (privzeto)</span><span>72 ur</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Manualno pošiljanje za converted leade */}
-      {convertedLeads.length > 0 && (
-        <div className="bg-card border rounded-xl shadow-sm overflow-hidden mb-6">
-          <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between">
-            <h3 className="font-semibold text-sm">Manualno pošiljanje prošnje za oceno</h3>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleTestEmail}
-              disabled={generatingFor === "test"}
-              className="gap-1.5"
-            >
-              {generatingFor === "test" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              Test na moj email
-            </Button>
-          </div>
-          <div className="divide-y">
-            {convertedLeads.slice(0, 5).map(lead => (
-              <div key={lead.id} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <p className="text-sm font-medium">{lead.name}</p>
-                  <p className="text-xs text-muted-foreground">{lead.email || "—"}</p>
+          <div className="grid xl:grid-cols-2 gap-6 items-start">
+            <div className="card-elevated p-6">
+              <h2 className="!text-lg">Koga lahko prosite za oceno</h2>
+              <p className="text-sm text-muted-foreground mt-1 mb-4">Stranke, za katere ste delo že opravili in jih še niste prosili.</p>
+              {toAsk.length === 0 ? <Empty icon={UserRound} title="Trenutno nikogar" text="Ko stranko v Strankah premaknete v »Stranka«, se pojavi tukaj." /> : (
+                <div className="divide-y">
+                  {toAsk.slice(0, 12).map((l) => (
+                    <div key={l.id} className="py-3 flex items-center gap-3">
+                      <span className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold text-sm text-muted-foreground shrink-0">{(l.name || "?")[0].toUpperCase()}</span>
+                      <div className="flex-1 min-w-0"><p className="font-medium truncate">{l.name}</p><p className="text-xs text-muted-foreground truncate">{l.email || "brez e-naslova"}</p></div>
+                      <Button className="btn-brand gap-2 shrink-0" disabled={!!busyFor || !l.email} onClick={() => askFor(l)}>{busyFor === l.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}Prosi za oceno</Button>
+                    </div>
+                  ))}
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!!generatingFor || !lead.consent_email}
-                  onClick={() => handleManualReview(lead)}
-                  className="gap-1.5"
-                >
-                  {generatingFor === lead.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Star className="w-3.5 h-3.5" />}
-                  Pošlji prošnjo
-                </Button>
-              </div>
-            ))}
+              )}
+            </div>
+            <div className="card-elevated p-6">
+              <h2 className="!text-lg">Zadnje prošnje</h2>
+              <p className="text-sm text-muted-foreground mt-1 mb-4">Kaj se je zgodilo z vsako prošnjo.</p>
+              {reqs.length === 0 ? <Empty icon={Star} title="Prošenj še ni" text="Prva se pojavi, ko nekoga prosite za oceno." /> : (
+                <div className="divide-y">
+                  {reqs.slice(0, 12).map((d) => { const [label, cls] = STATUS[d.status] || [d.status, "bg-slate-100 text-slate-600"]; return (
+                    <div key={d.id} className="py-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0"><p className="font-medium truncate">{nameOf(d.lead_id) || d.subject || "Prošnja za oceno"}</p><p className="text-xs text-muted-foreground">{d.created_date ? format(new Date(d.created_date), "d. M. yyyy") : ""}</p></div>
+                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${cls}`}>{label}</span>
+                    </div>
+                  ); })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Tabela review requestov */}
-      {recentAll.length > 0 ? (
-        <div className="bg-card border rounded-xl shadow-sm overflow-hidden mb-6">
-          <div className="px-5 py-3 border-b bg-muted/30">
-            <h3 className="font-semibold text-sm">Prošnje za ocene — zgodovinska tabela</h3>
+      {/* Nastavitve */}
+      {hasLink && tab === "settings" && (
+        <div className="grid xl:grid-cols-[minmax(0,1fr)_400px] gap-6 items-start">
+          <div className="card-elevated p-6 sm:p-8 space-y-8">
+            <div><h2 className="!text-lg mb-1">Kdaj prosimo za oceno</h2><p className="text-sm text-muted-foreground mb-4">Štejemo od trenutka, ko stranko označite kot »Stranka«.</p>{DelayPicker}</div>
+            {AutoSwitch}
+            <div><h2 className="!text-lg mb-1">Povezava do vaših Google ocen</h2><p className="text-sm text-muted-foreground mb-4">Na to povezavo pride stranka, ko klikne »Napišite oceno«.</p>
+              <div className="flex gap-2 flex-wrap items-center">{LinkField}<Button variant="outline" className="h-12" onClick={saveLink} disabled={saving || linkInput.trim() === (business?.google_review_link || "")}>Shrani</Button><a href={business.google_review_link} target="_blank" rel="noreferrer"><Button variant="ghost" className="h-12 gap-2"><ExternalLink className="w-4 h-4" />Preizkusi</Button></a></div>
+            </div>
           </div>
-          <div className="divide-y">
-            {recentAll.map(d => (
-              <div key={d.id} className="flex items-center justify-between px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">{d.subject || "Prošnja za oceno"}</p>
-                    <p className="text-xs text-muted-foreground">{d.created_date ? format(new Date(d.created_date), "d. M. yyyy HH:mm") : "—"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {d.quality_score && <span className="text-xs text-muted-foreground">Q{d.quality_score}</span>}
-                  <Badge className={`${STATUS_COLOR[d.status] || "bg-gray-100 text-gray-600"} border-0 text-xs`}>
-                    {STATUS_LABEL[d.status] || d.status}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="bg-muted/30 border border-dashed rounded-xl p-8 text-center mb-6">
-          <Star className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="font-medium text-muted-foreground">Avtomatske prošnje za ocene</p>
-          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-            Ko bo AI ustvaril prošnjo za oceno, se bo prikazala tukaj. Pregledate jo v <strong>Stranke → Čaka na vaš odgovor</strong>.
-          </p>
-          <Button className="mt-4" asChild>
-            <Link to="/stranke?tab=odgovori">Odpri pripravljene odgovore</Link>
-          </Button>
+          <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 text-center">Primer prošnje, ki jo dobi stranka</p><RequestPreview business={business} /></div>
         </div>
       )}
-
-      {/* Napotitve */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm">
-        <h3 className="font-semibold mb-2">Napotitve</h3>
-        <p className="text-sm text-muted-foreground mb-3">
-          AI samodejno pošlje prošnjo za napotitev zadovoljnim strankam.
-          Prošnje najdete v <Link to="/stranke?tab=odgovori" className="text-primary hover:underline">Čaka na vaš odgovor</Link>.
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold text-violet-500">
-              {drafts.filter(d => d.pillar === "referral_ask" && d.status === "sent").length}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Napotitev poslanih</p>
-          </div>
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold text-amber-500">
-              {drafts.filter(d => d.pillar === "referral_ask" && d.status === "pending").length}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Čaka odobritev</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
