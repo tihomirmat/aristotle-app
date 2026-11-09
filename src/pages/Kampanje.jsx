@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { addDays } from "date-fns";
-import { CAMPAIGN_GOALS, CAMPAIGN_STATUS, STAGES, SOURCES } from "@/lib/crm";
+import { CAMPAIGN_GOALS, CAMPAIGN_STATUS, STAGES, SOURCES, pl, cnt, W } from "@/lib/crm";
 import { useCrmInvalidate } from "@/components/crm/CrmDialogs";
 
 const GOAL_ICON = { reactivation: RotateCcw, nurture: HeartHandshake, newsletter: Newspaper, acquisition: Target, review: Star };
@@ -220,7 +220,7 @@ export default function Kampanje() {
   };
 
   if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  const delayText = (s, i) => (Number(s.delay_days) > 0 ? `${i === 0 ? "po" : "čez"} ${s.delay_days} ${Number(s.delay_days) === 1 ? "dan" : "dni"}` : "takoj");
+  const delayText = (s) => (Number(s.delay_days) > 0 ? `čez ${s.delay_days} ${Number(s.delay_days) === 1 ? "dan" : "dni"}` : "takoj");
   const sorted = [...campaigns].sort((a, b) => (a.status === "active" ? -1 : 1) - (b.status === "active" ? -1 : 1) || new Date(b.created_date) - new Date(a.created_date));
 
   return (
@@ -242,7 +242,7 @@ export default function Kampanje() {
                 <div className="w-10 h-10 rounded-xl bg-accent text-primary flex items-center justify-center"><I className="w-5 h-5" /></div>
                 <p className="font-semibold mt-3">{g.label}</p>
                 <p className="text-sm text-muted-foreground mt-1 flex-1">{g.hint}</p>
-                <p className="text-xs text-muted-foreground mt-3">{msgs} {msgs === 1 ? "pripravljeno sporočilo" : "pripravljena sporočila"} · <span className={n > 0 ? "text-primary font-medium" : ""}>{n} {n === 1 ? "stranka ustreza" : "strank ustreza"}</span></p>
+                <p className="text-xs text-muted-foreground mt-3">{msgs} {pl(msgs, ["pripravljeno sporočilo", "pripravljeni sporočili", "pripravljena sporočila", "pripravljenih sporočil"])} · <span className={n > 0 ? "text-primary font-medium" : ""}>primerno za {cnt(n, ["stranko", "stranki", "stranke", "strank"])}</span></p>
                 <Button className="btn-brand mt-3 w-full" onClick={() => setBuilder({ open: true, campaign: null, goal: k })}>Pripravi<ArrowRight className="w-4 h-4 ml-1.5" /></Button>
               </div>
             );
@@ -260,10 +260,10 @@ export default function Kampanje() {
           <div className="grid xl:grid-cols-2 gap-4">
             {sorted.map((c) => {
               const s = stats[c.id] || {}; const St = CAMPAIGN_STATUS[c.status] || CAMPAIGN_STATUS.draft; const I = GOAL_ICON[c.goal] || Megaphone;
-              const explain = c.status === "active" ? `Teče. ${s.active || 0} ${s.active === 1 ? "stranka še prejema" : "strank še prejema"} sporočila.`
-                : c.status === "paused" ? "Začasno ustavljena. Nič se ne pošilja, dokler ne kliknete »Nadaljuj«."
-                : c.status === "completed" ? "Končana. Vsa sporočila so bila poslana."
-                : "Še ni zagnana. Nič se ne pošilja, dokler ne kliknete »Zaženi«.";
+              const explain = c.status === "active" ? `Sporočila še prejema: ${cnt(s.active || 0, W.stranka)}.`
+                : c.status === "paused" ? "Nič se ne pošilja, dokler ne kliknete »Nadaljuj«."
+                : c.status === "completed" ? "Vsa sporočila so bila poslana."
+                : "Nič se ne pošilja, dokler ne kliknete »Zaženi«.";
               return (
                 <div key={c.id} className="card-elevated p-5 space-y-4">
                   <div className="flex items-start gap-3">
@@ -277,20 +277,21 @@ export default function Kampanje() {
                   <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground">Kaj pošilja</p>
                     {(c.steps || []).map((st, i) => (
-                      <p key={i} className="text-sm flex gap-2"><span className="w-5 h-5 rounded-full bg-background border text-[11px] font-semibold flex items-center justify-center shrink-0">{i + 1}</span><span className="truncate">»{st.subject}« <span className="text-muted-foreground">· {delayText(st, i)}</span></span></p>
+                      <p key={i} className="text-sm flex gap-2"><span className="w-5 h-5 rounded-full bg-background border text-[11px] font-semibold flex items-center justify-center shrink-0">{i + 1}</span><span className="truncate">»{st.subject}« <span className="text-muted-foreground">· {delayText(st)}</span></span></p>
                     ))}
+                    {!(c.steps || []).length && <p className="text-sm text-muted-foreground">Sporočil še ni. Kliknite »Poglej in uredi«.</p>}
                     <p className="text-xs text-muted-foreground pt-1">{c.auto_send ? "Sporočila se pošljejo sama." : "Vsako sporočilo pred pošiljanjem potrdite vi."}</p>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    {[[Users, s.enrolled, "strank vključenih"], [Send, s.sent, "sporočil poslanih"], [MessageCircleReply, s.replied, "strank odgovorilo"]].map(([Ic, n, l]) => (
+                    {[[Users, s.enrolled, "vključene stranke"], [Send, s.sent, "poslana sporočila"], [MessageCircleReply, s.replied, "odgovori strank"]].map(([Ic, n, l]) => (
                       <div key={l} className="rounded-xl border p-2.5"><p className="text-xl font-display font-bold">{n || 0}</p><p className="text-[11px] text-muted-foreground inline-flex items-center gap-1"><Ic className="w-3 h-3" />{l}</p></div>
                     ))}
                   </div>
 
                   {s.pending > 0 && (
                     <Link to="/stranke?tab=odgovori" className="flex items-center gap-2 rounded-xl border border-primary/30 bg-accent/50 px-3 py-2 text-sm hover:bg-accent">
-                      <span className="font-medium">{s.pending} {s.pending === 1 ? "sporočilo čaka" : "sporočil čaka"} na vašo potrditev</span><ArrowRight className="w-4 h-4 ml-auto text-primary" />
+                      <span className="font-medium">Na vašo potrditev čaka: {cnt(s.pending, W.sporocilo)}</span><ArrowRight className="w-4 h-4 ml-auto text-primary" />
                     </Link>
                   )}
 

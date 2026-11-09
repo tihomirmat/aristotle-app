@@ -97,3 +97,14 @@ export const logActivity = (business, data) =>
     direction: "internal",
     ...data,
   });
+
+// Slovenska množina: f = [1, 2, 3–4, 5+], npr. ["račun", "računa", "računi", "računov"].
+export const pl = (n, f) => { const m = Math.abs(Number(n) || 0) % 100; return f[m === 1 ? 0 : m === 2 ? 1 : m === 3 || m === 4 ? 2 : 3]; };
+export const cnt = (n, f) => `${Number(n) || 0} ${pl(n, f)}`;
+export const W = {
+  stranka: ["stranka", "stranki", "stranke", "strank"],
+  sporocilo: ["sporočilo", "sporočili", "sporočila", "sporočil"],
+  racun: ["račun", "računa", "računi", "računov"],
+  pogovor: ["pogovor", "pogovora", "pogovori", "pogovorov"],
+  zapis: ["zapis", "zapisa", "zapisi", "zapisov"],
+};

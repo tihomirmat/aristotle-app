@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { cnt, W } from "@/lib/crm";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -169,7 +170,7 @@ export default function KnowledgeBaseTab({ businessId }) {
     <>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-muted-foreground">
-          {docs.length} {docs.length === 1 ? "zapis" : "zapisov"} · klepet uporablja {activeCount}
+          {cnt(docs.length, W.zapis)} · klepet uporablja {activeCount}
         </p>
         <Button onClick={() => { setEditDoc(null); setShowForm(true); }} size="sm">
           <Plus className="w-4 h-4 mr-1.5" /> Dodaj ročno

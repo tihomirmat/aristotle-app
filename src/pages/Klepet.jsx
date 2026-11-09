@@ -7,6 +7,7 @@ import KnowledgeBaseTab from "@/components/klepet/KnowledgeBaseTab";
 import ConversationsTab from "@/components/klepet/ConversationsTab";
 import EmbedTab from "@/components/klepet/EmbedTab";
 import WebsiteLearnCard from "@/components/klepet/WebsiteLearnCard";
+import { cnt, W } from "@/lib/crm";
 
 // Spletni klepet: trije koraki, vedno vidni na vrhu. Vsak pove, ali je narejen in kaj je naslednje.
 export default function Klepet() {
@@ -37,9 +38,9 @@ export default function Klepet() {
 
   const next = !learned ? "learn" : !installed ? "install" : null;
   const STEPS = [
-    { key: "learn", icon: BookOpen, title: "Naučite klepet", text: "Prebere vašo spletno stran in odgovarja samo iz tega, kar tam piše.", done: learned, state: learned ? `Ve ${docs.length} ${docs.length === 1 ? "stvar" : "stvari"} o vas` : "Še ne ve ničesar" },
+    { key: "learn", icon: BookOpen, title: "Naučite klepet", text: "Prebere vašo spletno stran in odgovarja samo iz tega, kar tam piše.", done: learned, state: learned ? `Shranjeno znanje: ${cnt(docs.length, W.zapis)}` : "Še ne ve ničesar" },
     { key: "install", icon: Code2, title: "Postavite ga na svojo stran", text: "Kopirate kratko kodo in jo prilepite na stran. Pokažemo, kam.", done: installed, state: installed ? (business?.chat_installed_url ? `Deluje na ${String(business.chat_installed_url).replace(/^https?:\/\//, "").replace(/\/$/, "")}` : "Deluje — obiskovalci že pišejo") : "Še ni na vaši strani" },
-    { key: "convs", icon: MessageSquare, title: "Spremljajte pogovore", text: "Vidite, kaj so obiskovalci vprašali in kdo je pustil kontakt.", done: real.length > 0, state: real.length ? `${real.length} ${real.length === 1 ? "pogovor" : "pogovorov"}` : "Še ni pogovorov", alert: escalated },
+    { key: "convs", icon: MessageSquare, title: "Spremljajte pogovore", text: "Vidite, kaj so obiskovalci vprašali in kdo je pustil kontakt.", done: real.length > 0, state: real.length ? cnt(real.length, W.pogovor) : "Še ni pogovorov", alert: escalated },
   ];
 
   return (

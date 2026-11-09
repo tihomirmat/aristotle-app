@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { sendMonthlyInvoicePackage } from "@/functions/sendMonthlyInvoicePackage";
 import { fnError } from "@/lib/fn-error";
+import { cnt, W } from "@/lib/crm";
 
 const monthKey = (d) => { const dt = new Date(d); return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`; };
 const monthLabel = (ym) => { const [y, m] = ym.split("-"); return new Date(Number(y), Number(m) - 1, 1).toLocaleString("sl-SI", { month: "long", year: "numeric" }); };
@@ -113,7 +114,7 @@ export default function Racuni() {
     }
     setUploading(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
-    if (ok) { toast.success(ok === 1 ? "Račun je dodan." : `Dodanih računov: ${ok}.`); queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] }); }
+    if (ok) { toast.success(ok === 1 ? "Račun je dodan." : `Dodano: ${cnt(ok, W.racun)}.`); queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] }); }
   }, [business, queryClient]);
 
   const sendNow = async () => {
@@ -124,7 +125,7 @@ export default function Racuni() {
       if (d?.error) throw new Error(d.error);
       const r = d?.results?.[0];
       if (r?.sent) {
-        toast.success(`Poslano računovodji: ${r.invoice_count} ${r.invoice_count === 1 ? "račun" : "računov"}.`);
+        toast.success(`Poslano računovodji: ${cnt(r.invoice_count, W.racun)}.`);
         queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] });
         queryClient.invalidateQueries({ queryKey: ["invoice-packages", business?.id] });
       } else if (r?.skipped) {
@@ -177,7 +178,7 @@ export default function Racuni() {
           <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
             <div>
               <h2 className="text-lg">Prejeti računi</h2>
-              <p className="text-sm text-muted-foreground">Ta mesec: {thisMonth.length} {thisMonth.length === 1 ? "račun" : "računov"}{thisSum > 0 ? `, skupaj ${money(thisSum)}` : ""}</p>
+              <p className="text-sm text-muted-foreground">Ta mesec: {cnt(thisMonth.length, W.racun)}{thisSum > 0 ? `, skupaj ${money(thisSum)}` : ""}</p>
             </div>
             {months.length > 1 && (
               <Select value={monthFilter} onValueChange={setMonthFilter}>
@@ -228,7 +229,7 @@ export default function Racuni() {
         <div className="space-y-4">
           <div className="card-elevated p-5">
             <h2 className="text-lg">Pošiljanje računovodji</h2>
-            <p className="text-sm text-muted-foreground mt-1">Za {monthLabel(prevKey)} {waitingPrev.length === 0 ? "ni računov, ki bi čakali na pošiljanje." : `${waitingPrev.length === 1 ? "čaka 1 račun" : `čaka ${waitingPrev.length} računov`}.`}</p>
+            <p className="text-sm text-muted-foreground mt-1">{waitingPrev.length === 0 ? `Za ${monthLabel(prevKey)} ni računov, ki bi čakali na pošiljanje.` : `Za ${monthLabel(prevKey)} čaka na pošiljanje: ${cnt(waitingPrev.length, W.racun)}.`}</p>
             <Button className="btn-brand w-full mt-4 gap-2" onClick={sendNow} disabled={sending || !accOn || waitingPrev.length === 0}>
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}Pošlji račune za {monthLabel(prevKey)} zdaj
             </Button>
@@ -244,7 +245,7 @@ export default function Racuni() {
                   <div key={p.id} className="py-3 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm capitalize">{monthLabel(`${p.period_year}-${String(p.period_month).padStart(2, "0")}`)}</p>
-                      <p className="text-xs text-muted-foreground truncate">{p.invoice_count} {p.invoice_count === 1 ? "račun" : "računov"} · {p.accountant_email}{p.sent_at ? ` · ${format(new Date(p.sent_at), "d. M. yyyy")}` : ""}</p>
+                      <p className="text-xs text-muted-foreground truncate">{cnt(p.invoice_count, W.racun)} · {p.accountant_email}{p.sent_at ? ` · ${format(new Date(p.sent_at), "d. M. yyyy")}` : ""}</p>
                     </div>
                     {p.zip_file_url && <a href={p.zip_file_url} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline" className="gap-1.5 shrink-0"><Download className="w-3.5 h-3.5" />Prenesi</Button></a>}
                   </div>
