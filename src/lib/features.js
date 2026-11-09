@@ -10,4 +10,4 @@ export const FEATURES = [
   { key: "invoices", title: "Računi za računovodjo", desc: "Prejete račune zbere iz pošte in jih mesečno pošlje računovodji.", icon: FileText, path: "/racuni" },
 ];
 // Starejši računi (brez izbire) vidijo vse.
-export const featureOn = (business, key) => !Array.isArray(business?.enabled_features) || business.enabled_features.length === 0 && business?.created_date < "2026-11-09" ? true : (business.enabled_features || []).includes(key);
+export const featureOn = (business, key) => !Array.isArray(business?.enabled_features) || business.enabled_features.includes(key);
