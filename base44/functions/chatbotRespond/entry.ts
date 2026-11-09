@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
     const systemPrompt = `Si prijazen in profesionalen pomočnik za podjetje "${business.name}".
 ${business.industry_template ? `Panoga: ${business.industry_template}` : ''}
 ${business.services ? `Storitve: ${business.services}` : ''}
+${business.main_services ? `Najpomembnejše storitve (priporočaj jih prednostno, ko so smiselne): ${business.main_services}` : ''}
 ${business.hours ? `Delovni čas: ${business.hours}` : ''}
 ${business.address ? `Naslov: ${business.address}` : ''}
 ${business.phone ? `Telefon: ${business.phone}` : ''}
