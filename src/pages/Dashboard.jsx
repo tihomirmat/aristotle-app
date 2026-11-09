@@ -127,7 +127,7 @@ export default function Dashboard() {
                 : <>Vse je <span className="text-gradient-brand">urejeno</span>. AI dela v ozadju.</>}
             </h1>
             <p className="text-white/70 mt-2 max-w-xl text-sm md:text-[15px]">
-              AI Aristotle odgovarja novim strankam, vabi stare nazaj in prosi za ocene. Vi odobrite, kar gre ven.
+              AI pripravi odgovore na povpraševanja, vi jih pregledate in pošljete.
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -136,9 +136,11 @@ export default function Dashboard() {
                 <Link to="/stranke?tab=odgovori">Preglej sporočila <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
               </Button>
             )}
+            {featureOn(business, "campaigns") && (
             <div className="[&>button]:h-11 [&>button]:rounded-xl [&>button]:bg-white/10 [&>button]:border-white/20 [&>button]:text-white [&>button:hover]:bg-white/20">
               <ReactivationPanel />
             </div>
+            )}
           </div>
         </div>
       </div>
