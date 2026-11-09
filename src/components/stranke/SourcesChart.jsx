@@ -9,9 +9,11 @@ import { sl } from "date-fns/locale";
 const BAR = { email: "bg-primary", form: "bg-emerald-500", chatbot: "bg-violet-500", import: "bg-slate-400", manual: "bg-slate-500" };
 
 // »Od kod pridejo stranke«: samo pregled (graf). Nastavitev virov je v Nastavitve → Viri strank.
+const srcOf = (l) => (SOURCES[l.source] ? l.source : "manual");
+
 export default function SourcesChart({ leads = [] }) {
   const rows = useMemo(() => Object.keys(SOURCES).map((k) => {
-    const all = leads.filter((l) => (l.source || "manual") === k);
+    const all = leads.filter((l) => srcOf(l) === k);
     return { key: k, count: all.length, won: all.filter((l) => l.status === "converted").length };
   }).sort((a, b) => b.count - a.count), [leads]);
   const total = leads.length;
@@ -23,7 +25,7 @@ export default function SourcesChart({ leads = [] }) {
       const start = startOfMonth(subMonths(new Date(), i));
       const end = startOfMonth(subMonths(new Date(), i - 1));
       const inMonth = leads.filter((l) => { const d = new Date(l.created_date); return d >= start && d < end; });
-      out.push({ label: format(start, "LLL", { locale: sl }), total: inMonth.length, parts: Object.keys(SOURCES).map((k) => ({ k, n: inMonth.filter((l) => (l.source || "manual") === k).length })).filter((p) => p.n > 0) });
+      out.push({ label: format(start, "LLL", { locale: sl }), total: inMonth.length, parts: Object.keys(SOURCES).map((k) => ({ k, n: inMonth.filter((l) => srcOf(l) === k).length })).filter((p) => p.n > 0) });
     }
     return out;
   }, [leads]);
