@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
       website: form.website || '',
       hours: form.hours || '',
       services: form.services || '',
+      enabled_features: Array.isArray(form.enabled_features) ? form.enabled_features.filter((f) => ['chat', 'reviews', 'campaigns', 'offers', 'invoices'].includes(f)) : [],
       main_services: String(form.main_services || '').split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 3).join('\n'),
       current_offer: form.current_offer || '',
       google_review_link: form.google_review_link || '',
