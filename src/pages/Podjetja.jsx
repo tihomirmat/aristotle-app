@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useBusiness } from "@/lib/business-context";
 import { Button } from "@/components/ui/button";
@@ -55,12 +55,11 @@ export function CompanyDialog({ open, onOpenChange, company, onSaved }) {
   );
 }
 
-export default function Podjetja() {
+export function CompaniesPanel({ showAdd, setShowAdd }) {
   const { business } = useBusiness();
   const navigate = useNavigate();
   const bid = business?.id;
   const [search, setSearch] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
   const { data: companies = [], isLoading } = useQuery({ queryKey: ["companies", bid], queryFn: () => base44.entities.Company.filter({ business_id: bid }), enabled: !!bid });
   const { data: leads = [] } = useQuery({ queryKey: ["leads", bid], queryFn: () => base44.entities.Lead.filter({ business_id: bid }), enabled: !!bid });
   const { data: activities = [] } = useQuery({ queryKey: ["activities", bid], queryFn: () => base44.entities.Activity.filter({ business_id: bid }), enabled: !!bid });
@@ -84,20 +83,6 @@ export default function Podjetja() {
   if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1>Podjetja</h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl">Podjetja, s katerimi poslujete ali jih želite pridobiti. Vsako ima kontaktne osebe, zgodovino sporočil, opravila in ponudbe.</p>
-        </div>
-        <Button className="btn-brand" onClick={() => setShowAdd(true)}><Plus className="w-4 h-4 mr-2" />Dodaj podjetje</Button>
-      </div>
-
-      <div className="flex gap-1 border-b">
-        <Link to="/stranke" className="px-4 py-2 text-sm font-medium border-b-2 border-transparent -mb-px text-muted-foreground hover:text-foreground">Stranke ({leads.length})</Link>
-        <Link to="/stranke?tab=viri" className="px-4 py-2 text-sm font-medium border-b-2 border-transparent -mb-px text-muted-foreground hover:text-foreground">Od kod pridejo stranke</Link>
-        <span className="px-4 py-2 text-sm font-medium border-b-2 -mb-px border-primary">Podjetja ({companies.length})</span>
-      </div>
-
       {companies.length === 0 ? (
         <div className="card-elevated p-10 text-center">
           <Building2 className="w-12 h-12 mx-auto text-muted-foreground/40" />
@@ -138,4 +123,9 @@ export default function Podjetja() {
       <CompanyDialog open={showAdd} onOpenChange={setShowAdd} onSaved={(c) => c?.id && navigate(`/podjetja/${c.id}`)} />
     </div>
   );
+}
+
+// Stari naslov /podjetja odpre zavihek Podjetja na strani Stranke.
+export default function Podjetja() {
+  return <Navigate to="/stranke?tab=podjetja" replace />;
 }

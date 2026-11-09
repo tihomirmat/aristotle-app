@@ -21,6 +21,8 @@ import TerminiTab from "@/components/nastavitve/TerminiTab";
 import MailboxCard from "@/components/nastavitve/MailboxCard";
 import AutoSendCard from "@/components/nastavitve/AutoSendCard";
 import FeaturesCard from "@/components/nastavitve/FeaturesCard";
+import SourcesTab from "@/components/nastavitve/SourcesTab";
+import { Users as UsersIcon } from "lucide-react";
 import ServicesPicker from "@/components/ServicesPicker";
 import IndustryPicker from "@/components/IndustryPicker";
 import OffersPicker from "@/components/OffersPicker";
@@ -224,6 +226,7 @@ export default function Nastavitve() {
           <TabsTrigger value="profil" className="gap-2"><User className="w-4 h-4" /> Profil</TabsTrigger>
           <TabsTrigger value="glas" className="gap-2"><Mic className="w-4 h-4" /> Glas znamke</TabsTrigger>
           <TabsTrigger value="pomocniki" className="gap-2"><LayoutGrid className="w-4 h-4" /> Pomočniki</TabsTrigger>
+          <TabsTrigger value="viri" className="gap-2"><UsersIcon className="w-4 h-4" /> Viri strank</TabsTrigger>
           <TabsTrigger value="integracije" className="gap-2"><Mail className="w-4 h-4" /> Integracije</TabsTrigger>
           <TabsTrigger value="termini" className="gap-2"><Calendar className="w-4 h-4" /> Termini</TabsTrigger>
           <TabsTrigger value="billing" className="gap-2"><CreditCard className="w-4 h-4" /> Naročnina</TabsTrigger>
@@ -311,6 +314,10 @@ export default function Nastavitve() {
         </TabsContent>
 
         {/* GLAS ZNAMKE */}
+        <TabsContent value="viri">
+          {business && <SourcesTab business={business} />}
+        </TabsContent>
+
         <TabsContent value="pomocniki">
           {business && <FeaturesCard business={business} />}
         </TabsContent>

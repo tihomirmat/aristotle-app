@@ -12,8 +12,10 @@ import { Search, UserPlus, Loader2, Users, Download, Mail, LayoutGrid, List, Clo
 import { toast } from "sonner";
 import { format } from "date-fns";
 import CustomerImportModal from "@/components/stranke/CustomerImportModal";
-import LeadSources from "@/components/stranke/LeadSources";
 import ReplyInbox from "@/components/stranke/ReplyInbox";
+import SourcesChart from "@/components/stranke/SourcesChart";
+import { CompaniesPanel } from "@/pages/Podjetja";
+import { Building2 as BuildingIcon, Upload as UploadIcon } from "lucide-react";
 import { STAGES, STAGE, SOURCES, ago, firstLine, eur } from "@/lib/crm";
 import { useCrmInvalidate } from "@/components/crm/CrmDialogs";
 
@@ -28,6 +30,7 @@ export default function Stranke() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showAddCompany, setShowAddCompany] = useState(false);
   const [dragId, setDragId] = useState(null);
   const emptyLead = { name: "", email: "", phone: "", notes: "", position: "", company_id: "", new_company: "", value: "", consent_email: true };
   const [newLead, setNewLead] = useState(emptyLead);
@@ -39,7 +42,7 @@ export default function Stranke() {
   const { data: activities = [] } = useQuery({ queryKey: ["activities", bid], queryFn: () => base44.entities.Activity.filter({ business_id: bid }), enabled: !!bid });
   const pendingCount = drafts.filter((d) => ["pending", "flagged_for_review"].includes(d.status)).length;
   const tabParam = params.get("tab");
-  const tab = ["viri", "odgovori", "stranke"].includes(tabParam) ? tabParam : (pendingCount > 0 ? "odgovori" : "stranke");
+  const tab = ["viri", "odgovori", "stranke", "podjetja"].includes(tabParam) ? tabParam : (pendingCount > 0 ? "odgovori" : "stranke");
   const { data: tasks = [] } = useQuery({ queryKey: ["tasks", bid], queryFn: () => base44.entities.Task.filter({ business_id: bid, status: "open" }), enabled: !!bid });
   const companiesById = useMemo(() => Object.fromEntries(companies.map((c) => [c.id, c])), [companies]);
   const pendingByLead = useMemo(() => {
@@ -124,24 +127,28 @@ export default function Stranke() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1>Stranke</h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl">Vsa povpraševanja in stranke na enem mestu — iz e-pošte, obrazca, klepeta ali dodane ročno. Povlecite kartico v drugo fazo ali jo kliknite za celotno zgodovino.</p>
+          <p className="text-muted-foreground mt-1 max-w-2xl">Vsi, ki so vam pisali ali ste jih dodali sami. Kliknite stranko za celotno zgodovino in odgovor.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowImport(true)}><UploadIcon className="w-4 h-4 mr-2" />Uvozi</Button>
           <Button variant="outline" onClick={exportCsv} disabled={!filtered.length}><Download className="w-4 h-4 mr-2" />Izvozi</Button>
-          <Button className="btn-brand" onClick={() => setShowAdd(true)}><UserPlus className="w-4 h-4 mr-2" />Dodaj stranko</Button>
+          {tab === "podjetja"
+            ? <Button className="btn-brand" onClick={() => setShowAddCompany(true)}><BuildingIcon className="w-4 h-4 mr-2" />Dodaj podjetje</Button>
+            : <Button className="btn-brand" onClick={() => setShowAdd(true)}><UserPlus className="w-4 h-4 mr-2" />Dodaj stranko</Button>}
         </div>
       </div>
 
       <div className="flex gap-1 border-b">
-        {[["odgovori", "Čaka na vaš odgovor", pendingCount], ["stranke", `Vse stranke (${leads.length})`], ["viri", "Od kod pridejo stranke"]].map(([k, l, n]) => (
+        {[["odgovori", "Čaka na vaš odgovor", pendingCount], ["stranke", `Vse stranke (${leads.length})`], ["podjetja", `Podjetja (${companies.length})`], ["viri", "Od kod pridejo"]].map(([k, l, n]) => (
           <button key={k} onClick={() => setParams({ tab: k })}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px inline-flex items-center gap-2 ${tab === k ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{l}{n > 0 && <span className="text-[11px] font-bold text-white bg-primary rounded-full min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center">{n}</span>}</button>
         ))}
-        <Link to="/podjetja" className="px-4 py-2 text-sm font-medium border-b-2 border-transparent -mb-px text-muted-foreground hover:text-foreground">Podjetja ({companies.length})</Link>
       </div>
 
       {tab === "viri" ? (
-        <LeadSources leads={leads} onImport={() => setShowImport(true)} />
+        <SourcesChart leads={leads} />
+      ) : tab === "podjetja" ? (
+        <CompaniesPanel showAdd={showAddCompany} setShowAdd={setShowAddCompany} />
       ) : tab === "odgovori" ? (
         <ReplyInbox drafts={drafts} leads={leads} activities={activities} />
       ) : leads.length === 0 ? (
@@ -151,7 +158,7 @@ export default function Stranke() {
           <p className="text-muted-foreground mt-2 max-w-md mx-auto">Povežite e-poštni predal in AI bo sam našel povpraševanja, ali vstavite obrazec na svojo spletno stran.</p>
           <div className="flex gap-2 justify-center mt-5">
             <Button className="btn-brand" asChild><Link to="/nastavitve?tab=integracije"><Mail className="w-4 h-4 mr-2" />Poveži e-pošto</Link></Button>
-            <Button variant="outline" onClick={() => setParams({ tab: "viri" })}>Drugi viri</Button>
+            <Button variant="outline" asChild><Link to="/nastavitve?tab=viri">Drugi viri</Link></Button>
           </div>
         </div>
       ) : (

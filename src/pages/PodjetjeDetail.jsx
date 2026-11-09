@@ -54,11 +54,11 @@ export default function PodjetjeDetail() {
   const remove = async () => {
     await Promise.all(contacts.map((c) => base44.entities.Lead.update(c.id, { company_id: null })));
     await base44.entities.Company.delete(id);
-    invalidate(); toast.success("Podjetje izbrisano."); navigate("/podjetja");
+    invalidate(); toast.success("Podjetje izbrisano."); navigate("/stranke?tab=podjetja");
   };
 
   if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  if (!company) return <div className="card-elevated p-10 text-center"><h2 className="text-xl">Podjetja ni mogoče najti</h2><Button asChild variant="outline" className="mt-4"><Link to="/podjetja">Nazaj</Link></Button></div>;
+  if (!company) return <div className="card-elevated p-10 text-center"><h2 className="text-xl">Podjetja ni mogoče najti</h2><Button asChild variant="outline" className="mt-4"><Link to="/stranke?tab=podjetja">Nazaj</Link></Button></div>;
 
   const offerLink = `/ponudbe/nova?company=${company.id}${contacts[0] ? `&lead=${contacts[0].id}` : ""}&client=${encodeURIComponent(company.name)}`;
   const TABS = [["timeline", "Časovnica", activities.length], ["people", "Kontaktne osebe", contacts.length], ["offers", "Ponudbe", offers.length]];
@@ -66,7 +66,7 @@ export default function PodjetjeDetail() {
 
   return (
     <div className="space-y-5">
-      <Link to="/podjetja" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" />Vsa podjetja</Link>
+      <Link to="/stranke?tab=podjetja" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" />Vsa podjetja</Link>
 
       <div className="grid md:grid-cols-[1fr_320px] xl:grid-cols-[1fr_380px] 2xl:grid-cols-[1fr_420px] gap-5 items-start">
       <div className="space-y-5 min-w-0">

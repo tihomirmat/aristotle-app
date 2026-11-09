@@ -66,7 +66,7 @@ export default function Dashboard() {
     { done: !!business?.website && !!business?.services, label: "Profil podjetja", hint: "Ime, storitve, spletna stran — iz tega AI piše sporočila.", href: "/nastavitve?tab=profil" },
     { done: !!business?.brand_voice, label: "Glas znamke", hint: "Kako naj zvenijo vaša sporočila.", href: "/nastavitve?tab=glas" },
     { done: !!business?.imap_enabled, label: "E-poštni predal", hint: "AI najde povpraševanja v vaši pošti in odgovarja z vašega naslova.", href: "/nastavitve?tab=integracije" },
-    { feature: "chat", done: leads.some((l) => l.source === "form" || l.source === "chatbot"), label: "Obrazec ali klepet na strani", hint: "Da tudi obiskovalci spletne strani postanejo stranke.", href: "/stranke?tab=viri" },
+    { feature: "chat", done: leads.some((l) => l.source === "form" || l.source === "chatbot"), label: "Obrazec ali klepet na strani", hint: "Da tudi obiskovalci spletne strani postanejo stranke.", href: "/nastavitve?tab=viri" },
     { done: !!business?.google_calendar_connected, label: "Google Koledar", hint: "Asistent predlaga proste termine.", href: "/nastavitve?tab=termini" },
   ].filter((s) => !s.feature || featureOn(business, s.feature));
   const setupDone = setup.filter((s) => s.done).length;
