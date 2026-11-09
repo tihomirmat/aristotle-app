@@ -150,9 +150,9 @@ export default function Ocene() {
       {hasLink && tab === "work" && (
         <div className="space-y-6">
           <div className="grid sm:grid-cols-3 gap-3">
-            <Stat value={toAsk.length} label="strank še niste prosili za oceno" tone={toAsk.length ? "text-primary" : ""} />
-            <Stat value={pending} label="prošenj čaka na vašo potrditev" tone={pending ? "text-amber-600" : ""} />
-            <Stat value={sent} label="prošenj poslanih doslej" />
+            <Stat value={toAsk.length} label="Stranke, ki jih še niste prosili" tone={toAsk.length ? "text-primary" : ""} />
+            <Stat value={pending} label="Prošnje, ki čakajo na vašo potrditev" tone={pending ? "text-amber-600" : ""} />
+            <Stat value={sent} label="Poslane prošnje doslej" />
           </div>
           {pending > 0 && (
             <Link to="/stranke?tab=odgovori" className="flex items-center gap-3 rounded-2xl border-2 border-primary/30 bg-accent/50 px-5 py-4 hover:bg-accent">
