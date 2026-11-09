@@ -130,11 +130,16 @@ export default function Sidebar({ collapsed, setCollapsed }) {
 
       {/* Nav */}
       <nav className="flex-1 py-2 px-3 space-y-5 overflow-y-auto">
-        {groups.map((g) => (
+        {groups.map((g) => ({ ...g, items: g.items.filter((item) => !item.feature || featureOn(business, item.feature)) })).map((g) => (
           <div key={g.title} className="space-y-0.5">
             {!collapsed && <p className="text-[10px] uppercase tracking-[0.16em] text-sidebar-foreground/40 px-3 pb-1.5">{g.title}</p>}
             {collapsed && <div className="border-t border-white/10 mx-2 mb-2" />}
-            {g.items.filter((item) => !item.feature || featureOn(business, item.feature)).map((item) => <NavItem key={item.path} item={item} />)}
+            {g.items.map((item) => <NavItem key={item.path} item={item} />)}
+            {g.title === "Pomočniki" && !collapsed && FEATURES.some((f) => !featureOn(business, f.key)) && (
+              <Link to="/nastavitve?tab=pomocniki" className="flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-sidebar-foreground/50 hover:text-white hover:bg-white/5">
+                <span className="w-[18px] text-center">+</span>Dodaj pomočnika
+              </Link>
+            )}
           </div>
         ))}
 
