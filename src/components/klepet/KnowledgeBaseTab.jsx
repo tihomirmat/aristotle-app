@@ -42,7 +42,7 @@ function DocFormModal({ open, onClose, onSave, initial, isSaving }) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Uredi dokument" : "Dodaj dokument"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Uredi zapis" : "Dodaj zapis"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-1">
           <div className="space-y-1.5">
@@ -79,7 +79,7 @@ function DocFormModal({ open, onClose, onSave, initial, isSaving }) {
             <Textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value.slice(0, 5000) })}
-              placeholder="Vnesite besedilo, ki ga bo chatbot poznal. Podpira Markdown oblikovanje."
+              placeholder="Napišite, kar naj klepet ve, npr. »Delamo od ponedeljka do petka, 8–16.«"
               className="h-48 resize-none font-mono text-xs"
             />
           </div>
@@ -90,7 +90,7 @@ function DocFormModal({ open, onClose, onSave, initial, isSaving }) {
               checked={!!form.active}
               onCheckedChange={(v) => setForm({ ...form, active: !!v })}
             />
-            <Label htmlFor="active-check" className="cursor-pointer font-normal">Dokument je aktiven (chatbot ga bo uporabljal)</Label>
+            <Label htmlFor="active-check" className="cursor-pointer font-normal">Klepet naj to uporablja</Label>
           </div>
         </div>
 
@@ -101,7 +101,7 @@ function DocFormModal({ open, onClose, onSave, initial, isSaving }) {
             disabled={!form.title || !form.content || isSaving}
           >
             {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            {isEdit ? "Shrani spremembe" : "Shrani dokument"}
+            {isEdit ? "Shrani spremembe" : "Shrani"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -126,7 +126,7 @@ export default function KnowledgeBaseTab({ businessId }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kb", businessId] });
       setShowForm(false);
-      toast.success("Dokument shranjen");
+      toast.success("Shranjeno.");
     },
   });
 
@@ -135,7 +135,7 @@ export default function KnowledgeBaseTab({ businessId }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kb", businessId] });
       setEditDoc(null);
-      toast.success("Dokument posodobljen");
+      toast.success("Shranjeno.");
     },
   });
 
@@ -149,7 +149,7 @@ export default function KnowledgeBaseTab({ businessId }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["kb", businessId] });
       setDeleteTarget(null);
-      toast.success("Dokument izbrisan");
+      toast.success("Izbrisano.");
     },
   });
 
@@ -169,20 +169,20 @@ export default function KnowledgeBaseTab({ businessId }) {
     <>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-muted-foreground">
-          {docs.length} {docs.length === 1 ? "dokument" : "dokumentov"} · {activeCount} aktivnih
+          {docs.length} {docs.length === 1 ? "zapis" : "zapisov"} · klepet uporablja {activeCount}
         </p>
         <Button onClick={() => { setEditDoc(null); setShowForm(true); }} size="sm">
-          <Plus className="w-4 h-4 mr-1.5" /> Dodaj dokument
+          <Plus className="w-4 h-4 mr-1.5" /> Dodaj ročno
         </Button>
       </div>
 
       {docs.length === 0 ? (
         <div className="text-center py-16 border-2 border-dashed rounded-xl">
           <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm font-medium text-muted-foreground">Baza znanja je prazna</p>
-          <p className="text-xs text-muted-foreground mt-1">Dodajte dokumente, da naučite chatbota o vašem podjetju.</p>
+          <p className="text-sm font-medium text-muted-foreground">Klepet še ne ve ničesar</p>
+          <p className="text-xs text-muted-foreground mt-1">Najprej preberite spletno stran (levo) ali dodajte zapis ročno.</p>
           <Button size="sm" className="mt-4" onClick={() => { setEditDoc(null); setShowForm(true); }}>
-            <Plus className="w-4 h-4 mr-1.5" /> Dodaj prvi dokument
+            <Plus className="w-4 h-4 mr-1.5" /> Dodaj ročno
           </Button>
         </div>
       ) : (
@@ -199,7 +199,7 @@ export default function KnowledgeBaseTab({ businessId }) {
                         <Badge className={`text-xs border-0 ${catColor}`}>{doc.category}</Badge>
                       )}
                       {!doc.active && (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">Neaktivno</Badge>
+                        <Badge variant="outline" className="text-xs text-muted-foreground">Izklopljeno</Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -251,9 +251,9 @@ export default function KnowledgeBaseTab({ businessId }) {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Izbriši dokument?</AlertDialogTitle>
+            <AlertDialogTitle>Izbrišem zapis?</AlertDialogTitle>
             <AlertDialogDescription>
-              Dokument <strong>"{deleteTarget?.title}"</strong> bo trajno izbrisan. Tega dejanja ni mogoče razveljaviti.
+              Zapis <strong>"{deleteTarget?.title}"</strong> bo trajno izbrisan. Klepet tega ne bo več vedel. Tega dejanja ni mogoče razveljaviti.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -39,14 +39,14 @@ export default function WebsiteLearnCard({ docs = [] }) {
   };
 
   return (
-    <div className="card-elevated p-6 mb-6">
+    <div className="card-elevated p-6">
       <div className="flex items-start gap-4">
         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center shrink-0"><Globe className="w-5 h-5 text-white" /></div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg">Naučite klepet iz spletne strani</h3>
-          <p className="text-sm text-muted-foreground mt-1">Vnesite svojo spletno stran. Preberemo storitve, cene, kontakt in pogosta vprašanja, klepet pa odgovarja samo iz tega, kar piše na strani in spodaj.</p>
+          <h3 className="text-lg">Preberite mojo spletno stran</h3>
+          <p className="text-sm text-muted-foreground mt-1">Vpišite naslov strani in kliknite gumb. Preberemo storitve, cene in kontakt.</p>
           {fromSite.length > 0 && <p className="text-xs text-emerald-700 mt-2 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> {fromSite.length} vnosov iz spletne strani. Ponovno branje jih osveži.</p>}
-          <div className="flex gap-2 mt-4 max-w-xl">
+          <div className="flex gap-2 mt-4 flex-wrap sm:flex-nowrap">
             <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="www.vase-podjetje.si" onKeyDown={(e) => e.key === "Enter" && url && run()} />
             <Button className="btn-brand shrink-0" onClick={run} disabled={busy || !url}>
               {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}

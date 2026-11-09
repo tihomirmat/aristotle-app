@@ -39,7 +39,7 @@ export default function ConversationsTab({ businessId }) {
         <div className="text-center py-16 border-2 border-dashed rounded-xl">
           <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm font-medium text-muted-foreground">Ni pogovorov</p>
-          <p className="text-xs text-muted-foreground mt-1">Pogovori se bodo pojavili, ko bo chatbot widget aktiven na vaši strani.</p>
+          <p className="text-xs text-muted-foreground mt-1">Pogovori se pojavijo, ko je klepet na vaši spletni strani in vam kdo piše.</p>
         </div>
       ) : (
         <div className="space-y-4">

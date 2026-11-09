@@ -121,6 +121,11 @@ export default function EmbedTab({ business }) {
       const d = res?.data ?? res;
       if (d?.error) throw new Error(d.error);
       setCheck(d);
+      // Zapomni si stanje, da stran Spletni klepet ve, ali je korak narejen.
+      if (!!d.installed !== !!business.chat_installed_url || (d.installed && d.url !== business.chat_installed_url)) {
+        await base44.entities.Business.update(business.id, d.installed ? { chat_installed_url: d.url, chat_installed_at: new Date().toISOString() } : { chat_installed_url: "" });
+        queryClient.invalidateQueries({ queryKey: ["business"] });
+      }
     } catch (e) { toast.error(fnError(e)); } finally { setChecking(false); }
   };
   const P = PLATFORMS.find((p) => p.key === platform);
@@ -163,7 +168,7 @@ export default function EmbedTab({ business }) {
 
         {/* Videz */}
         <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
-          <h3 className="font-semibold">Videz klepeta</h3>
+          <h3 className="font-semibold">Videz klepeta <span className="text-xs font-normal text-muted-foreground">(po želji)</span></h3>
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Barva</Label>
@@ -193,7 +198,7 @@ export default function EmbedTab({ business }) {
       {/* Desno: pravi preizkus */}
       <div className="space-y-2 xl:sticky xl:top-20">
         <p className="text-sm font-semibold">Preizkusite klepet zdaj</p>
-        <p className="text-xs text-muted-foreground">To je pravi AI z vašo bazo znanja — enako bodo odgovori videti na vaši spletni strani.</p>
+        <p className="text-xs text-muted-foreground">Vprašajte kot obiskovalec. Tako bo klepet odgovarjal na vaši spletni strani.</p>
         {business && <LiveTest business={business} color={color} title={title} welcome={welcome} />}
       </div>
     </div>
