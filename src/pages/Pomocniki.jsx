@@ -11,10 +11,11 @@ import { Inbox, MessageSquare, Star, FileSignature, FileText, ArrowRight, Plus, 
 import { TONES, StatusPill } from "@/components/pomocniki/HelperKit";
 
 // Vsi pomočniki na eni strani: kateri deluje, kaj čaka na vas, en gumb za naslednji korak.
-function HelperCard({ icon: Icon, tone, title, desc, ok, statusLabel, now, attention, steps = [], cta, to, wide }) {
+function HelperCard({ icon: Icon, tone, title, desc, ok, statusLabel, now, attention, steps = [], cta, to, wide, first }) {
   const done = steps.filter(Boolean).length;
   return (
-    <Link to={to} className={`card-elevated card-hover p-6 flex flex-col group ${wide ? "xl:col-span-2" : ""}`}>
+    <Link to={to} className={`card-elevated card-hover p-6 flex flex-col group relative ${wide ? "xl:col-span-2" : ""} ${first ? "ring-2 ring-primary/60" : ""}`}>
+      {first && <span className="absolute -top-3 left-6 rounded-full bg-primary text-white text-xs font-bold px-3 py-1 shadow">Začnite tukaj</span>}
       <div className="flex items-start gap-4">
         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${TONES[tone]}`}><Icon className="w-7 h-7" /></div>
         <div className="flex-1 min-w-0">
@@ -32,7 +33,7 @@ function HelperCard({ icon: Icon, tone, title, desc, ok, statusLabel, now, atten
           )}
           <p className={`text-sm font-medium ${attention ? "text-primary" : "text-foreground/80"}`}>{now}</p>
         </div>
-        <span className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors ${ok && !attention ? "border bg-card group-hover:border-foreground/30" : "btn-brand"}`}>{cta}<ArrowRight className="w-4 h-4" /></span>
+        <span className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors ${attention || first ? "btn-brand" : "border bg-card group-hover:border-foreground/30"}`}>{cta}<ArrowRight className="w-4 h-4" /></span>
       </div>
     </Link>
   );
@@ -81,6 +82,7 @@ export default function Pomocniki() {
       now: !accOn ? "Vpišite e-naslov računovodje, da gredo računi k njemu sami." : invWaiting ? `Na pošiljanje čaka: ${cnt(invWaiting, W.racun)}.` : "Trenutno nič ne čaka.", cta: accOn ? "Odpri račune" : "Nastavi račune", to: "/racuni" },
   ].filter((c) => c.show);
   const working = cards.filter((c) => c.ok).length;
+  const firstTodo = cards.some((c) => c.attention) ? null : cards.find((c) => !c.ok);
   const hidden = Array.isArray(business?.enabled_features) && ["chat", "reviews", "offers", "invoices"].some((k) => !business.enabled_features.includes(k));
 
   return (
@@ -92,7 +94,7 @@ export default function Pomocniki() {
         </div>
         <Link to="/nastavitve?tab=pomocniki"><Button variant="outline" className="gap-2"><Plus className="w-4 h-4" />{hidden ? "Dodaj pomočnika" : "Izberi pomočnike"}</Button></Link>
       </div>
-      <div className="grid xl:grid-cols-2 gap-4">{cards.map((c) => <HelperCard key={c.title} {...c} />)}</div>
+      <div className="grid xl:grid-cols-2 gap-4">{cards.map((c) => <HelperCard key={c.title} {...c} first={c.title === firstTodo?.title} />)}</div>
     </div>
   );
 }

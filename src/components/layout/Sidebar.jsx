@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, Inbox, Users, MessageSquare, Bot,
+  LayoutDashboard, Users, MessageSquare, Bot,
   Star, Settings, ChevronLeft, ChevronRight,
-  Building2, BarChart3, Lock, LayoutGrid, FileText, FileSignature, Globe, Rocket, ListChecks, Megaphone
+  Building2, BarChart3, Lock, LayoutGrid, FileText, FileSignature, Rocket, ListChecks, Megaphone
 } from "lucide-react";
 import { useBusiness } from "@/lib/business-context";
 import { hasModule } from "@/lib/entitlements";
