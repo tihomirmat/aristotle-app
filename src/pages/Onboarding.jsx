@@ -11,6 +11,8 @@ import { completeOnboarding } from "@/functions/completeOnboarding";
 import { scanWebsite } from "@/functions/scanWebsite";
 import { fnError } from "@/lib/fn-error";
 import ServicesPicker from "@/components/ServicesPicker";
+import { FEATURES, CORE_FEATURE } from "@/lib/features";
+import { Check } from "lucide-react";
 
 const INDUSTRY_OPTIONS = [
   { value: "other", label: "Storitve / drugo" },
@@ -21,7 +23,7 @@ const INDUSTRY_OPTIONS = [
   { value: "restaurant", label: "Gostinstvo" },
   { value: "auto", label: "Avtoservis" },
 ];
-const STEPS = ["Spletna stran", "Podjetje", "Storitve", "Začetek"];
+const STEPS = ["Spletna stran", "Podjetje", "Storitve", "Pomočniki", "Začetek"];
 const toList = (s) => String(s || "").split("\n").map((x) => x.trim()).filter(Boolean);
 
 // Uvod: miren, 4 kratki koraki, eno vprašanje naenkrat. Desno (na računalniku) sproti vidite, kaj bo AI vedel o vas.
@@ -35,7 +37,7 @@ export default function Onboarding() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [form, setForm] = useState({
     name: "", industry_template: "other", phone: "", address: "", website: "", hours: "",
-    services: "", main_services: "", current_offer: "", google_review_link: "", brand_voice: "", knowledge: [], gdpr_confirmed: false,
+    services: "", main_services: "", enabled_features: [], current_offer: "", google_review_link: "", brand_voice: "", knowledge: [], gdpr_confirmed: false,
   });
   const update = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -169,6 +171,33 @@ export default function Onboarding() {
           {step === 4 && (
             <div className="space-y-7 max-w-xl">
               <div>
+                <h1 className="text-3xl">Pri čem naj vam pomagamo?</h1>
+                <p className="text-muted-foreground mt-2">Izberite samo, kar potrebujete. V meniju boste videli le izbrano, ostalo lahko kadarkoli vklopite v Nastavitvah.</p>
+              </div>
+              <div className="rounded-xl border border-primary/30 bg-accent/40 p-4 flex gap-3">
+                <CORE_FEATURE.icon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1"><p className="font-medium text-sm">{CORE_FEATURE.title} <span className="text-xs text-muted-foreground font-normal">· vedno vključeno</span></p><p className="text-sm text-muted-foreground mt-0.5">{CORE_FEATURE.desc}</p></div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {FEATURES.map((f) => {
+                  const on = form.enabled_features.includes(f.key);
+                  return (
+                    <button key={f.key} type="button" onClick={() => update("enabled_features", on ? form.enabled_features.filter((k) => k !== f.key) : [...form.enabled_features, f.key])}
+                      className={`text-left rounded-xl border p-4 transition-all relative ${on ? "border-primary ring-2 ring-primary/15 bg-accent/30" : "hover:border-primary/40"}`}>
+                      <span className={`absolute top-3 right-3 w-5 h-5 rounded-md border flex items-center justify-center ${on ? "bg-primary border-primary text-white" : "bg-background"}`}>{on && <Check className="w-3.5 h-3.5" />}</span>
+                      <f.icon className={`w-5 h-5 ${on ? "text-primary" : "text-muted-foreground"}`} />
+                      <p className="font-medium text-sm mt-2 pr-6">{f.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{f.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="space-y-7 max-w-xl">
+              <div>
                 <h1 className="text-3xl">Pripravljeni ste</h1>
                 <p className="text-muted-foreground mt-2">Naslednji korak v aplikaciji bo povezava vašega e-poštnega predala, da AI najde povpraševanja.</p>
               </div>
@@ -186,7 +215,7 @@ export default function Onboarding() {
           {step > 1 && (
             <div className="flex justify-between items-center mt-10 pt-6 border-t max-w-xl">
               <Button variant="ghost" onClick={() => setStep((s) => s - 1)}><ChevronLeft className="w-4 h-4 mr-1" />Nazaj</Button>
-              {step < 4 ? (
+              {step < 5 ? (
                 <Button className="btn-brand px-6" onClick={() => setStep((s) => s + 1)} disabled={!canNext}>Naprej<ChevronRight className="w-4 h-4 ml-1" /></Button>
               ) : (
                 <Button className="btn-brand px-6" onClick={handleFinish} disabled={saving || !form.gdpr_confirmed || !form.name.trim()}>
