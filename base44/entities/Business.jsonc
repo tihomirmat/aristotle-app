@@ -56,6 +56,13 @@
     "services": {
       "type": "string"
     },
+    "enabled_features": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Pomo\u010dniki, ki jih je stranka izbrala: chat, reviews, campaigns, offers, invoices (odgovori na povpra\u0161evanja so vedno vklopljeni). Prazno/ni nastavljeno = vse vidno (starej\u0161i ra\u010duni)."
+    },
     "main_services": {
       "type": "string",
       "description": "Najpomembnej\u0161e storitve (do 3, ena na vrstico) \u2014 AI jih poudari v sporo\u010dilih in klepetu"
