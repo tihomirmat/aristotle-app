@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
       website: form.website || '',
       hours: form.hours || '',
       services: form.services || '',
+      main_services: String(form.main_services || '').split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 3).join('\n'),
       current_offer: form.current_offer || '',
       google_review_link: form.google_review_link || '',
       brand_voice: form.brand_voice || '',
@@ -73,7 +74,8 @@ Deno.serve(async (req) => {
       await Promise.all(scanned.map((k) => kb(String(k.title).slice(0, 120), String(k.content).slice(0, 4000), k.category || 'O podjetju')));
     } else {
       const parts = [];
-      if (form.services) parts.push(`Storitve: ${form.services}.`);
+      if (form.main_services) parts.push(`Najpomembnejše storitve: ${String(form.main_services).split('\n').filter(Boolean).join(', ')}.`);
+      if (form.services) parts.push(`Storitve: ${String(form.services).split('\n').filter(Boolean).join(', ')}.`);
       if (form.hours) parts.push(`Delovni čas: ${form.hours}.`);
       if (form.phone) parts.push(`Telefon: ${form.phone}.`);
       if (form.address) parts.push(`Naslov: ${form.address}.`);
