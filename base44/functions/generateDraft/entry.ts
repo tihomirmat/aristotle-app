@@ -201,6 +201,7 @@ Deno.serve(async (req) => {
         phone: business.phone || null,
         email: business.smtp_from_email || business.gmail_email || business.outlook_email || null, // javni kontaktni e-naslov podjetja (če je nastavljen)
         services: business.services,
+        main_services: business.main_services || null, // najpomembnejše storitve — omeni jih prednostno, če so smiselne za stranko
         current_offer: business.current_offer,
         google_review_link: business.google_review_link,
         booking_hours_start: business.booking_hours_start,
