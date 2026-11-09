@@ -56,6 +56,10 @@
     "services": {
       "type": "string"
     },
+    "main_services": {
+      "type": "string",
+      "description": "Najpomembnej\u0161e storitve (do 3, ena na vrstico) \u2014 AI jih poudari v sporo\u010dilih in klepetu"
+    },
     "website": {
       "type": "string"
     },
