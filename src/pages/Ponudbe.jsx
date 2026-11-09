@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useBusiness } from "@/lib/business-context";
-import { useAuth } from "@/lib/AuthContext";
 import { hasModule } from "@/lib/entitlements";
 import { eur } from "@/lib/crm";
 import { Button } from "@/components/ui/button";
@@ -22,8 +21,7 @@ const clientOf = (g) => g.client_name || g.resolved_vars_json?.stranka_naziv || 
 const day = (d) => (d ? format(new Date(d), "d. M. yyyy") : "");
 
 export default function Ponudbe() {
-  const { business } = useBusiness();
-  const { user } = useAuth();
+  const { business, user } = useBusiness();
   const isAdmin = user?.role === "admin";
   const qc = useQueryClient();
   const hasOffers = hasModule(business, "pillar_offers");
