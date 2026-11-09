@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Check, Code2, Loader2, MessageCircle, Send, CheckCircle2, XCircle, Search, RotateCcw, Globe } from "lucide-react";
+import { Copy, Check, Loader2, MessageCircle, Send, CheckCircle2, XCircle, Search, RotateCcw, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { checkChatInstall } from "@/functions/checkChatInstall";
 import { fnError } from "@/lib/fn-error";
