@@ -9,13 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronRight, ChevronLeft, Loader2, CheckCircle, Download, Mail, ThumbsUp, ThumbsDown, AlertCircle, Upload, FileText } from "lucide-react";
+import { ChevronRight, ChevronLeft, Loader2, Pencil, CheckCircle, Download, Mail, ThumbsUp, ThumbsDown, AlertCircle, Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { offerGenerate } from "@/functions/offerGenerate";
 import { offerExtract } from "@/functions/offerExtract";
 import { offerSend } from "@/functions/offerSend";
 import { Label } from "@/components/ui/label";
-import ReactMarkdown from "react-markdown";
+import OfferPreview from "@/components/ponudbe/OfferPreview";
 
 // Backend funkcije vračajo { error, code } s statusom 402/403 — SDK vrže axios napako, sporočilo je v err.response.data
 const fnError = (err) => err?.response?.data?.error || err?.data?.error || err?.message || "Neznana napaka";
@@ -23,10 +23,10 @@ const fnCode = (err) => err?.response?.data?.code || err?.data?.code || "";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const INPUT_METHODS = [
-  { key: "form", label: "Obrazec", desc: "Izpolnite polja ročno" },
-  { key: "ocr", label: "Slika / screenshot", desc: "Naloži sliko, AI izpolni polja" },
-  { key: "transcript", label: "Posnetek pogovora", desc: "Naloži posnetek ali avdio" },
-  { key: "paste", label: "Prilepljeno besedilo", desc: "Prilepite besedilo za ekstrakcijo" },
+  { key: "form", label: "Vpišem sam", desc: "Stranko, storitev in ceno vpišete v obrazec." },
+  { key: "paste", label: "Prilepim sporočilo stranke", desc: "Prilepite e-pošto ali zapiske, podatke preberemo sami." },
+  { key: "ocr", label: "Naložim sliko", desc: "Fotografija ali posnetek zaslona s podatki." },
+  { key: "transcript", label: "Naložim posnetek pogovora", desc: "Zvočni ali video posnetek sestanka." },
 ];
 
 const DEFAULT_GLOBAL_VARS = [
@@ -90,6 +90,26 @@ export default function PonudbeNova() {
     setSearchParams(next, { replace: true });
   };
 
+  // »Spremeni ponudbo«: naložimo obstoječo ponudbo, obrazec se odpre z njenimi podatki.
+  const { data: sourceOffer } = useQuery({
+    queryKey: ["offer-source", duplicateId],
+    queryFn: () => base44.entities.OfferGeneration.filter({ id: duplicateId }).then((d) => d[0] || null),
+    enabled: !!duplicateId,
+  });
+  useEffect(() => {
+    if (!sourceOffer) return;
+    const vars = { ...(sourceOffer.inputs_json || {}), ...(sourceOffer.resolved_vars_json || {}) };
+    if (!vars.stranka_naziv && sourceOffer.client_name) vars.stranka_naziv = sourceOffer.client_name;
+    if (!vars.cena && sourceOffer.amount) vars.cena = String(sourceOffer.amount);
+    setFormValues((fv) => ({ ...fv, ...vars }));
+    if (sourceOffer.template_id && !templateId) chooseTemplate(sourceOffer.template_id);
+    setStep(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceOffer?.id]);
+  const editing = !!duplicateId;
+  const srcLeadId = crmLeadId || sourceOffer?.lead_id || null;
+  const srcCompanyId = crmCompanyId || sourceOffer?.company_id || null;
+
   const activeTemplate = template || defaultTemplates;
   // Stabilna referenca: prej je `business?.offers_global_vars || {}` ob vsakem renderju ustvaril nov objekt →
   // useEffect spodaj se je prožil v neskončni zanki in brisal vnose v obrazcu (vsako novo podjetje).
@@ -144,10 +164,10 @@ export default function PonudbeNova() {
         }
       }
       setFormValues(fv => ({ ...fv, ...extractedVars }));
-      toast.success("Vrednosti so bile ekstrahirane iz vira");
+      toast.success("Podatki so prebrani. Preverite jih.");
       setStep(1);
     } catch (err) {
-      toast.error("Napaka pri ekstrakciji: " + fnError(err));
+      toast.error("Branje ni uspelo: " + fnError(err));
     } finally {
       setExtracting(false);
     }
@@ -159,7 +179,7 @@ export default function PonudbeNova() {
     setGenerating(true);
     setStep(2);
     try {
-      const res = await offerGenerate({ business_id: business.id, template_id: activeTemplate?.id, kind: "full", resolved_vars: formValues, input_method: inputMethod, ...(crmLeadId ? { lead_id: crmLeadId } : {}), ...(crmCompanyId ? { company_id: crmCompanyId } : {}) });
+      const res = await offerGenerate({ business_id: business.id, template_id: activeTemplate?.id, kind: "full", resolved_vars: formValues, input_method: inputMethod, ...(srcLeadId ? { lead_id: srcLeadId } : {}), ...(srcCompanyId ? { company_id: srcCompanyId } : {}) });
       if (res.data?.error) throw new Error(res.data.error);
       setGenerationResult(res.data);
       setGenerationId(res.data.generation_id);
@@ -170,7 +190,7 @@ export default function PonudbeNova() {
         setShowQuotaModal(true);
         setStep(1);
       } else {
-        toast.error("Napaka pri generaciji: " + fnError(err));
+        toast.error("Ponudbe ni bilo mogoče pripraviti: " + fnError(err));
         setStep(1);
       }
     } finally {
@@ -193,7 +213,7 @@ export default function PonudbeNova() {
       const res = await offerGenerate({ business_id: business.id, kind: "rerender", parent_id: parentId, output_markdown: updated, improvements_suggested: improvements });
       if (res.data?.error) throw new Error(res.data.error);
       setGenerationResult(r => ({ ...r, ...res.data, improvements_suggested: improvements }));
-      toast.success("Izboljšava je vključena, PDF in DOCX sta posodobljena.");
+      toast.success("Izboljšava je vključena, PDF in Word sta posodobljena.");
     } catch (err) {
       toast.error("Napaka: " + fnError(err));
     } finally {
@@ -231,20 +251,20 @@ export default function PonudbeNova() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <AlertCircle className="w-10 h-10 text-amber-500 mb-4" />
-        <h2 className="text-xl font-bold mb-2">Modul ni aktiven</h2>
-        <p className="text-muted-foreground mb-6">Aktivirajte modul Ponudbe v Naročnini.</p>
-        <Link to="/nastavitve?tab=billing"><Button>Aktiviraj v Naročnini</Button></Link>
+        <h2 className="text-xl font-bold mb-2">Ponudbe niso vključene</h2>
+        <p className="text-muted-foreground mb-6">Priprava ponudb ni v vašem paketu. Vključite jo v Naročnini.</p>
+        <Link to="/nastavitve?tab=billing"><Button className="btn-brand">Vključi ponudbe</Button></Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className={`${step === 3 ? "max-w-5xl" : "max-w-3xl"} mx-auto space-y-6`}>
       <div className="flex items-center gap-3">
         <Link to="/ponudbe"><Button variant="ghost" size="sm" className="gap-1"><ChevronLeft className="w-4 h-4" />Nazaj</Button></Link>
         <div>
-          <h1 className="text-xl font-bold">Nova ponudba</h1>
-          {activeTemplate && <p className="text-xs text-muted-foreground mt-0.5">Template: {activeTemplate.name}</p>}
+          <h1 className="text-xl font-bold">{editing ? "Spremeni ponudbo" : "Nova ponudba"}</h1>
+          {activeTemplate && <p className="text-xs text-muted-foreground mt-0.5">Po vzorcu: {activeTemplate.name}</p>}
         </div>
       </div>
 
@@ -264,7 +284,7 @@ export default function PonudbeNova() {
               </div>
               <Link to="/ponudbe/skener">
                 <Button variant={activeTemplate ? "outline" : "default"} size="sm" className="gap-2">
-                  <Upload className="w-4 h-4" />Uvozi vzorec iz PDF ali Word
+                  <Upload className="w-4 h-4" />Dodaj obstoječo ponudbo
                 </Button>
               </Link>
             </div>
@@ -281,7 +301,7 @@ export default function PonudbeNova() {
           </div>
 
           <div>
-            <h2 className="font-semibold mb-3">Izberite način vnosa</h2>
+            <h2 className="font-semibold mb-3">Kako želite vnesti podatke o stranki?</h2>
             <div className="grid grid-cols-2 gap-3">
               {INPUT_METHODS.map(m => (
                 <div
@@ -318,7 +338,7 @@ export default function PonudbeNova() {
           )}
 
           {inputMethod === "paste" && (
-            <Textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Prilepite besedilo iz katerega bomo ekstrahirali podatke..." className="h-32 text-sm" />
+            <Textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Prilepite e-pošto stranke ali svoje zapiske. Iz besedila preberemo ime stranke, storitev in ceno." className="h-32 text-sm" />
           )}
 
           <div className="flex gap-3">
@@ -327,7 +347,7 @@ export default function PonudbeNova() {
             ) : (
               <Button onClick={handleExtractFromFile} disabled={extracting || (!uploadedFile && !pasteText.trim())} className="gap-2">
                 {extracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronRight className="w-4 h-4" />}
-                Ekstrahiraj podatke
+                Preberi podatke
               </Button>
             )}
           </div>
@@ -337,7 +357,7 @@ export default function PonudbeNova() {
       {/* Step 1: Form review */}
       {step === 1 && (
         <div className="space-y-5">
-          <h2 className="font-semibold">Pregled in dopolnitev podatkov</h2>
+          <div><h2 className="font-semibold">{editing ? "Popravite, kar želite spremeniti" : "Preverite in dopolnite podatke"}</h2><p className="text-sm text-muted-foreground mt-0.5">{editing ? "Vpisani so podatki prejšnje ponudbe. Nastane nova ponudba, prejšnja ostane shranjena." : "Polja z zvezdico so obvezna. Ponudbo boste najprej videli, šele nato jo prenesete ali pošljete."}</p></div>
           <div className="border rounded-xl p-5 space-y-4 bg-card">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {allVariables.map(v => (
@@ -346,7 +366,7 @@ export default function PonudbeNova() {
                     {v.label}
                     {v.required && <span className="text-red-500">*</span>}
                     {formValues[v.key] && inputMethod !== "form" && (
-                      <Badge className="bg-emerald-50 text-emerald-700 border-0 text-[10px] px-1.5 h-4 ml-1">Ekstrahirano</Badge>
+                      <Badge className="bg-emerald-50 text-emerald-700 border-0 text-[10px] px-1.5 h-4 ml-1">Prebrano</Badge>
                     )}
                   </label>
                   {renderField(v)}
@@ -355,10 +375,10 @@ export default function PonudbeNova() {
             </div>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep(0)} className="gap-1"><ChevronLeft className="w-4 h-4" />Nazaj</Button>
-            <Button onClick={handleGenerate} disabled={generating} className="gap-2 flex-1">
+            {!editing && <Button variant="outline" onClick={() => setStep(0)} className="gap-1"><ChevronLeft className="w-4 h-4" />Nazaj</Button>}
+            <Button onClick={handleGenerate} disabled={generating} className="gap-2 flex-1 btn-brand">
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              Generiraj ponudbo
+              {editing ? "Pripravi spremenjeno ponudbo" : "Pripravi ponudbo"}
             </Button>
           </div>
         </div>
@@ -368,43 +388,36 @@ export default function PonudbeNova() {
       {step === 2 && (
         <div className="flex flex-col items-center py-16 gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
-          <p className="font-medium">AI generira ponudbo...</p>
-          <p className="text-sm text-muted-foreground">Pripravljam profesionalno ponudbo z razrešenimi spremenljivkami.</p>
+          <p className="font-medium">Pripravljam ponudbo …</p>
+          <p className="text-sm text-muted-foreground">Traja do ene minute. Strani ne zapirajte.</p>
         </div>
       )}
 
       {/* Step 3: Result */}
       {step === 3 && generationResult && (
         <div className="space-y-5">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-emerald-600" />
-            <p className="font-semibold text-emerald-800">Ponudba je bila ustvarjena</p>
-          </div>
-
-          {/* Output preview */}
-          <div className="border rounded-xl p-6 bg-card prose prose-sm max-w-none">
-            <ReactMarkdown>{generationResult.output_markdown || ""}</ReactMarkdown>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2">
+          {/* Najprej predogled, nad njim jasni gumbi */}
+          <div className="card-elevated p-4 flex items-center gap-3 flex-wrap">
+            <div className="flex-1 min-w-[200px] flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div><p className="font-semibold">Ponudba je pripravljena</p><p className="text-xs text-muted-foreground">Preberite jo spodaj. Če kaj ni prav, kliknite »Spremeni ponudbo«.</p></div>
+            </div>
+            <Button size="lg" className="btn-brand gap-2 text-base" onClick={() => setStep(1)}><Pencil className="w-4 h-4" />Spremeni ponudbo</Button>
             {generationResult.output_pdf_url && (
-              <a href={generationResult.output_pdf_url} target="_blank" rel="noreferrer">
-                <Button className="gap-2"><Download className="w-4 h-4" />Prenesi PDF</Button>
-              </a>
+              <a href={generationResult.output_pdf_url} target="_blank" rel="noreferrer"><Button size="lg" variant="outline" className="gap-2"><Download className="w-4 h-4" />Prenesi PDF</Button></a>
             )}
             {generationResult.output_docx_url && (
-              <a href={generationResult.output_docx_url} target="_blank" rel="noreferrer">
-                <Button variant="outline" className="gap-2"><Download className="w-4 h-4" />Prenesi DOCX</Button>
-              </a>
+              <a href={generationResult.output_docx_url} target="_blank" rel="noreferrer"><Button size="lg" variant="outline" className="gap-2"><Download className="w-4 h-4" />Prenesi Word</Button></a>
             )}
-            <Button variant="outline" className="gap-2" onClick={() => { setEmailForm({ to_email: "", subject: `Ponudba — ${business?.name || ""}`, message: "" }); setEmailDialog(true); }}><Mail className="w-4 h-4" />Pošlji po e-pošti</Button>
+            <Button size="lg" variant="outline" className="gap-2" onClick={() => { setEmailForm({ to_email: "", subject: `Ponudba — ${business?.name || ""}`, message: "" }); setEmailDialog(true); }}><Mail className="w-4 h-4" />Pošlji po e-pošti</Button>
           </div>
+
+          <OfferPreview markdown={generationResult.output_markdown} />
 
           {/* Improvements */}
           {(generationResult.improvements_suggested || []).length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-semibold">Predlogi izboljšav</h3>
+              <div><h3 className="font-semibold">Predlogi, kako bi bila ponudba boljša</h3><p className="text-sm text-muted-foreground">Po želji. »Sprejmi« zamenja besedilo v ponudbi.</p></div>
               {generationResult.improvements_suggested.map((imp, i) => (
                 <div key={i} className={`border rounded-xl p-4 space-y-3 ${imp.accepted ? "bg-emerald-50 border-emerald-200" : "bg-card"}`}>
                   <div className="flex items-center justify-between">
@@ -455,7 +468,7 @@ export default function PonudbeNova() {
               <Textarea value={emailForm.message} onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} placeholder="Spoštovani, v prilogi vam pošiljamo ponudbo …" className="h-24 text-sm" />
             </div>
             <p className="text-xs text-muted-foreground">
-              {business?.email_provider === "smtp" && business?.smtp_host ? "Poslano bo prek vašega SMTP računa s PDF priponko." : "Poslano bo prek sistema AI Aristotle s povezavami za prenos PDF/DOCX."}
+              {business?.email_provider === "smtp" && business?.smtp_host ? "Poslano bo iz vašega e-poštnega predala, ponudba bo v priponki (PDF)." : "Poslano bo z našega naslova s povezavama za prenos ponudbe (PDF in Word)."}
             </p>
           </div>
           <div className="flex gap-2 justify-end mt-2">
@@ -469,12 +482,12 @@ export default function PonudbeNova() {
       <Dialog open={showQuotaModal} onOpenChange={setShowQuotaModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Brezplačna kvota porabljena</DialogTitle>
+            <DialogTitle>Porabili ste 5 brezplačnih ponudb</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">Za nadaljevanje povežite svoj račun pri Anthropic, OpenAI ali Google. Tako plačujete samo dejansko uporabo modela.</p>
+          <p className="text-sm text-muted-foreground">Za nove ponudbe odprite nastavitve ponudb. Obstoječe ponudbe ostanejo shranjene.</p>
           <div className="flex gap-3 mt-2">
             <Link to="/ponudbe/nastavitve" className="flex-1">
-              <Button className="w-full" onClick={() => setShowQuotaModal(false)}>Priklopi LLM račun</Button>
+              <Button className="w-full btn-brand" onClick={() => setShowQuotaModal(false)}>Odpri nastavitve ponudb</Button>
             </Link>
             <Button variant="outline" onClick={() => setShowQuotaModal(false)}>Zapri</Button>
           </div>
