@@ -30,7 +30,7 @@ const STEPS = ["Spletna stran", "Podjetje", "Storitve", "Pomočniki", "Začetek"
 const toList = (s) => String(s || "").split("\n").map((x) => x.trim()).filter(Boolean);
 
 // Uvod: miren, 4 kratki koraki, eno vprašanje naenkrat. Desno (na računalniku) sproti vidite, kaj bo AI vedel o vas.
-export default function Onboarding() {
+export default function Onboarding({ preview = false }) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -72,6 +72,7 @@ export default function Onboarding() {
 
   const handleFinish = async () => {
     if (!form.gdpr_confirmed || !form.name.trim()) return;
+    if (preview) { toast.success("Predogled uvoda — nič ni shranjeno."); window.location.href = "/"; return; }
     setSaving(true);
     try {
       const user = await base44.auth.me();
@@ -97,7 +98,7 @@ export default function Onboarding() {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[hsl(13,94%,55%)] to-[hsl(41,100%,53%)] flex items-center justify-center"><Rocket className="w-4 h-4 text-white" /></div>
           <span className="font-display font-semibold">AI Aristotle</span>
         </div>
-        <span className="text-xs text-muted-foreground">Korak {step} od {STEPS.length} · približno 2 minuti</span>
+        <span className="text-xs text-muted-foreground">{preview && <span className="mr-3 rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 font-medium">Predogled — nič se ne shrani</span>}Korak {step} od {STEPS.length} · približno 2 minuti</span>
       </header>
       <div className="h-1 bg-border"><div className="h-1 bg-primary transition-all duration-500" style={{ width: `${(step / STEPS.length) * 100}%` }} /></div>
 
