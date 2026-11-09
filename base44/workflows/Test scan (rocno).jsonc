@@ -1,6 +1,6 @@
 {
-  "name": "Test scan (rocno)",
   "description": "Za\u010dasno: preizkus branja strani.",
+  "name": "Test scan (rocno)",
   "trigger": {
     "condition": null,
     "config": {
@@ -12,7 +12,7 @@
       "timezone": "UTC",
       "interval_value": 30,
       "interval_unit": "days",
-      "interval_anchor": "2026-11-01T00:00:00",
+      "interval_anchor": "2026-11-01T00:00:00Z",
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null
