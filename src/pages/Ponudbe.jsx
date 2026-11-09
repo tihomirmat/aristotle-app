@@ -67,8 +67,8 @@ export default function Ponudbe() {
     <div className="space-y-6">
       <HelperHeader icon={FileSignature} tone="violet" title="Ponudbe" subtitle="Vpišete stranko in ceno, ponudba nastane po vašem vzorcu. Najprej jo vidite, šele nato pošljete."
         ok={templates.length > 0 || offers.length > 0} statusLabel={templates.length > 0 ? "Vzorec je pripravljen" : offers.length ? "Pripravljeno" : "Dodajte prvo ponudbo"}>
-        <Link to="/ponudbe/skener"><Button variant="outline" className="gap-2"><Upload className="w-4 h-4" />Dodaj obstoječo ponudbo</Button></Link>
-        <Link to="/ponudbe/nova"><Button className="btn-brand gap-2"><Plus className="w-4 h-4" />Nova ponudba</Button></Link>
+        {offers.length > 0 && <><Link to="/ponudbe/skener"><Button variant="outline" className="gap-2"><Upload className="w-4 h-4" />Dodaj obstoječo ponudbo</Button></Link>
+        <Link to="/ponudbe/nova"><Button className="btn-brand gap-2"><Plus className="w-4 h-4" />Nova ponudba</Button></Link></>}
       </HelperHeader>
 
       {quotaExhausted && (
@@ -79,21 +79,20 @@ export default function Ponudbe() {
         </div>
       )}
 
-      {/* Brez vzorca in brez ponudb: en jasen začetek */}
+      {/* Brez ponudb: en jasen začetek */}
       {!isLoading && offers.length === 0 && (
-        <div className="grid md:grid-cols-2 gap-4">
-          <Link to="/ponudbe/skener" className="card-elevated p-6 hover:border-primary/40 border-2 border-transparent transition-colors">
-            <div className="w-11 h-11 rounded-xl bg-accent text-primary flex items-center justify-center"><Upload className="w-5 h-5" /></div>
-            <p className="font-semibold text-lg mt-4">{templates.length ? "Dodajte še eno svojo ponudbo" : "1. Dodajte ponudbo, ki jo že pošiljate"}</p>
-            <p className="text-sm text-muted-foreground mt-1">Naložite PDF ali Word, fotografijo ali prilepite besedilo. Iz nje nastane vaš vzorec — nove ponudbe bodo videti enako.</p>
-            <span className="text-sm font-medium text-primary inline-flex items-center gap-1 mt-4">Dodaj obstoječo ponudbo<ArrowRight className="w-4 h-4" /></span>
-          </Link>
-          <Link to="/ponudbe/nova" className="card-elevated p-6 hover:border-primary/40 border-2 border-transparent transition-colors">
-            <div className="w-11 h-11 rounded-xl bg-accent text-primary flex items-center justify-center"><Plus className="w-5 h-5" /></div>
-            <p className="font-semibold text-lg mt-4">{templates.length ? "Pripravite prvo ponudbo" : "2. Pripravite novo ponudbo"}</p>
-            <p className="text-sm text-muted-foreground mt-1">Vpišete stranko, storitev in ceno. Ponudbo najprej vidite, šele nato jo prenesete ali pošljete.</p>
-            <span className="text-sm font-medium text-primary inline-flex items-center gap-1 mt-4">Nova ponudba<ArrowRight className="w-4 h-4" /></span>
-          </Link>
+        <div className="grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-4">
+          <div className="card-elevated p-8">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">{templates.length ? "Naslednji korak" : "Začnite tukaj"}</p>
+            <h2 className="!text-2xl mt-1">{templates.length ? "Pripravite prvo ponudbo" : "Dodajte ponudbo, ki jo že pošiljate strankam"}</h2>
+            <p className="text-muted-foreground mt-2 max-w-xl">{templates.length ? "Vzorec že imate. Vpišete stranko, storitev in ceno — ponudbo najprej vidite, šele nato jo prenesete ali pošljete." : "Naložite PDF ali Word, fotografijo ali prilepite besedilo. Iz nje nastane vaš vzorec, zato bodo nove ponudbe videti enako kot vaše dosedanje."}</p>
+            <Link to={templates.length ? "/ponudbe/nova" : "/ponudbe/skener"}><Button size="lg" className="btn-brand gap-2 text-base px-7 mt-6">{templates.length ? <Plus className="w-5 h-5" /> : <Upload className="w-5 h-5" />}{templates.length ? "Nova ponudba" : "Dodaj obstoječo ponudbo"}</Button></Link>
+          </div>
+          <div className="rounded-2xl border-2 border-dashed p-8 flex flex-col justify-center">
+            <h3 className="font-semibold text-lg">{templates.length ? "Imate še kakšno svojo ponudbo?" : "Nimate še nobene ponudbe?"}</h3>
+            <p className="text-sm text-muted-foreground mt-1">{templates.length ? "Dodajte jo kot dodaten vzorec, npr. za drugo storitev." : "Nič hudega. Vpišete stranko, storitev in ceno, ponudbo pa sestavimo mi."}</p>
+            <Link to={templates.length ? "/ponudbe/skener" : "/ponudbe/nova"} className="text-primary font-semibold inline-flex items-center gap-1.5 mt-4">{templates.length ? "Dodaj obstoječo ponudbo" : "Pripravi ponudbo brez vzorca"}<ArrowRight className="w-4 h-4" /></Link>
+          </div>
         </div>
       )}
 
@@ -138,7 +137,7 @@ export default function Ponudbe() {
       )}
 
       {/* Vzorci */}
-      <section className="space-y-3 pt-2">
+      {(templates.length > 0 || offers.length > 0) && <section className="space-y-3 pt-2">
         <div>
           <h2 className="text-lg">Vaši vzorci</h2>
           <p className="text-sm text-muted-foreground">Vzorec je vaša ponudba brez podatkov stranke. Po njem nastane vsaka nova ponudba.</p>
@@ -157,7 +156,7 @@ export default function Ponudbe() {
             <Upload className="w-5 h-5" /><span className="text-sm font-medium">Dodaj vzorec iz obstoječe ponudbe</span>
           </Link>
         </div>
-      </section>
+      </section>}
 
       <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground border-t pt-4">
         {!hasByok && !quotaExhausted && <span>Brezplačno lahko pripravite še <strong className="text-foreground">{freeGenLeft}</strong> od 5 ponudb.</span>}

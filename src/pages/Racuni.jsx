@@ -141,7 +141,7 @@ export default function Racuni() {
     <div className="space-y-6">
       <HelperHeader icon={FileText} tone="green" title="Računi za računovodjo" subtitle="Račune dobaviteljev zberemo na enem mestu in jih enkrat na mesec pošljemo vašemu računovodji."
         ok={accOn} statusLabel={accOn ? "Deluje samodejno" : "Vpišite računovodjo"}>
-        <Button className="btn-brand gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading > 0}>{uploading > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}Dodaj račun</Button>
+        {allSet && !showSetup && <Button className="btn-brand gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading > 0}>{uploading > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}Dodaj račun</Button>}
       </HelperHeader>
 
       <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.webp,.gif" className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
@@ -204,8 +204,7 @@ export default function Racuni() {
               <div className="rounded-xl border-2 border-dashed py-12 px-6 text-center">
                 <FileText className="w-9 h-9 mx-auto text-muted-foreground/40" />
                 <p className="font-medium mt-3">Tu še ni nobenega računa</p>
-                <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">{mailOn ? "Ko dobavitelj pošlje račun na vaš e-naslov, se pojavi tukaj. Račun lahko dodate tudi sami." : "Začnite s korakom 1 zgoraj (računi iz e-pošte) ali dodajte prvi račun sami. Datoteko lahko tudi povlečete sem."}</p>
-                <Button className="btn-brand mt-4 gap-2" onClick={() => fileInputRef.current?.click()}><Upload className="w-4 h-4" />Dodaj račun</Button>
+                <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">{mailOn ? "Ko dobavitelj pošlje račun na vaš e-naslov, se pojavi tukaj. Račun lahko dodate tudi sami." : "Začnite s korakom 1 zgoraj. Račun v datoteki lahko tudi povlečete sem."}</p>
               </div>
             ) : (
               <div className="overflow-x-auto -mx-2">
