@@ -56,6 +56,10 @@
     "services": {
       "type": "string"
     },
+    "industry": {
+      "type": "string",
+      "description": "Dejavnost, kot jo je izbrala/vpisala stranka (npr. 'Frizerski salon', 'Gradbeni\u0161tvo')"
+    },
     "enabled_features": {
       "type": "array",
       "items": {
