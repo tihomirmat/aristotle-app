@@ -230,7 +230,7 @@ export default function Nastavitve() {
           <TabsTrigger value="integracije" className="gap-2"><Mail className="w-4 h-4" /> Integracije</TabsTrigger>
           <TabsTrigger value="termini" className="gap-2"><Calendar className="w-4 h-4" /> Termini</TabsTrigger>
           <TabsTrigger value="billing" className="gap-2"><CreditCard className="w-4 h-4" /> Naročnina</TabsTrigger>
-          <TabsTrigger value="racuni" className="gap-2"><FileText className="w-4 h-4" /> Računi</TabsTrigger>
+          {user?.role === "admin" && <TabsTrigger value="racuni" className="gap-2"><FileText className="w-4 h-4" /> Računi (admin)</TabsTrigger>}
         </TabsList>
 
         {/* PROFIL */}

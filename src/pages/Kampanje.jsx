@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { addDays } from "date-fns";
-import { CAMPAIGN_GOALS, CAMPAIGN_STATUS, STAGES, SOURCES, ago } from "@/lib/crm";
+import { CAMPAIGN_GOALS, CAMPAIGN_STATUS, STAGES, SOURCES } from "@/lib/crm";
 import { useCrmInvalidate } from "@/components/crm/CrmDialogs";
 
 const GOAL_ICON = { reactivation: RotateCcw, nurture: HeartHandshake, newsletter: Newspaper, acquisition: Target, review: Star };
