@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
     const business = await base44.asServiceRole.entities.Business.create({
       name: form.name,
       industry_template: industryVal,
+      industry: String(form.industry || '').slice(0, 120),
       phone: form.phone || '',
       address: form.address || '',
       website: form.website || '',
