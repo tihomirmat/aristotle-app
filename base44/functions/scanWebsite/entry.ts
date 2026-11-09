@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
     const schema = `{
   "name": "uradno ime podjetja ali blagovne znamke",
   "industry_template": "ena od: gym | dental_medspa | home_services | restaurant | salon_barber | auto | other",
+  "industry": "dejavnost z 1–3 besedami v slovenščini (npr. Frizerski salon, Gradbeništvo, Marketing in oglaševanje)",
   "short_description": "1 stavek, kaj podjetje dela in za koga",
   "phone": "telefon ali prazno",
   "email": "javni e-naslov ali prazno",
