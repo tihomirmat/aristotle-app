@@ -21,6 +21,7 @@ import TerminiTab from "@/components/nastavitve/TerminiTab";
 import MailboxCard from "@/components/nastavitve/MailboxCard";
 import AutoSendCard from "@/components/nastavitve/AutoSendCard";
 import FeaturesCard from "@/components/nastavitve/FeaturesCard";
+import ServicesPicker from "@/components/ServicesPicker";
 import { LayoutGrid } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import { useToast } from "@/components/ui/use-toast";
@@ -39,7 +40,7 @@ export default function Nastavitve() {
 
   const [form, setForm] = useState({
     name: "", industry_template: "other", phone: "", address: "", website: "",
-    hours: "", services: "", current_offer: "", google_review_link: "",
+    hours: "", services: "", main_services: "", current_offer: "", google_review_link: "",
   });
   const [savedForm, setSavedForm] = useState(null);
   const [formErrors, setFormErrors] = useState({});
@@ -60,7 +61,8 @@ export default function Nastavitve() {
         address: business.address || "",
         website: business.website || "",
         hours: business.hours || "",
-        services: business.services || "",
+        services: business.services && !business.services.includes("\n") && business.services.includes(",") ? business.services.split(/,(?![^()]*\))/).map((s) => s.trim()).filter(Boolean).join("\n") : (business.services || ""),
+        main_services: business.main_services || "",
         current_offer: business.current_offer || "",
         google_review_link: business.google_review_link || "",
       };
@@ -247,7 +249,7 @@ export default function Nastavitve() {
               {formErrors.website && <p className="text-xs text-destructive">{formErrors.website}</p>}
             </div>
             <div className="space-y-2"><Label>Delovni čas</Label><Input value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder="Pon–Pet 8:00–18:00" /></div>
-            <div className="space-y-2 md:col-span-2"><Label>Storitve</Label><Textarea value={form.services} onChange={(e) => setForm({ ...form, services: e.target.value })} placeholder="Navedite vaše storitve..." className="h-24" /></div>
+            <div className="space-y-2 md:col-span-2"><Label>Storitve</Label><ServicesPicker value={form.services} main={form.main_services} onChange={({ services, main_services }) => setForm({ ...form, services, main_services })} /></div>
             <div className="space-y-2"><Label>Trenutna ponudba</Label><Input value={form.current_offer} onChange={(e) => setForm({ ...form, current_offer: e.target.value })} placeholder="Npr. 20% popust za nove stranke" /></div>
             <div className="space-y-2"><Label>Povezava za Google ocene</Label><Input value={form.google_review_link} onChange={(e) => setForm({ ...form, google_review_link: e.target.value })} placeholder="https://g.page/r/..." /></div>
 
