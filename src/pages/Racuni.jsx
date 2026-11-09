@@ -52,6 +52,7 @@ export default function Racuni() {
   const [sending, setSending] = useState(false);
   const [accEmail, setAccEmail] = useState("");
   const [savingAcc, setSavingAcc] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => { setAccEmail(business?.accountant_email || ""); }, [business?.accountant_email]);
@@ -69,6 +70,7 @@ export default function Racuni() {
 
   const mailOn = !!business?.imap_enabled;
   const accOn = !!business?.accountant_email && !!business?.invoice_enabled;
+  const allSet = mailOn && accOn;
   const now = new Date();
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevKey = monthKey(prev);
@@ -144,8 +146,15 @@ export default function Racuni() {
 
       <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.webp,.gif" className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
 
-      {/* Trije koraki s stanjem */}
-      <div className="grid md:grid-cols-3 gap-3">
+      {/* Nastavitev: dokler ni vse urejeno, trije koraki; potem ena vrstica s stanjem */}
+      {allSet && !showSetup ? (
+        <div className="card-elevated px-5 py-3.5 flex items-center gap-x-6 gap-y-2 flex-wrap text-sm">
+          <span className="inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" />Račune iz pošte <strong>{business?.imap_user}</strong> shranimo sami</span>
+          <span className="inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" />Vsakega 1. v mesecu jih dobi <strong>{business?.accountant_email}</strong></span>
+          <button className="ml-auto text-primary font-medium" onClick={() => setShowSetup(true)}>Spremeni</button>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-3 gap-3">
         <StepCard n={1} done={mailOn} icon={Mail} title="Računi iz e-pošte" state={mailOn ? `Vključeno. Račune, ki pridejo na ${business?.imap_user || "vaš predal"}, shranimo sami.` : "Ni povezano. Povežite predal in račune iz pošte bomo shranjevali sami."}>
           {mailOn
             ? <p className="text-xs text-muted-foreground">Predal preverimo vsakih 10 minut. Shranimo račune v priponki (PDF).</p>
@@ -168,6 +177,7 @@ export default function Racuni() {
           )}
         </StepCard>
       </div>
+      )}
 
       <div className="grid xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
         {/* Seznam računov */}
