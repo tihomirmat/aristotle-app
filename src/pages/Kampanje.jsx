@@ -11,6 +11,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Megaphone, Plus, Loader2, Play, Pause, Pencil, Trash2, Users, Send, MessageCircleReply, Sparkles, Clock, X, RotateCcw, HeartHandshake, Newspaper, Target, Star } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import { addDays } from "date-fns";
 import { CAMPAIGN_GOALS, CAMPAIGN_STATUS, STAGES, SOURCES, ago } from "@/lib/crm";
 import { useCrmInvalidate } from "@/components/crm/CrmDialogs";
@@ -210,7 +212,7 @@ export default function Kampanje() {
     invalidate();
     toast.success(toAdd.length ? `Kampanja teče: ${toAdd.length} ${toAdd.length === 1 ? "stranka dodana" : "strank dodanih"}. Prva sporočila pripravi v nekaj minutah.` : "Kampanja teče.");
   };
-  const setStatus = async (c, status) => { await base44.entities.Campaign.update(c.id, { status }); invalidate(); toast.success(status === "paused" ? "Kampanja ustavljena." : "Kampanja spet teče."); };
+  const setStatus = async (c, status) => { await base44.entities.Campaign.update(c.id, { status }); invalidate(); toast.success(status === "paused" ? "Kampanja je začasno ustavljena. Nič se ne pošilja." : "Kampanja spet teče."); };
   const remove = async () => {
     const c = toDelete; setToDelete(null);
     await Promise.all(enrollments.filter((e) => e.campaign_id === c.id && e.status === "active").map((e) => base44.entities.CampaignEnrollment.update(e.id, { status: "stopped_manual" })));
@@ -218,54 +220,93 @@ export default function Kampanje() {
   };
 
   if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  const delayText = (s, i) => (Number(s.delay_days) > 0 ? `${i === 0 ? "po" : "čez"} ${s.delay_days} ${Number(s.delay_days) === 1 ? "dan" : "dni"}` : "takoj");
+  const sorted = [...campaigns].sort((a, b) => (a.status === "active" ? -1 : 1) - (b.status === "active" ? -1 : 1) || new Date(b.created_date) - new Date(a.created_date));
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1>Kampanje</h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl">Redna sporočila strankam: vrnite stare stranke, ogrejte povpraševanja, pošljite novico. Vse se beleži pri stranki, kampanja se ustavi, ko stranka odgovori.</p>
-        </div>
-        <Button className="btn-brand" onClick={() => setBuilder({ open: true, campaign: null })}><Plus className="w-4 h-4 mr-2" />Nova kampanja</Button>
+    <div className="space-y-8">
+      <div>
+        <h1>Kampanje</h1>
+        <p className="text-muted-foreground mt-1 max-w-3xl">Kampanja je nekaj vnaprej napisanih sporočil, ki jih aplikacija sama pošlje izbranim strankam — na primer vsem, ki se dolgo niso oglasile. Vi izberete cilj in potrdite besedilo. Ko stranka odgovori, zanjo pošiljanje samo preneha.</p>
       </div>
 
-      {campaigns.length === 0 ? (
-        <div className="card-elevated p-8">
-          <div className="text-center"><Megaphone className="w-12 h-12 mx-auto text-primary/60" /><h2 className="text-xl mt-4">Začnite s pripravljeno kampanjo</h2><p className="text-muted-foreground mt-2">Izberite cilj — sporočila so že napisana, prilagodite jih po želji.</p></div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
-            {Object.entries(CAMPAIGN_GOALS).map(([k, g]) => { const I = GOAL_ICON[k]; const n = leads.filter((l) => matchAudience(l, TEMPLATES[k].audience)).length; return (
-              <button key={k} onClick={() => setBuilder({ open: true, campaign: null, goal: k })} className="text-left rounded-xl border p-4 hover:border-primary/40 hover:shadow-sm">
-                <p className="font-semibold flex items-center gap-2"><I className="w-4 h-4 text-primary" />{g.label}</p><p className="text-xs text-muted-foreground mt-1">{g.hint}</p><p className="text-xs text-primary mt-2">{n} {n === 1 ? "ustrezna stranka" : "ustreznih strank"}</p>
-              </button>
-            ); })}
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {[...campaigns].sort((a, b) => (a.status === "active" ? -1 : 1) - (b.status === "active" ? -1 : 1) || new Date(b.created_date) - new Date(a.created_date)).map((c) => {
-            const s = stats[c.id] || {}; const St = CAMPAIGN_STATUS[c.status] || CAMPAIGN_STATUS.draft; const I = GOAL_ICON[c.goal] || Megaphone;
+      {/* 1. Kaj lahko naredite — vedno vidno */}
+      <section className="space-y-3">
+        <h2 className="text-lg">Kaj želite doseči?</h2>
+        <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-3">
+          {Object.entries(CAMPAIGN_GOALS).map(([k, g]) => {
+            const I = GOAL_ICON[k]; const n = leads.filter((l) => matchAudience(l, TEMPLATES[k].audience)).length;
+            const msgs = TEMPLATES[k].steps.length;
             return (
-              <div key={c.id} className="card-elevated p-4 flex items-center gap-4 flex-wrap">
-                <div className="w-11 h-11 rounded-xl bg-accent text-primary flex items-center justify-center shrink-0"><I className="w-5 h-5" /></div>
-                <div className="flex-1 min-w-[200px]">
-                  <div className="flex items-center gap-2 flex-wrap"><p className="font-semibold">{c.name}</p><span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${St.cls}`}>{St.label}</span>{c.auto_send && <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted">pošilja samodejno</span>}</div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{CAMPAIGN_GOALS[c.goal]?.label} · {c.steps?.length || 0} {c.steps?.length === 1 ? "sporočilo" : "sporočil"}{c.last_run_at ? ` · zadnji zagon ${ago(c.last_run_at)}` : ""}</p>
-                </div>
-                <div className="flex gap-5 text-center">
-                  {[[Users, s.enrolled, "vključenih"], [Send, s.sent, "poslanih"], [MessageCircleReply, s.replied, "odgovorov"]].map(([Ic, n, l]) => <div key={l}><p className="text-lg font-display font-bold">{n || 0}</p><p className="text-[11px] text-muted-foreground inline-flex items-center gap-1"><Ic className="w-3 h-3" />{l}</p></div>)}
-                  {s.pending > 0 && <div><p className="text-lg font-display font-bold text-primary">{s.pending}</p><p className="text-[11px] text-muted-foreground">čaka</p></div>}
-                </div>
-                <div className="flex gap-1.5">
-                  {c.status === "active" ? <Button size="sm" variant="outline" onClick={() => setStatus(c, "paused")}><Pause className="w-4 h-4 mr-1" />Ustavi</Button>
-                    : c.status === "paused" ? <Button size="sm" variant="outline" onClick={() => setStatus(c, "active")}><Play className="w-4 h-4 mr-1" />Nadaljuj</Button>
-                    : <Button size="sm" className="btn-brand" onClick={() => launch(c)}><Play className="w-4 h-4 mr-1" />Zaženi</Button>}
-                  <Button size="icon" variant="ghost" onClick={() => setBuilder({ open: true, campaign: c })} title="Uredi"><Pencil className="w-4 h-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => setToDelete(c)} title="Izbriši"><Trash2 className="w-4 h-4" /></Button>
-                </div>
+              <div key={k} className="card-elevated p-4 flex flex-col">
+                <div className="w-10 h-10 rounded-xl bg-accent text-primary flex items-center justify-center"><I className="w-5 h-5" /></div>
+                <p className="font-semibold mt-3">{g.label}</p>
+                <p className="text-sm text-muted-foreground mt-1 flex-1">{g.hint}</p>
+                <p className="text-xs text-muted-foreground mt-3">{msgs} {msgs === 1 ? "pripravljeno sporočilo" : "pripravljena sporočila"} · <span className={n > 0 ? "text-primary font-medium" : ""}>{n} {n === 1 ? "stranka ustreza" : "strank ustreza"}</span></p>
+                <Button className="btn-brand mt-3 w-full" onClick={() => setBuilder({ open: true, campaign: null, goal: k })}>Pripravi<ArrowRight className="w-4 h-4 ml-1.5" /></Button>
               </div>
             );
           })}
         </div>
-      )}
+        <p className="text-xs text-muted-foreground">Sporočila so že napisana. Pred zagonom jih vidite in po želji popravite — nič se ne pošlje, dokler ne kliknete »Zaženi«.</p>
+      </section>
+
+      {/* 2. Vaše kampanje */}
+      <section className="space-y-3">
+        <h2 className="text-lg">Vaše kampanje {campaigns.length > 0 && <span className="text-muted-foreground font-normal text-base">({campaigns.length})</span>}</h2>
+        {campaigns.length === 0 ? (
+          <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground"><Megaphone className="w-8 h-8 mx-auto opacity-40" /><p className="mt-3 text-sm">Še nimate nobene kampanje. Izberite cilj zgoraj in kliknite »Pripravi«.</p></div>
+        ) : (
+          <div className="grid xl:grid-cols-2 gap-4">
+            {sorted.map((c) => {
+              const s = stats[c.id] || {}; const St = CAMPAIGN_STATUS[c.status] || CAMPAIGN_STATUS.draft; const I = GOAL_ICON[c.goal] || Megaphone;
+              const explain = c.status === "active" ? `Teče. ${s.active || 0} ${s.active === 1 ? "stranka še prejema" : "strank še prejema"} sporočila.`
+                : c.status === "paused" ? "Začasno ustavljena. Nič se ne pošilja, dokler ne kliknete »Nadaljuj«."
+                : c.status === "completed" ? "Končana. Vsa sporočila so bila poslana."
+                : "Še ni zagnana. Nič se ne pošilja, dokler ne kliknete »Zaženi«.";
+              return (
+                <div key={c.id} className="card-elevated p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-accent text-primary flex items-center justify-center shrink-0"><I className="w-5 h-5" /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap"><p className="font-semibold">{c.name}</p><span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${St.cls}`}>{St.label}</span></div>
+                      <p className="text-sm text-muted-foreground mt-0.5">{explain}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Kaj pošilja</p>
+                    {(c.steps || []).map((st, i) => (
+                      <p key={i} className="text-sm flex gap-2"><span className="w-5 h-5 rounded-full bg-background border text-[11px] font-semibold flex items-center justify-center shrink-0">{i + 1}</span><span className="truncate">»{st.subject}« <span className="text-muted-foreground">· {delayText(st, i)}</span></span></p>
+                    ))}
+                    <p className="text-xs text-muted-foreground pt-1">{c.auto_send ? "Sporočila se pošljejo sama." : "Vsako sporočilo pred pošiljanjem potrdite vi."}</p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    {[[Users, s.enrolled, "strank vključenih"], [Send, s.sent, "sporočil poslanih"], [MessageCircleReply, s.replied, "strank odgovorilo"]].map(([Ic, n, l]) => (
+                      <div key={l} className="rounded-xl border p-2.5"><p className="text-xl font-display font-bold">{n || 0}</p><p className="text-[11px] text-muted-foreground inline-flex items-center gap-1"><Ic className="w-3 h-3" />{l}</p></div>
+                    ))}
+                  </div>
+
+                  {s.pending > 0 && (
+                    <Link to="/stranke?tab=odgovori" className="flex items-center gap-2 rounded-xl border border-primary/30 bg-accent/50 px-3 py-2 text-sm hover:bg-accent">
+                      <span className="font-medium">{s.pending} {s.pending === 1 ? "sporočilo čaka" : "sporočil čaka"} na vašo potrditev</span><ArrowRight className="w-4 h-4 ml-auto text-primary" />
+                    </Link>
+                  )}
+
+                  <div className="flex gap-2 flex-wrap pt-1 border-t">
+                    {c.status === "active" ? <Button variant="outline" onClick={() => setStatus(c, "paused")} className="mt-3"><Pause className="w-4 h-4 mr-2" />Začasno ustavi</Button>
+                      : c.status === "paused" ? <Button className="btn-brand mt-3" onClick={() => setStatus(c, "active")}><Play className="w-4 h-4 mr-2" />Nadaljuj</Button>
+                      : <Button className="btn-brand mt-3" onClick={() => launch(c)}><Play className="w-4 h-4 mr-2" />Zaženi</Button>}
+                    <Button variant="outline" className="mt-3" onClick={() => setBuilder({ open: true, campaign: c })}><Pencil className="w-4 h-4 mr-2" />Poglej in uredi</Button>
+                    <Button variant="ghost" className="mt-3 ml-auto text-muted-foreground hover:text-red-600" onClick={() => setToDelete(c)}><Trash2 className="w-4 h-4 mr-2" />Izbriši</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <BuilderWithGoal state={builder} setState={setBuilder} leads={leads} onLaunch={launch} />
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>

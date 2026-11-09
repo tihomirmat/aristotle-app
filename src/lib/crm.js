@@ -59,9 +59,9 @@ export const CAMPAIGN_GOALS = {
   review: { label: "Prošnja za oceno", hint: "Zadovoljnim strankam pošlje prošnjo za Google oceno." },
 };
 export const CAMPAIGN_STATUS = {
-  draft: { label: "Pripravlja se", cls: "bg-slate-100 text-slate-700" },
+  draft: { label: "Še ni zagnana", cls: "bg-slate-100 text-slate-700" },
   active: { label: "Teče", cls: "bg-emerald-100 text-emerald-700" },
-  paused: { label: "Ustavljena", cls: "bg-amber-100 text-amber-700" },
+  paused: { label: "Začasno ustavljena", cls: "bg-amber-100 text-amber-700" },
   completed: { label: "Končana", cls: "bg-slate-100 text-slate-500" },
 };
 
