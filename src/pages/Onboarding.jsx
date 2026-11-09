@@ -11,6 +11,9 @@ import { completeOnboarding } from "@/functions/completeOnboarding";
 import { scanWebsite } from "@/functions/scanWebsite";
 import { fnError } from "@/lib/fn-error";
 import ServicesPicker from "@/components/ServicesPicker";
+import IndustryPicker from "@/components/IndustryPicker";
+import OffersPicker from "@/components/OffersPicker";
+import { LEGACY_LABEL } from "@/lib/industries";
 import { FEATURES, CORE_FEATURE } from "@/lib/features";
 import { Check } from "lucide-react";
 
@@ -36,7 +39,7 @@ export default function Onboarding() {
   const [url, setUrl] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [form, setForm] = useState({
-    name: "", industry_template: "other", phone: "", address: "", website: "", hours: "",
+    name: "", industry_template: "other", industry: "", offer_options: [], phone: "", address: "", website: "", hours: "",
     services: "", main_services: "", enabled_features: [], current_offer: "", google_review_link: "", brand_voice: "", knowledge: [], gdpr_confirmed: false,
   });
   const update = (key, val) => setForm((f) => ({ ...f, [key]: val }));
@@ -54,8 +57,10 @@ export default function Onboarding() {
       setForm((f) => ({
         ...f,
         name: d.name || f.name, industry_template: d.industry_template || f.industry_template,
+        industry: d.industry || LEGACY_LABEL[d.industry_template] || f.industry,
+        offer_options: Array.isArray(d.offers) ? d.offers : (d.current_offer ? [d.current_offer] : []),
         phone: d.phone || f.phone, address: d.address || f.address, website: d.website || url.trim(),
-        hours: d.hours || f.hours, services: services || f.services, current_offer: d.current_offer || f.current_offer,
+        hours: d.hours || f.hours, services: services || f.services, current_offer: f.current_offer,
         brand_voice: d.brand_voice || f.brand_voice, knowledge: d.knowledge || [],
       }));
       setScanInfo({ pages_read: d.pages_read || 1, knowledgeCount: (d.knowledge || []).length, description: d.short_description || "" });
@@ -129,14 +134,9 @@ export default function Onboarding() {
                 <p className="text-muted-foreground mt-2">{scanInfo ? "To smo prebrali na vaši strani. Popravite, kar ni točno." : "Osnovni podatki, s katerimi AI piše v vašem imenu."}</p>
               </div>
               <div className="space-y-1.5"><Label>Ime podjetja *</Label><Input className="h-11" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Npr. Studio Fit" /></div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>Dejavnost</Label>
-                <div className="flex flex-wrap gap-2">
-                  {INDUSTRY_OPTIONS.map((o) => (
-                    <button key={o.value} type="button" onClick={() => update("industry_template", o.value)}
-                      className={`px-3 py-1.5 rounded-full border text-sm ${form.industry_template === o.value ? "border-primary bg-accent font-medium" : "hover:border-primary/40"}`}>{o.label}</button>
-                  ))}
-                </div>
+                <IndustryPicker value={form.industry} onChange={({ industry, industry_template }) => setForm((f) => ({ ...f, industry, industry_template }))} />
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5"><Label>Telefon</Label><Input value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="030 301 300" /></div>
@@ -144,14 +144,13 @@ export default function Onboarding() {
               </div>
               <div className="rounded-xl border">
                 <button type="button" onClick={() => setMoreOpen(!moreOpen)} className="w-full flex items-center justify-between px-4 py-3 text-sm">
-                  <span>Naslov, delovni čas, trenutna akcija <span className="text-muted-foreground">(ni obvezno)</span></span>
+                  <span>Naslov in delovni čas <span className="text-muted-foreground">(ni obvezno)</span></span>
                   <ChevronDown className={`w-4 h-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} />
                 </button>
                 {moreOpen && (
                   <div className="px-4 pb-4 grid gap-4">
                     <div className="space-y-1.5"><Label>Naslov</Label><Input value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Ulica 1, 1000 Ljubljana" /></div>
                     <div className="space-y-1.5"><Label>Delovni čas</Label><Input value={form.hours} onChange={(e) => update("hours", e.target.value)} placeholder="Pon–Pet 8:00–16:00" /></div>
-                    <div className="space-y-1.5"><Label>Trenutna akcija ali ponudba</Label><Input value={form.current_offer} onChange={(e) => update("current_offer", e.target.value)} placeholder="Npr. brezplačen posvet" /></div>
                   </div>
                 )}
               </div>
@@ -165,6 +164,11 @@ export default function Onboarding() {
                 <p className="text-muted-foreground mt-2">Uredite seznam in z zvezdico označite, kar vam je najbolj pomembno. Tega bo AI strankam predlagal najprej.</p>
               </div>
               <ServicesPicker value={form.services} main={form.main_services} onChange={({ services: s, main_services: m }) => setForm((f) => ({ ...f, services: s, main_services: m }))} />
+              <div className="space-y-2 pt-4 border-t">
+                <Label>Akcije in posebne ponudbe <span className="text-muted-foreground font-normal">(ni obvezno)</span></Label>
+                <p className="text-xs text-muted-foreground">AI jih omeni strankam, ko so smiselne. Označite samo tiste, ki še veljajo.</p>
+                <OffersPicker options={form.offer_options} value={form.current_offer} onChange={(v) => update("current_offer", v)} />
+              </div>
             </div>
           )}
 
@@ -231,7 +235,7 @@ export default function Onboarding() {
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Kaj bo AI vedel o vas</p>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-accent text-primary flex items-center justify-center"><Building2 className="w-5 h-5" /></div>
-            <div className="min-w-0"><p className="font-semibold truncate">{form.name || "Ime podjetja"}</p><p className="text-xs text-muted-foreground">{INDUSTRY_OPTIONS.find((o) => o.value === form.industry_template)?.label}</p></div>
+            <div className="min-w-0"><p className="font-semibold truncate">{form.name || "Ime podjetja"}</p><p className="text-xs text-muted-foreground">{form.industry || "Dejavnost"}</p></div>
           </div>
           {scanInfo?.description && <p className="text-sm text-muted-foreground">{scanInfo.description}</p>}
           <div className="space-y-2 text-sm">
