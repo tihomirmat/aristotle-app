@@ -128,7 +128,6 @@ Deno.serve(async (req) => {
     data.offers = Array.isArray(data.offers) ? [...new Set(data.offers.map((o) => String(o).trim()).filter(Boolean))].slice(0, 6) : [];
     if (data.current_offer && !data.offers.includes(data.current_offer)) data.offers.unshift(String(data.current_offer).trim());
     data.pages_read = pages.length;
-    console.log('scan', JSON.stringify({ url, industry: data.industry, offers: data.offers, services: data.services }));
     data.knowledge = Array.isArray(data.knowledge) ? data.knowledge.filter((k) => k?.title && k?.content).slice(0, 8) : [];
 
     base44.asServiceRole.entities.UsageLog.create({
