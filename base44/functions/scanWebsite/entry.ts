@@ -51,7 +51,11 @@ function extractLinks(html, base) {
   while ((m = re.exec(html))) {
     try {
       const u = new URL(m[1], base);
-      if (u.origin !== new URL(base).origin) continue;
+      const b = new URL(base);
+      // Ista stran tudi, če se razlikuje samo http/https ali www (npr. spletnost.si ima povezave na http://).
+      const host = (h) => h.replace(/^www\./i, '').toLowerCase();
+      if (!/^https?:$/.test(u.protocol) || host(u.hostname) !== host(b.hostname)) continue;
+      u.protocol = b.protocol; u.hostname = b.hostname;
       if (/\.(pdf|jpg|jpeg|png|gif|svg|zip|mp4|webp)$/i.test(u.pathname)) continue;
       u.hash = ''; u.search = '';
       out.add(u.toString());
@@ -113,6 +117,11 @@ Deno.serve(async (req) => {
     const allowed = ['gym', 'dental_medspa', 'home_services', 'restaurant', 'salon_barber', 'auto', 'other'];
     if (!allowed.includes(data.industry_template)) data.industry_template = 'other';
     data.website = url;
+    // Storitve vedno ena na vrstico (model jih vrne kot seznam ali z vejicami).
+    if (Array.isArray(data.services)) data.services = data.services.map((s) => String(s).trim()).filter(Boolean).join('\n');
+    else if (typeof data.services === 'string' && !data.services.includes('\n') && data.services.includes(',')) {
+      data.services = data.services.split(/,(?![^()]*\))/).map((s) => s.trim()).filter(Boolean).join('\n');
+    }
     data.pages_read = pages.length;
     data.knowledge = Array.isArray(data.knowledge) ? data.knowledge.filter((k) => k?.title && k?.content).slice(0, 8) : [];
 
