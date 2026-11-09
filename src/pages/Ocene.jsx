@@ -76,7 +76,7 @@ export default function Ocene() {
   };
   const askFor = async (lead) => {
     if (!lead.email) { toast.error("Ta stranka nima e-naslova."); return; }
-    if (lead.consent_email === false) { toast.error("Ta stranka ne želi prejemati e-pošte."); return; }
+    if (!lead.consent_email) { toast.error("Ta stranka ni dala soglasja za e-pošto."); return; }
     setBusyFor(lead.id);
     try {
       const res = await generateDraft({ business_id: bid, lead_id: lead.id, pillar: "review_request", sequence_step: 1 });

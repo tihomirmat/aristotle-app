@@ -48,7 +48,7 @@ export default function ChatPreview({ business, color = "#f84214", title, welcom
         <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Napišite vprašanje …" className="h-10 rounded-full px-4" disabled={locked} />
         <Button className="h-10 w-10 p-0 rounded-full text-white shrink-0" style={{ backgroundColor: color }} onClick={() => send()} disabled={busy || !input.trim() || locked}>{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}</Button>
       </div>
-      {locked && <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center p-8 text-center"><p className="text-sm font-medium text-slate-600">Ko klepet prebere vašo spletno stran, ga boste tukaj lahko preizkusili.</p></div>}
+      {locked && <div className="absolute inset-x-0 bottom-0 top-[64px] bg-white/85 flex items-center justify-center p-8 text-center"><p className="text-sm font-medium text-slate-600">Ko klepet prebere vašo spletno stran, ga boste tukaj lahko preizkusili.</p></div>}
     </div>
   );
 }

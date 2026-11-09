@@ -6,10 +6,11 @@ import { useBusiness } from "@/lib/business-context";
 import { hasModule } from "@/lib/entitlements";
 import { eur } from "@/lib/crm";
 import { Button } from "@/components/ui/button";
-import { FileText, Plus, Upload, Pencil, Download, AlertCircle, ArrowRight, Settings } from "lucide-react";
+import { FileSignature, FileText, Plus, Upload, Pencil, Download, AlertCircle, ArrowRight, Settings } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import OfferPreview from "@/components/ponudbe/OfferPreview";
+import { HelperHeader } from "@/components/pomocniki/HelperKit";
 
 const STATUS = {
   draft: { label: "Še ni poslana", cls: "bg-slate-100 text-slate-700" },
@@ -64,16 +65,11 @@ export default function Ponudbe() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1>Ponudbe</h1>
-          <p className="text-muted-foreground mt-1">Vpišete stranko in ceno, ponudba nastane po vašem vzorcu. Tu jo pogledate, spremenite in prenesete.</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Link to="/ponudbe/skener"><Button variant="outline" className="gap-2"><Upload className="w-4 h-4" />Dodaj obstoječo ponudbo</Button></Link>
-          <Link to="/ponudbe/nova"><Button className="btn-brand gap-2"><Plus className="w-4 h-4" />Nova ponudba</Button></Link>
-        </div>
-      </div>
+      <HelperHeader icon={FileSignature} tone="violet" title="Ponudbe" subtitle="Vpišete stranko in ceno, ponudba nastane po vašem vzorcu. Najprej jo vidite, šele nato pošljete."
+        ok={templates.length > 0 || offers.length > 0} statusLabel={templates.length > 0 ? "Vzorec je pripravljen" : offers.length ? "Pripravljeno" : "Dodajte prvo ponudbo"}>
+        <Link to="/ponudbe/skener"><Button variant="outline" className="gap-2"><Upload className="w-4 h-4" />Dodaj obstoječo ponudbo</Button></Link>
+        <Link to="/ponudbe/nova"><Button className="btn-brand gap-2"><Plus className="w-4 h-4" />Nova ponudba</Button></Link>
+      </HelperHeader>
 
       {quotaExhausted && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 text-sm">

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { sendMonthlyInvoicePackage } from "@/functions/sendMonthlyInvoicePackage";
 import { fnError } from "@/lib/fn-error";
 import { cnt, W } from "@/lib/crm";
+import { HelperHeader } from "@/components/pomocniki/HelperKit";
 
 const monthKey = (d) => { const dt = new Date(d); return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`; };
 const monthLabel = (ym) => { const [y, m] = ym.split("-"); return new Date(Number(y), Number(m) - 1, 1).toLocaleString("sl-SI", { month: "long", year: "numeric" }); };
@@ -136,10 +137,10 @@ export default function Racuni() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1>Računi</h1>
-        <p className="text-muted-foreground mt-1">Račune dobaviteljev zberemo na enem mestu in jih enkrat na mesec pošljemo vašemu računovodji. Nič več iskanja po e-pošti.</p>
-      </div>
+      <HelperHeader icon={FileText} tone="green" title="Računi za računovodjo" subtitle="Račune dobaviteljev zberemo na enem mestu in jih enkrat na mesec pošljemo vašemu računovodji."
+        ok={accOn} statusLabel={accOn ? "Deluje samodejno" : "Vpišite računovodjo"}>
+        <Button className="btn-brand gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading > 0}>{uploading > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}Dodaj račun</Button>
+      </HelperHeader>
 
       <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.webp,.gif" className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
 

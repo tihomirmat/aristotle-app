@@ -18,6 +18,7 @@ import PodjetjeDetail from '@/pages/PodjetjeDetail';
 import Opravila from '@/pages/Opravila';
 import Kampanje from '@/pages/Kampanje';
 import Klepet from '@/pages/Klepet';
+import Pomocniki from '@/pages/Pomocniki';
 import Asistent from '@/pages/Asistent';
 import Ocene from '@/pages/Ocene';
 import Nastavitve from '@/pages/Nastavitve';
@@ -85,6 +86,7 @@ const AppRoutes = () => {
         <Route path="/podjetja/:id" element={<PodjetjeDetail />} />
         <Route path="/opravila" element={<Opravila />} />
         <Route path="/kampanje" element={<Kampanje />} />
+        <Route path="/pomocniki" element={<Pomocniki />} />
         <Route path="/klepet" element={<Klepet />} />
         <Route path="/asistent" element={<Asistent />} />
         <Route path="/ocene" element={<Ocene />} />
