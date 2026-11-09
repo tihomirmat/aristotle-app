@@ -151,7 +151,6 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
         <div className="p-5 space-y-3 bg-accent/20">
           <div className="flex items-center justify-between">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" />Predlagan odgovor</p>
-            {!editing && <button onClick={() => setEditing(true)} className="text-xs text-primary inline-flex items-center gap-1"><Pencil className="w-3 h-3" />Uredi</button>}
           </div>
           {lowQuality && (
             <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-3 py-2 flex items-start gap-2"><ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />AI ni povsem zadovoljen s tem odgovorom ({draft.quality_score ?? "?"}/10). Preberite ga pred pošiljanjem.</p>
@@ -168,7 +167,10 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
             </div>
           )}
           <div className="flex items-center gap-2 flex-wrap pt-1">
-            <Button className="btn-brand" onClick={send} disabled={!!busy || !lead?.email}>{busy === "send" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}{changed ? "Shrani in pošlji" : "Pošlji"}</Button>
+            {editing
+              ? <Button variant="outline" onClick={() => { setSubject(draft.subject || ""); setBody(draft.body || ""); setEditing(false); }} disabled={!!busy}>Prekliči urejanje</Button>
+              : <Button className="btn-brand" onClick={() => setEditing(true)} disabled={!!busy}><Pencil className="w-4 h-4 mr-2" />Uredi</Button>}
+            <Button className="bg-[#091f93] hover:bg-[#0b2ab8] text-white" onClick={send} disabled={!!busy || !lead?.email}>{busy === "send" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}{changed ? "Shrani in pošlji" : "Pošlji"}</Button>
             <Button variant="ghost" className="text-muted-foreground" onClick={() => setSkipOpen(true)} disabled={!!busy}><X className="w-4 h-4 mr-1" />Ne pošlji</Button>
             <span className="ml-auto inline-flex gap-1">
               <Button size="sm" variant="ghost" className="text-emerald-700 hover:bg-emerald-50" title="AI naj piše tako" onClick={() => setExample({ kind: "good", why: "" })}><ThumbsUp className="w-4 h-4 mr-1" />Dober primer</Button>
