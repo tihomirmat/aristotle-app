@@ -22,6 +22,9 @@ import MailboxCard from "@/components/nastavitve/MailboxCard";
 import AutoSendCard from "@/components/nastavitve/AutoSendCard";
 import FeaturesCard from "@/components/nastavitve/FeaturesCard";
 import ServicesPicker from "@/components/ServicesPicker";
+import IndustryPicker from "@/components/IndustryPicker";
+import OffersPicker from "@/components/OffersPicker";
+import { LEGACY_LABEL } from "@/lib/industries";
 import { LayoutGrid } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import { useToast } from "@/components/ui/use-toast";
@@ -40,7 +43,7 @@ export default function Nastavitve() {
 
   const [form, setForm] = useState({
     name: "", industry_template: "other", phone: "", address: "", website: "",
-    hours: "", services: "", main_services: "", current_offer: "", google_review_link: "",
+    hours: "", services: "", main_services: "", industry: "", current_offer: "", google_review_link: "",
   });
   const [savedForm, setSavedForm] = useState(null);
   const [formErrors, setFormErrors] = useState({});
@@ -63,6 +66,7 @@ export default function Nastavitve() {
         hours: business.hours || "",
         services: business.services && !business.services.includes("\n") && business.services.includes(",") ? business.services.split(/,(?![^()]*\))/).map((s) => s.trim()).filter(Boolean).join("\n") : (business.services || ""),
         main_services: business.main_services || "",
+        industry: business.industry || LEGACY_LABEL[business.industry_template] || "",
         current_offer: business.current_offer || "",
         google_review_link: business.google_review_link || "",
       };
@@ -231,11 +235,8 @@ export default function Nastavitve() {
           <div className="max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pb-24 items-start">
             <div className="space-y-2"><Label>Ime podjetja *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
             <div className="space-y-2">
-              <Label>Panoga</Label>
-              <Select value={form.industry_template} onValueChange={(v) => setForm({ ...form, industry_template: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{Object.entries(INDUSTRY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-              </Select>
+              <Label>Dejavnost</Label>
+              <IndustryPicker value={form.industry} onChange={({ industry, industry_template }) => setForm({ ...form, industry, industry_template })} />
             </div>
             <div className="space-y-2">
               <Label>Telefon</Label>
@@ -250,7 +251,7 @@ export default function Nastavitve() {
             </div>
             <div className="space-y-2"><Label>Delovni čas</Label><Input value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} placeholder="Pon–Pet 8:00–18:00" /></div>
             <div className="space-y-2 md:col-span-2"><Label>Storitve</Label><ServicesPicker value={form.services} main={form.main_services} onChange={({ services, main_services }) => setForm({ ...form, services, main_services })} /></div>
-            <div className="space-y-2"><Label>Trenutna ponudba</Label><Input value={form.current_offer} onChange={(e) => setForm({ ...form, current_offer: e.target.value })} placeholder="Npr. 20% popust za nove stranke" /></div>
+            <div className="space-y-2 md:col-span-2"><Label>Akcije in posebne ponudbe <span className="text-muted-foreground font-normal">(označene veljajo)</span></Label><OffersPicker options={[]} value={form.current_offer} onChange={(v) => setForm({ ...form, current_offer: v })} /></div>
             <div className="space-y-2"><Label>Povezava za Google ocene</Label><Input value={form.google_review_link} onChange={(e) => setForm({ ...form, google_review_link: e.target.value })} placeholder="https://g.page/r/..." /></div>
 
             {/* STICKY SAVE BAR */}
