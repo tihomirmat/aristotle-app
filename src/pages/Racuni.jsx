@@ -1,297 +1,258 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useBusiness } from "@/lib/business-context";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Package, Download, Upload, Loader2, Send, X } from "lucide-react";
+import { FileText, Download, Upload, Loader2, Send, Trash2, Mail, CheckCircle2, UserRound, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { sendMonthlyInvoicePackage } from "@/functions/sendMonthlyInvoicePackage";
-
 import { fnError } from "@/lib/fn-error";
-function monthKey(d) {
-  const dt = new Date(d);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
-}
-function monthLabel(ym) {
-  const [y, m] = ym.split("-");
-  return new Date(Number(y), Number(m) - 1, 1).toLocaleString("sl-SI", { month: "long", year: "numeric" });
-}
 
-const STATUS_COLORS = {
-  captured: "bg-blue-100 text-blue-700",
-  packaged: "bg-yellow-100 text-yellow-700",
-  sent: "bg-emerald-100 text-emerald-700",
+const monthKey = (d) => { const dt = new Date(d); return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`; };
+const monthLabel = (ym) => { const [y, m] = ym.split("-"); return new Date(Number(y), Number(m) - 1, 1).toLocaleString("sl-SI", { month: "long", year: "numeric" }); };
+const money = (n) => (typeof n === "number" ? new Intl.NumberFormat("sl-SI", { style: "currency", currency: "EUR" }).format(n) : "—");
+const dateOf = (inv) => inv.received_date || inv.created_date;
+
+const STATUS = {
+  captured: { label: "Čaka na pošiljanje", cls: "bg-amber-100 text-amber-800" },
+  packaged: { label: "Pripravljen za pošiljanje", cls: "bg-blue-100 text-blue-700" },
+  sent: { label: "Poslan računovodji", cls: "bg-emerald-100 text-emerald-700" },
 };
+const sourceOf = (inv) => (inv.source === "email" ? "Iz e-pošte" : inv.source === "forward" ? "Posredovan po e-pošti" : inv.source_email_from && inv.source_email_from !== "manual upload" && !inv.source ? "Posredovan po e-pošti" : "Dodali ste sami");
+const supplierOf = (inv) => inv.supplier_name || (inv.source_email_from && inv.source_email_from !== "manual upload" ? inv.source_email_from : "") || inv.file_name || "Račun";
+const FILE_RE = /\.(pdf|png|jpe?g|tiff?|webp|gif)$/i;
 
-const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/jpg", "image/tiff", "image/webp", "image/gif"];
+function StepCard({ n, done, icon: Icon, title, state, children }) {
+  return (
+    <div className="card-elevated p-5 flex flex-col">
+      <div className="flex items-center gap-3">
+        <span className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${done ? "bg-emerald-100 text-emerald-700" : "bg-primary text-white"}`}>{done ? <CheckCircle2 className="w-5 h-5" /> : n}</span>
+        <p className="font-semibold flex-1">{title}</p>
+        <Icon className="w-5 h-5 text-muted-foreground/50" />
+      </div>
+      <p className={`text-sm mt-2 ${done ? "text-emerald-700 font-medium" : "text-muted-foreground"}`}>{state}</p>
+      <div className="mt-4 flex-1 flex flex-col justify-end">{children}</div>
+    </div>
+  );
+}
 
 export default function Racuni() {
   const { business } = useBusiness();
   const queryClient = useQueryClient();
   const [monthFilter, setMonthFilter] = useState("all");
   const [dragOver, setDragOver] = useState(false);
-  const [uploadingFiles, setUploadingFiles] = useState([]); // { name, progress }
-  const [sendingPackage, setSendingPackage] = useState(false);
+  const [uploading, setUploading] = useState(0);
+  const [sending, setSending] = useState(false);
+  const [accEmail, setAccEmail] = useState("");
+  const [savingAcc, setSavingAcc] = useState(false);
   const fileInputRef = useRef(null);
 
-  const { data: invoices = [], isLoading: loadingInvoices } = useQuery({
+  useEffect(() => { setAccEmail(business?.accountant_email || ""); }, [business?.accountant_email]);
+
+  const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices", business?.id],
     queryFn: () => base44.entities.Invoice.filter({ business_id: business.id }),
     enabled: !!business?.id,
   });
-
-  const { data: packages = [], isLoading: loadingPackages } = useQuery({
+  const { data: packages = [] } = useQuery({
     queryKey: ["invoice-packages", business?.id],
     queryFn: () => base44.entities.InvoicePackage.filter({ business_id: business.id }),
     enabled: !!business?.id,
   });
 
-  const months = [...new Set(invoices.map(inv => monthKey(inv.received_date || inv.created_date)))].sort().reverse();
+  const mailOn = !!business?.imap_enabled;
+  const accOn = !!business?.accountant_email && !!business?.invoice_enabled;
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevKey = monthKey(prev);
+  const thisKey = monthKey(now);
+  const waitingPrev = invoices.filter((i) => i.status === "captured" && monthKey(dateOf(i)) === prevKey);
+  const thisMonth = invoices.filter((i) => monthKey(dateOf(i)) === thisKey);
+  const thisSum = thisMonth.reduce((s, i) => s + (typeof i.amount === "number" ? i.amount : 0), 0);
 
-  const filtered = monthFilter === "all"
-    ? [...invoices].sort((a, b) => new Date(b.received_date || b.created_date) - new Date(a.received_date || a.created_date))
-    : invoices
-        .filter(inv => monthKey(inv.received_date || inv.created_date) === monthFilter)
-        .sort((a, b) => new Date(b.received_date || b.created_date) - new Date(a.received_date || a.created_date));
+  const months = [...new Set(invoices.map((i) => monthKey(dateOf(i))))].sort().reverse();
+  const filtered = invoices.filter((i) => monthFilter === "all" || monthKey(dateOf(i)) === monthFilter).sort((a, b) => new Date(dateOf(b)) - new Date(dateOf(a)));
+  const sortedPackages = [...packages].sort((a, b) => (b.period_year * 100 + b.period_month) - (a.period_year * 100 + a.period_month));
 
-  const sortedPackages = [...packages].sort((a, b) =>
-    (b.period_year * 100 + b.period_month) - (a.period_year * 100 + a.period_month)
-  );
-
+  const refreshBusiness = () => queryClient.invalidateQueries({ queryKey: ["business"] });
   const deleteInvoice = useMutation({
     mutationFn: (id) => base44.entities.Invoice.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] }); toast.success("Račun izbrisan."); },
   });
+
+  const saveAccountant = async () => {
+    const email = accEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast.error("Vpišite veljaven e-naslov računovodje."); return; }
+    setSavingAcc(true);
+    try { await base44.entities.Business.update(business.id, { accountant_email: email, invoice_enabled: true }); refreshBusiness(); toast.success("Shranjeno. Račune pošljemo vsakega 1. v mesecu."); }
+    catch (e) { toast.error(fnError(e)); } finally { setSavingAcc(false); }
+  };
+  const toggleAuto = async (v) => {
+    try { await base44.entities.Business.update(business.id, { invoice_enabled: v }); refreshBusiness(); toast.success(v ? "Mesečno pošiljanje je vključeno." : "Mesečno pošiljanje je izključeno."); }
+    catch (e) { toast.error(fnError(e)); }
+  };
 
   const uploadFiles = useCallback(async (files) => {
     if (!business?.id) return;
-    const allowed = Array.from(files).filter(f =>
-      ALLOWED_TYPES.some(t => f.type.startsWith(t.split("/")[0]) && f.name.match(/\.(pdf|png|jpe?g|tiff?|webp|gif)$/i))
-    );
-    if (allowed.length === 0) {
-      toast.error("Izberite PDF ali slikovne datoteke.");
-      return;
-    }
-
-    setUploadingFiles(allowed.map(f => ({ name: f.name })));
-
-    const now = new Date().toISOString();
-    let successCount = 0;
-
+    const allowed = Array.from(files || []).filter((f) => FILE_RE.test(f.name));
+    if (!allowed.length) { toast.error("Izberite PDF ali sliko računa."); return; }
+    setUploading(allowed.length);
+    const nowIso = new Date().toISOString();
+    let ok = 0;
     for (const file of allowed) {
       try {
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        await base44.entities.Invoice.create({
-          business_id: business.id,
-          source_email_from: "manual upload",
-          subject: file.name,
-          received_date: now,
-          file_url,
-          file_name: file.name,
-          status: "captured",
-        });
-        successCount++;
-      } catch (e) {
-        toast.error(`Napaka pri nalaganju ${file.name}: ${fnError(e)}`);
-      }
+        await base44.entities.Invoice.create({ business_id: business.id, source: "upload", source_email_from: "manual upload", subject: file.name, received_date: nowIso, file_url, file_name: file.name, status: "captured", owner_email: business.owner_email || business.created_by });
+        ok++;
+      } catch (e) { toast.error(`${file.name}: ${fnError(e)}`); }
     }
+    setUploading(0);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (ok) { toast.success(ok === 1 ? "Račun je dodan." : `Dodanih računov: ${ok}.`); queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] }); }
+  }, [business, queryClient]);
 
-    setUploadingFiles([]);
-    if (successCount > 0) {
-      toast.success(`${successCount} ${successCount === 1 ? "račun dodan" : "računov dodanih"}`);
-      queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] });
-    }
-  }, [business?.id, queryClient]);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setDragOver(false);
-    uploadFiles(e.dataTransfer.files);
-  }, [uploadFiles]);
-
-  const handleSendPackageNow = async () => {
-    if (!business?.id) return;
-    if (!business?.accountant_email) {
-      toast.error("Najprej nastavite e-naslov računovodje v Nastavitvah → Računi.");
-      return;
-    }
-    setSendingPackage(true);
+  const sendNow = async () => {
+    setSending(true);
     try {
       const res = await sendMonthlyInvoicePackage({ business_id: business.id });
-      const result = res?.data?.results?.[0];
-      if (result?.sent) {
-        toast.success(`Paket poslan računovodji (${result.invoice_count} računov).`);
+      const d = res?.data ?? res;
+      if (d?.error) throw new Error(d.error);
+      const r = d?.results?.[0];
+      if (r?.sent) {
+        toast.success(`Poslano računovodji: ${r.invoice_count} ${r.invoice_count === 1 ? "račun" : "računov"}.`);
         queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] });
         queryClient.invalidateQueries({ queryKey: ["invoice-packages", business?.id] });
-      } else if (result?.skipped) {
-        toast.info(`Ni računov za pošiljanje: ${result.reason}`);
-      } else {
-        toast.error("Napaka pri pošiljanju paketa.");
-      }
-    } catch (e) {
-      toast.error("Napaka: " + fnError(e));
-    }
-    setSendingPackage(false);
+      } else if (r?.skipped) {
+        toast.info(r.reason === "package already sent for period" ? `Računi za ${monthLabel(prevKey)} so bili že poslani.` : r.reason === "no accountant_email" ? "Najprej vpišite e-naslov računovodje." : `Za ${monthLabel(prevKey)} ni računov, ki bi čakali na pošiljanje.`);
+      } else toast.error(r?.error || "Pošiljanje ni uspelo.");
+    } catch (e) { toast.error(fnError(e)); } finally { setSending(false); }
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold">Računi</h1>
-          <p className="text-muted-foreground mt-1">Prejeti računi dobaviteljev in mesečni paketi za računovodjo.</p>
-        </div>
-        {business?.invoice_enabled && (
-          <Button variant="outline" onClick={handleSendPackageNow} disabled={sendingPackage} className="gap-2 shrink-0">
-            {sendingPackage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            Pošlji paket zdaj
+    <div className="space-y-6">
+      <div>
+        <h1>Računi</h1>
+        <p className="text-muted-foreground mt-1">Račune dobaviteljev zberemo na enem mestu in jih enkrat na mesec pošljemo vašemu računovodji. Nič več iskanja po e-pošti.</p>
+      </div>
+
+      <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.webp,.gif" className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
+
+      {/* Trije koraki s stanjem */}
+      <div className="grid md:grid-cols-3 gap-3">
+        <StepCard n={1} done={mailOn} icon={Mail} title="Računi iz e-pošte" state={mailOn ? `Vključeno. Račune, ki pridejo na ${business?.imap_user || "vaš predal"}, shranimo sami.` : "Ni povezano. Povežite predal in račune iz pošte bomo shranjevali sami."}>
+          {mailOn
+            ? <p className="text-xs text-muted-foreground">Predal preverimo vsakih 10 minut. Shranimo račune v priponki (PDF).</p>
+            : <Link to="/nastavitve?tab=integracije"><Button className="btn-brand w-full gap-2">Poveži e-poštni predal<ArrowRight className="w-4 h-4" /></Button></Link>}
+        </StepCard>
+
+        <StepCard n={2} done={invoices.some((i) => sourceOf(i) === "Dodali ste sami")} icon={Upload} title="Računi na papirju ali v datoteki" state="Fotografirajte račun ali izberite PDF. Dodate jih lahko več hkrati.">
+          <Button variant={mailOn ? "default" : "outline"} className={`w-full gap-2 ${mailOn ? "btn-brand" : ""}`} onClick={() => fileInputRef.current?.click()} disabled={uploading > 0}>
+            {uploading > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}{uploading > 0 ? `Dodajam ${uploading} …` : "Dodaj račun"}
           </Button>
-        )}
+        </StepCard>
+
+        <StepCard n={3} done={accOn} icon={UserRound} title="Vaš računovodja" state={accOn ? `Vsakega 1. v mesecu pošljemo račune prejšnjega meseca na ${business.accountant_email}.` : business?.accountant_email ? "Mesečno pošiljanje je izključeno." : "Vpišite e-naslov računovodje in računi bodo šli k njemu sami."}>
+          <div className="flex gap-2">
+            <Input type="email" value={accEmail} onChange={(e) => setAccEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveAccountant()} placeholder="racunovodja@primer.si" />
+            <Button className={accEmail.trim() !== (business?.accountant_email || "") ? "btn-brand" : ""} variant={accEmail.trim() !== (business?.accountant_email || "") ? "default" : "outline"} onClick={saveAccountant} disabled={savingAcc || !accEmail.trim()}>{savingAcc ? <Loader2 className="w-4 h-4 animate-spin" /> : "Shrani"}</Button>
+          </div>
+          {business?.accountant_email && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground mt-3 cursor-pointer"><Switch checked={!!business.invoice_enabled} onCheckedChange={toggleAuto} />Pošlji samodejno vsakega 1. v mesecu</label>
+          )}
+        </StepCard>
       </div>
 
-      {/* Manual upload */}
-      <div>
-        <h2 className="font-semibold flex items-center gap-2 mb-3"><Upload className="w-4 h-4 text-primary" /> Dodaj račune</h2>
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+        {/* Seznam računov */}
         <div
-          className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${dragOver ? "border-primary bg-accent/30" : "border-border hover:border-primary/50 hover:bg-muted/30"}`}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
+          className={`card-elevated p-5 transition-colors ${dragOver ? "ring-2 ring-primary bg-accent/30" : ""}`}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); uploadFiles(e.dataTransfer.files); }}
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.webp,.gif"
-            className="hidden"
-            onChange={(e) => uploadFiles(e.target.files)}
-          />
-          {uploadingFiles.length > 0 ? (
-            <div className="space-y-2">
-              <Loader2 className="w-7 h-7 animate-spin text-primary mx-auto mb-2" />
-              <p className="text-sm font-medium">Nalagam {uploadingFiles.length} {uploadingFiles.length === 1 ? "datoteko" : "datoteke"}…</p>
-              {uploadingFiles.map((f, i) => (
-                <p key={i} className="text-xs text-muted-foreground">{f.name}</p>
-              ))}
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+            <div>
+              <h2 className="text-lg">Prejeti računi</h2>
+              <p className="text-sm text-muted-foreground">Ta mesec: {thisMonth.length} {thisMonth.length === 1 ? "račun" : "računov"}{thisSum > 0 ? `, skupaj ${money(thisSum)}` : ""}</p>
             </div>
-          ) : (
-            <>
-              <Upload className="w-8 h-8 text-muted-foreground/50 mx-auto mb-3" />
-              <p className="font-medium text-sm">Povlecite PDF-je ali slike sem</p>
-              <p className="text-xs text-muted-foreground mt-1">ali kliknite za izbiro datotek · PDF, PNG, JPG, TIFF, WEBP</p>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Invoice list */}
-      <div>
-        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-          <h2 className="font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> Prejeti računi</h2>
-          {months.length > 0 && (
-            <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-44"><SelectValue placeholder="Filtriraj mesec" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Vsi meseci</SelectItem>
-                {months.map(m => <SelectItem key={m} value={m}>{monthLabel(m)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-
-        {loadingInvoices ? (
-          <div className="text-sm text-muted-foreground py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
-        ) : filtered.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-12 text-center border rounded-xl bg-card">
-            <FileText className="w-8 h-8 mx-auto mb-3 text-muted-foreground/40" />
-            <p className="font-medium">Ni računov.</p>
-            <p className="mt-1">Naložite datoteke zgoraj ali nastavite posredovanje e-pošte v Nastavitvah.</p>
+            {months.length > 1 && (
+              <Select value={monthFilter} onValueChange={setMonthFilter}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="all">Vsi meseci</SelectItem>{months.map((m) => <SelectItem key={m} value={m}>{monthLabel(m)}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
           </div>
-        ) : (
-          <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/30">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Vir</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Datoteka</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Datum</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filtered.map(inv => (
-                  <tr key={inv.id} className="hover:bg-muted/20">
-                    <td className="px-4 py-3 text-xs text-muted-foreground max-w-[180px] truncate" title={inv.source_email_from}>
-                      {inv.source_email_from || "—"}
-                    </td>
-                    <td className="px-4 py-3 max-w-[200px] truncate text-xs" title={inv.file_name}>{inv.file_name || "—"}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {inv.received_date ? format(new Date(inv.received_date), "d. M. yyyy") : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_COLORS[inv.status] || ""}`}>
-                        {inv.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right flex items-center justify-end gap-1">
-                      {inv.file_url && (
-                        <a href={inv.file_url} target="_blank" rel="noopener noreferrer">
-                          <Button size="sm" variant="ghost" className="h-7 px-2"><Download className="w-3.5 h-3.5" /></Button>
-                        </a>
-                      )}
-                      {inv.status === "captured" && (
-                        <Button
-                          size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-destructive"
-                          onClick={() => deleteInvoice.mutate(inv.id)}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
 
-      {/* Package history */}
-      <div>
-        <h2 className="font-semibold flex items-center gap-2 mb-4"><Package className="w-4 h-4 text-primary" /> Mesečni paketi računovodje</h2>
-        {loadingPackages ? (
-          <div className="py-4 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>
-        ) : sortedPackages.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-8 text-center border rounded-xl bg-card">
-            Še ni poslanih paketov. Paket se pošlje samodejno 1. v mesecu ali ročno z gumbom zgoraj.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {sortedPackages.map(pkg => (
-              <div key={pkg.id} className="bg-card border rounded-xl p-4 shadow-sm flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <p className="font-medium">
-                    {new Date(pkg.period_year, pkg.period_month - 1, 1).toLocaleString("sl-SI", { month: "long", year: "numeric" })}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {pkg.invoice_count} računov · {pkg.accountant_email} · {pkg.sent_at ? format(new Date(pkg.sent_at), "d. M. yyyy HH:mm") : "—"}
-                  </p>
-                </div>
-                {pkg.zip_file_url && (
-                  <a href={pkg.zip_file_url} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" variant="outline" className="gap-2 shrink-0">
-                      <Download className="w-4 h-4" /> Prenesi ZIP
-                    </Button>
-                  </a>
-                )}
+          {isLoading ? <div className="py-10 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>
+            : filtered.length === 0 ? (
+              <div className="rounded-xl border-2 border-dashed py-12 px-6 text-center">
+                <FileText className="w-9 h-9 mx-auto text-muted-foreground/40" />
+                <p className="font-medium mt-3">Tu še ni nobenega računa</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">{mailOn ? "Ko dobavitelj pošlje račun na vaš e-naslov, se pojavi tukaj. Račun lahko dodate tudi sami." : "Začnite s korakom 1 zgoraj (računi iz e-pošte) ali dodajte prvi račun sami. Datoteko lahko tudi povlečete sem."}</p>
+                <Button className="btn-brand mt-4 gap-2" onClick={() => fileInputRef.current?.click()}><Upload className="w-4 h-4" />Dodaj račun</Button>
               </div>
-            ))}
+            ) : (
+              <div className="overflow-x-auto -mx-2">
+                <table className="w-full text-sm">
+                  <thead><tr className="text-left text-xs text-muted-foreground border-b">
+                    <th className="px-2 py-2 font-medium">Dobavitelj</th><th className="px-2 py-2 font-medium text-right">Znesek</th><th className="px-2 py-2 font-medium">Datum</th><th className="px-2 py-2 font-medium hidden md:table-cell">Kako je prišel</th><th className="px-2 py-2 font-medium">Stanje</th><th className="px-2 py-2" />
+                  </tr></thead>
+                  <tbody className="divide-y">
+                    {filtered.map((inv) => {
+                      const St = STATUS[inv.status] || STATUS.captured;
+                      return (
+                        <tr key={inv.id} className="hover:bg-muted/30">
+                          <td className="px-2 py-3 max-w-[280px]"><p className="font-medium truncate">{supplierOf(inv)}</p>{inv.subject && inv.subject !== inv.file_name && <p className="text-xs text-muted-foreground truncate">{inv.subject}</p>}</td>
+                          <td className="px-2 py-3 text-right font-medium whitespace-nowrap">{money(inv.amount)}</td>
+                          <td className="px-2 py-3 text-muted-foreground whitespace-nowrap">{dateOf(inv) ? format(new Date(inv.invoice_date || dateOf(inv)), "d. M. yyyy") : "—"}</td>
+                          <td className="px-2 py-3 text-muted-foreground hidden md:table-cell whitespace-nowrap">{sourceOf(inv)}</td>
+                          <td className="px-2 py-3"><span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${St.cls}`}>{St.label}</span></td>
+                          <td className="px-2 py-3"><div className="flex items-center justify-end gap-1">
+                            {inv.file_url && <a href={inv.file_url} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline" className="h-8 gap-1.5"><Download className="w-3.5 h-3.5" />Odpri</Button></a>}
+                            {inv.status === "captured" && <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-red-600" title="Izbriši račun" onClick={() => { if (window.confirm(`Izbrišem račun »${supplierOf(inv)}«?`)) deleteInvoice.mutate(inv.id); }}><Trash2 className="w-4 h-4" /></Button>}
+                          </div></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+        </div>
+
+        {/* Pošiljanje računovodji */}
+        <div className="space-y-4">
+          <div className="card-elevated p-5">
+            <h2 className="text-lg">Pošiljanje računovodji</h2>
+            <p className="text-sm text-muted-foreground mt-1">Za {monthLabel(prevKey)} {waitingPrev.length === 0 ? "ni računov, ki bi čakali na pošiljanje." : `${waitingPrev.length === 1 ? "čaka 1 račun" : `čaka ${waitingPrev.length} računov`}.`}</p>
+            <Button className="btn-brand w-full mt-4 gap-2" onClick={sendNow} disabled={sending || !accOn || waitingPrev.length === 0}>
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}Pošlji račune za {monthLabel(prevKey)} zdaj
+            </Button>
+            {!accOn && <p className="text-xs text-muted-foreground mt-2">Najprej vpišite e-naslov računovodje (korak 3 zgoraj).</p>}
+            {accOn && <p className="text-xs text-muted-foreground mt-2">Sicer jih pošljemo sami 1. v mesecu. Računi tekočega meseca gredo naslednji mesec.</p>}
           </div>
-        )}
+
+          <div className="card-elevated p-5">
+            <h3 className="font-semibold">Že poslano</h3>
+            {sortedPackages.length === 0 ? <p className="text-sm text-muted-foreground mt-2">Računovodji še ni bilo poslano nič.</p> : (
+              <div className="divide-y mt-2">
+                {sortedPackages.map((p) => (
+                  <div key={p.id} className="py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm capitalize">{monthLabel(`${p.period_year}-${String(p.period_month).padStart(2, "0")}`)}</p>
+                      <p className="text-xs text-muted-foreground truncate">{p.invoice_count} {p.invoice_count === 1 ? "račun" : "računov"} · {p.accountant_email}{p.sent_at ? ` · ${format(new Date(p.sent_at), "d. M. yyyy")}` : ""}</p>
+                    </div>
+                    {p.zip_file_url && <a href={p.zip_file_url} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline" className="gap-1.5 shrink-0"><Download className="w-3.5 h-3.5" />Prenesi</Button></a>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
