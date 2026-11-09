@@ -75,6 +75,7 @@ const AppRoutes = () => {
 
   return (
     <Routes>
+      <Route path="/uvod-predogled" element={<AdminOnly><Onboarding preview /></AdminOnly>} />
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/prejeto" element={<Navigate to="/stranke?tab=odgovori" replace />} />
