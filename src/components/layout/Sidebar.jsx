@@ -78,7 +78,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     { path: "/admin/usage", label: "Poraba", icon: BarChart3 },
   ];
 
-  const isActivePath = (path) => (path === "/" ? location.pathname === "/" : location.pathname.startsWith(path));
+  const isActivePath = (path) => (path === "/" ? location.pathname === "/" : location.pathname.startsWith(path) || (path === "/stranke" && location.pathname.startsWith("/podjetja")));
 
   const NavItem = ({ item }) => {
     const isActive = isActivePath(item.path);
