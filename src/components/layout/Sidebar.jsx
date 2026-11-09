@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useBusiness } from "@/lib/business-context";
 import { hasModule } from "@/lib/entitlements";
+import { featureOn, FEATURES } from "@/lib/features";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -59,16 +60,16 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       items: [
         { path: "/stranke", label: "Stranke", icon: Users, badge: pendingCount > 0 ? pendingCount : (newLeadsCount > 0 ? newLeadsCount : null) },
         { path: "/podjetja", label: "Podjetja", icon: Building2 },
-        { path: "/kampanje", label: "Kampanje", icon: Megaphone, locked: !hasModule(business, "pillar_reactivation"), lockDesc: "Redna sporočila strankam: vrnite stare stranke, novice, pridobivanje." },
+        { feature: "campaigns", path: "/kampanje", label: "Kampanje", icon: Megaphone, locked: !hasModule(business, "pillar_reactivation"), lockDesc: "Redna sporočila strankam: vrnite stare stranke, novice, pridobivanje." },
       ],
     },
     {
       title: "Pomočniki",
       items: [
-        { path: "/klepet", label: "Spletni klepet", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "AI klepet na vaši spletni strani, ki odgovarja 24/7." },
-        { path: "/ocene", label: "Google ocene", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Samodejne prošnje za Google ocene in priporočila." },
-        { path: "/ponudbe", label: "Ponudbe", icon: FileSignature, locked: !hasModule(business, "pillar_offers"), lockDesc: "Priprava ponudb v PDF v nekaj minutah." },
-        { path: "/racuni", label: "Računi", icon: FileText },
+        { feature: "chat", path: "/klepet", label: "Spletni klepet", icon: MessageSquare, locked: !hasModule(business, "pillar_chatbot"), lockDesc: "AI klepet na vaši spletni strani, ki odgovarja 24/7." },
+        { feature: "reviews", path: "/ocene", label: "Google ocene", icon: Star, locked: !hasModule(business, "pillar_reviews"), lockDesc: "Samodejne prošnje za Google ocene in priporočila." },
+        { feature: "offers", path: "/ponudbe", label: "Ponudbe", icon: FileSignature, locked: !hasModule(business, "pillar_offers"), lockDesc: "Priprava ponudb v PDF v nekaj minutah." },
+        { feature: "invoices", path: "/racuni", label: "Računi", icon: FileText },
       ],
     },
   ];
@@ -133,7 +134,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           <div key={g.title} className="space-y-0.5">
             {!collapsed && <p className="text-[10px] uppercase tracking-[0.16em] text-sidebar-foreground/40 px-3 pb-1.5">{g.title}</p>}
             {collapsed && <div className="border-t border-white/10 mx-2 mb-2" />}
-            {g.items.map((item) => <NavItem key={item.path} item={item} />)}
+            {g.items.filter((item) => !item.feature || featureOn(business, item.feature)).map((item) => <NavItem key={item.path} item={item} />)}
           </div>
         ))}
 
