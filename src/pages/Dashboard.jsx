@@ -65,9 +65,9 @@ export default function Dashboard() {
     { done: !!business?.website && !!business?.services, label: "Profil podjetja", hint: "Ime, storitve, spletna stran — iz tega AI piše sporočila.", href: "/nastavitve?tab=profil" },
     { done: !!business?.brand_voice, label: "Glas znamke", hint: "Kako naj zvenijo vaša sporočila.", href: "/nastavitve?tab=glas" },
     { done: !!business?.imap_enabled, label: "E-poštni predal", hint: "AI najde povpraševanja v vaši pošti in odgovarja z vašega naslova.", href: "/nastavitve?tab=integracije" },
-    { done: leads.some((l) => l.source === "form" || l.source === "chatbot"), label: "Obrazec ali klepet na strani", hint: "Da tudi obiskovalci spletne strani postanejo stranke.", href: "/stranke?tab=viri" },
+    { feature: "chat", done: leads.some((l) => l.source === "form" || l.source === "chatbot"), label: "Obrazec ali klepet na strani", hint: "Da tudi obiskovalci spletne strani postanejo stranke.", href: "/stranke?tab=viri" },
     { done: !!business?.google_calendar_connected, label: "Google Koledar", hint: "Asistent predlaga proste termine.", href: "/nastavitve?tab=termini" },
-  ];
+  ].filter((s) => !s.feature || featureOn(business, s.feature));
   const setupDone = setup.filter((s) => s.done).length;
   const showSetup = setupDone < setup.length;
 
@@ -90,22 +90,22 @@ export default function Dashboard() {
     { title: "Povpraševanja iz e-pošte", icon: Mail, tone: "from-primary to-[hsl(41,100%,53%)]", href: business?.imap_enabled ? "/stranke" : "/nastavitve?tab=integracije",
       ok: !!business?.imap_enabled, state: business?.imap_enabled ? (business?.imap_last_error ? "Napaka pri branju pošte" : "Predal povezan, berem vsakih 10 min") : "Predal ni povezan",
       metric: leads.filter((l) => l.source === "email" && new Date(l.created_date) >= weekAgo).length, metricLabel: "novih iz pošte ta teden", cta: business?.imap_enabled ? "Odpri stranke" : "Poveži predal" },
-    { title: "Spletni klepet", icon: MessageSquare, tone: "from-violet-600 to-indigo-500", href: "/klepet",
+    { feature: "chat", title: "Spletni klepet", icon: MessageSquare, tone: "from-violet-600 to-indigo-500", href: "/klepet",
       ok: kb.length > 0 && convs.length > 0, state: kb.length === 0 ? "Klepet še ne pozna vašega podjetja" : convs.length === 0 ? "Še ni vstavljen na spletno stran" : "Deluje",
       metric: convsThisWeek, metricLabel: "pogovorov ta teden", cta: kb.length === 0 ? "Naučite ga iz spletne strani" : "Odpri klepet" },
     { title: "Odgovori strankam", icon: Send, tone: "from-emerald-500 to-teal-400", href: "/stranke?tab=odgovori",
       ok: drafts.length === 0, state: drafts.length > 0 ? `${drafts.length} čaka na vašo odobritev` : "Nič ne čaka",
       metric: sentThisWeek.length, metricLabel: "poslanih ta teden", cta: drafts.length > 0 ? "Preglej in pošlji" : "Odpri" },
-    { title: "Vrnite stare stranke", icon: RotateCcw, tone: "from-blue-700 to-blue-500", href: "/stranke",
+    { feature: "campaigns", title: "Vrnite stare stranke", icon: RotateCcw, tone: "from-blue-700 to-blue-500", href: "/stranke",
       ok: dormant === 0, state: dormant > 0 ? "Gumb »Vrnite stare stranke« zgoraj" : "Ni strank za vabilo",
       metric: dormant, metricLabel: "strank brez stika 30+ dni", cta: "Poglej stranke" },
-    { title: "Google ocene", icon: Star, tone: "from-amber-500 to-orange-400", href: "/ocene",
+    { feature: "reviews", title: "Google ocene", icon: Star, tone: "from-amber-500 to-orange-400", href: "/ocene",
       ok: !!business?.google_review_link, state: business?.google_review_link ? "Prošnje gredo po vsaki zaključeni storitvi" : "Dodajte povezavo za ocene",
       metric: reviewsSent, metricLabel: "poslanih prošenj za oceno", cta: business?.google_review_link ? "Odpri ocene" : "Dodaj povezavo" },
-    { title: "Ponudbe", icon: FileSignature, tone: "from-slate-700 to-slate-500", href: "/ponudbe",
+    { feature: "offers", title: "Ponudbe", icon: FileSignature, tone: "from-slate-700 to-slate-500", href: "/ponudbe",
       ok: offers.length > 0, state: offers.length > 0 ? "V uporabi" : "Pripravite prvo ponudbo",
       metric: offers.length, metricLabel: "pripravljenih ponudb", cta: "Nova ponudba" },
-  ];
+  ].filter((c) => !c.feature || featureOn(business, c.feature));
 
   const firstName = (user?.full_name || "").split(" ")[0];
 
