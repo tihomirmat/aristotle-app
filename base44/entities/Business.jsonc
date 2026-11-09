@@ -438,6 +438,14 @@
     "widget_title": {
       "type": "string"
     },
+    "chat_installed_url": {
+      "type": "string",
+      "description": "Spletna stran, na kateri je bil klepet nazadnje potrjeno name\u0161\u010den (prazno = ni potrjeno)"
+    },
+    "chat_installed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "lead_form_title": {
       "type": "string",
       "default": "Po\u0161ljite povpra\u0161evanje"
