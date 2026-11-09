@@ -50,7 +50,7 @@ export default function SourcesChart({ leads = [] }) {
                 <div key={r.key}>
                   <div className="flex items-center justify-between text-sm mb-1.5">
                     <span className="inline-flex items-center gap-2 font-medium"><S.icon className="w-4 h-4 text-muted-foreground" />{S.label}</span>
-                    <span><strong>{r.count}</strong> <span className="text-muted-foreground">· {total ? Math.round((r.count / total) * 100) : 0} %{r.won > 0 ? ` · ${r.won} sklenjenih` : ""}</span></span>
+                    <span><strong>{r.count}</strong> <span className="text-muted-foreground">· {total ? Math.round((r.count / total) * 100) : 0} %{r.won > 0 ? ` · posel sklenjen: ${r.won}` : ""}</span></span>
                   </div>
                   <div className="h-3 rounded-full bg-muted overflow-hidden"><div className={`h-full rounded-full ${BAR[r.key]}`} style={{ width: `${(r.count / max) * 100}%` }} /></div>
                 </div>
