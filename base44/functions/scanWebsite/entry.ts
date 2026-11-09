@@ -101,6 +101,7 @@ Deno.serve(async (req) => {
   "hours": "delovni čas ali prazno",
   "services": "seznam glavnih storitev, vsaka v svoji vrstici (največ 12)",
   "current_offer": "trenutna akcija/ponudba, če je omenjena, sicer prazno",
+  "offers": ["vse akcije, posebne ponudbe, brezplačni posveti, paketi s ceno ali popusti, ki so DOBESEDNO omenjeni na strani (največ 6, vsaka kratko v enem stavku); prazen seznam, če jih ni"],
   "brand_voice": "2–3 stavki: kako podjetje nagovarja stranke (vikanje/tikanje, ton, poudarki), izpeljano iz besedil na strani",
   "knowledge": [ { "title": "kratek naslov", "category": "Storitve | Cene | Kontakt | Termini | FAQ | O podjetju", "content": "3–8 stavkov točnih informacij iz strani, brez izmišljanja" } ]
 }`;
@@ -123,6 +124,8 @@ Deno.serve(async (req) => {
     else if (typeof data.services === 'string' && !data.services.includes('\n') && data.services.includes(',')) {
       data.services = data.services.split(/,(?![^()]*\))/).map((s) => s.trim()).filter(Boolean).join('\n');
     }
+    data.offers = Array.isArray(data.offers) ? [...new Set(data.offers.map((o) => String(o).trim()).filter(Boolean))].slice(0, 6) : [];
+    if (data.current_offer && !data.offers.includes(data.current_offer)) data.offers.unshift(String(data.current_offer).trim());
     data.pages_read = pages.length;
     data.knowledge = Array.isArray(data.knowledge) ? data.knowledge.filter((k) => k?.title && k?.content).slice(0, 8) : [];
 
