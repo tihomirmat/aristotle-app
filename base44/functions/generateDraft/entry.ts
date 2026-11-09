@@ -198,6 +198,7 @@ Deno.serve(async (req) => {
       business: {
         name: business.name,
         industry_template: business.industry_template,
+        industry: business.industry || null, // dejavnost z besedami stranke
         phone: business.phone || null,
         email: business.smtp_from_email || business.gmail_email || business.outlook_email || null, // javni kontaktni e-naslov podjetja (če je nastavljen)
         services: business.services,
