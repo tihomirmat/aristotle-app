@@ -54,7 +54,7 @@ export default function Onboarding() {
         address: d.address || f.address,
         website: d.website || url.trim(),
         hours: d.hours || f.hours,
-        services: d.services || f.services,
+        services: (Array.isArray(d.services) ? d.services.join("\n") : (d.services && !d.services.includes("\n") ? d.services.split(/,(?![^()]*\))/).map((s) => s.trim()).filter(Boolean).join("\n") : d.services)) || f.services,
         current_offer: d.current_offer || f.current_offer,
         brand_voice: d.brand_voice || f.brand_voice,
         knowledge: d.knowledge || [],
