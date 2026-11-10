@@ -142,6 +142,14 @@ Deno.serve(async (req) => {
     const MARKETING = ['reactivation', 'review_request', 'referral_ask', 'campaign'].includes(draft.pillar);
     const threadReply = !MARKETING && lead.source === 'email' && !!lead.email_message_id;
     const signature = business.email_signature ? `\n\n${business.email_signature}` : `\n\nLep pozdrav,\n${business.name}`;
+    // AI pogosto sam doda »Lep pozdrav, Ime« — odreži ga, ker spodaj vedno dodamo podpis podjetja (sicer je podpis dvojen).
+    {
+      const lines = String(draft.body || '').replace(/\s+$/, '').split('\n');
+      const from = Math.max(0, lines.length - 5);
+      for (let i = lines.length - 1; i >= from; i--) {
+        if (/^\s*(lep pozdrav|lepo pozdravljeni|s spoštovanjem|hvala in lep pozdrav|lp|pozdrav)\s*[,.!]?\s*$/i.test(lines[i])) { draft.body = lines.slice(0, i).join('\n').replace(/\s+$/, ''); break; }
+      }
+    }
     const unsubUrl = `${APP_URL}/api/apps/${APP_ID}/functions/unsubscribe?lead=${encodeURIComponent(lead.id)}&t=${await unsubscribeToken(lead.id)}`;
     const footer = MARKETING ? `\n\n---\nČe teh sporočil ne želite več prejemati, se lahko odjavite tukaj: ${unsubUrl}\nali odgovorite na to sporočilo z besedo »Odjava«.` : '';
     const fullBody = (draft.body || '') + signature + footer;
