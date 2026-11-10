@@ -5,14 +5,14 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 
 // Prebere nova sporočila iz poštnega predala podjetja (IMAP), AI prepozna povpraševanja
 // (tudi obvestila spletnih obrazcev, kjer je kontakt stranke v telesu), ustvari/posodobi stranko
-// (source=email) in za nove stranke pripravi odgovor v »Za odobritev«.
+// (source=email) in za nove stranke pripravi odgovor.
 // Klic: (a) lastnik iz aplikacije { business_id }  (b) interno/urnik { internal_secret, business_id? } → vsa podjetja z imap_enabled.
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const MAX_PER_RUN = 40;
 const FIRST_RUN_DAYS = 7;
-const VERSION = 'mini-imap-2026-11-10';
+const VERSION = 'mini-imap-2026-11-10b';
 
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
   || (!!user.email && (b.created_by === user.email || b.owner_email === user.email)));
@@ -48,38 +48,36 @@ async function syncOne(base44, business) {
   try {
     client = await imapConnect({ host: business.imap_host, port: Number(business.imap_port) || 993, user: business.imap_user, pass: business.imap_pass, timeoutMs: 15000, socketTimeoutMs: 60000 });
     await client.select('INBOX');
-    {
-      const lastUid = Number(business.imap_last_uid) || 0;
-      let uids = lastUid > 0
-        ? await client.uidSearch(`UID ${lastUid + 1}:*`)
-        : await client.uidSearch(`SINCE ${imapDate(new Date(Date.now() - FIRST_RUN_DAYS * 86400000))}`);
-      uids = (uids || []).filter((u) => u > lastUid).sort((a, b) => a - b).slice(-MAX_PER_RUN);
-      if (uids.length) {
-        const sizes = await client.uidSizes(uids);
-        for (const u of uids) maxUid = Math.max(maxUid, u);
-        const small = uids.filter((u) => (sizes.get(u) || 0) <= 3_000_000);
-        const fetched = [];
-        for (let i = 0; i < small.length; i += 10) fetched.push(...await client.uidFetchSource(small.slice(i, i + 10)));
-        for (const msg of fetched) {
-            const parsed = await simpleParser(msg.source);
-            const from = parsed.from?.value?.[0] || {};
-            const fromEmail = lower(from.address);
-            if (!fromEmail || ownAddresses.has(fromEmail)) continue;
-            const headers = parsed.headers;
-            const autoSubmitted = lower(headers.get('auto-submitted'));
-            const precedence = lower(headers.get('precedence'));
-            const subject = parsed.subject || '';
-            const text = (parsed.text || (parsed.html ? String(parsed.html).replace(/<[^>]+>/g, ' ') : '')).replace(/\s+\n/g, '\n').trim();
-            const forced = rules.some((r) => fromEmail.includes(r) || lower(subject).includes(r));
-            const attachments = (parsed.attachments || [])
-              .filter((a) => a.content && a.size < 8_000_000 && (/pdf|xml/i.test(a.contentType || '') || /\.(pdf|xml)$/i.test(a.filename || '')))
-              .slice(0, 3)
-              .map((a) => ({ filename: a.filename || 'racun.pdf', contentType: a.contentType || 'application/pdf', content: a.content }));
-            const invoiceLike = attachments.length > 0 && /račun|racun|faktur|invoice|e-račun|eracun|bill/i.test(`${subject} ${attachments.map((a) => a.filename).join(' ')}`);
-            const bulk = !!headers.get('list-unsubscribe') || ['bulk', 'list', 'junk'].includes(precedence) || (autoSubmitted && autoSubmitted !== 'no');
-            if (bulk && !forced && !invoiceLike && !/obrazec|povpra|form|kontakt|inquiry|naročil/i.test(subject)) continue;
-            mails.push({ uid: msg.uid, messageId: parsed.messageId || `${business.id}-${msg.uid}`, fromName: from.name || '', fromEmail, subject, text, date: parsed.date || new Date(), forced, attachments });
-        }
+    const lastUid = Number(business.imap_last_uid) || 0;
+    let uids = lastUid > 0
+      ? await client.uidSearch(`UID ${lastUid + 1}:*`)
+      : await client.uidSearch(`SINCE ${imapDate(new Date(Date.now() - FIRST_RUN_DAYS * 86400000))}`);
+    uids = (uids || []).filter((u) => u > lastUid).sort((a, b) => a - b).slice(-MAX_PER_RUN);
+    if (uids.length) {
+      const sizes = await client.uidSizes(uids);
+      for (const u of uids) maxUid = Math.max(maxUid, u);
+      const small = uids.filter((u) => (sizes.get(u) || 0) <= 3_000_000);
+      const fetched = [];
+      for (let i = 0; i < small.length; i += 10) fetched.push(...await client.uidFetchSource(small.slice(i, i + 10)));
+      for (const msg of fetched) {
+        const parsed = await simpleParser(msg.source);
+        const from = parsed.from?.value?.[0] || {};
+        const fromEmail = lower(from.address);
+        if (!fromEmail || ownAddresses.has(fromEmail)) continue;
+        const headers = parsed.headers;
+        const autoSubmitted = lower(headers.get('auto-submitted'));
+        const precedence = lower(headers.get('precedence'));
+        const subject = parsed.subject || '';
+        const text = (parsed.text || (parsed.html ? String(parsed.html).replace(/<[^>]+>/g, ' ') : '')).replace(/\s+\n/g, '\n').trim();
+        const forced = rules.some((r) => fromEmail.includes(r) || lower(subject).includes(r));
+        const attachments = (parsed.attachments || [])
+          .filter((a) => a.content && a.size < 8_000_000 && (/pdf|xml/i.test(a.contentType || '') || /\.(pdf|xml)$/i.test(a.filename || '')))
+          .slice(0, 3)
+          .map((a) => ({ filename: a.filename || 'racun.pdf', contentType: a.contentType || 'application/pdf', content: a.content }));
+        const invoiceLike = attachments.length > 0 && /račun|racun|faktur|invoice|e-račun|eracun|bill/i.test(`${subject} ${attachments.map((a) => a.filename).join(' ')}`);
+        const bulk = !!headers.get('list-unsubscribe') || ['bulk', 'list', 'junk'].includes(precedence) || (autoSubmitted && autoSubmitted !== 'no');
+        if (bulk && !forced && !invoiceLike && !/obrazec|povpra|form|kontakt|inquiry|naročil/i.test(subject)) continue;
+        mails.push({ uid: msg.uid, messageId: parsed.messageId || `${business.id}-${msg.uid}`, fromName: from.name || '', fromEmail, subject, text, date: parsed.date || new Date(), forced, attachments });
       }
     }
     await client.logout().catch(() => {});
@@ -177,7 +175,7 @@ Deno.serve(async (req) => {
     const user = internal ? null : await base44.auth.me().catch(() => null);
     const scheduled = internal || (user?.role === 'admin' && !body.business_id);
     if (!scheduled) {
-      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      if (!user) return Response.json({ error: 'Unauthorized', version: VERSION }, { status: 401 });
       if (!body.business_id) return Response.json({ error: 'business_id manjka' });
       const business = (await base44.asServiceRole.entities.Business.filter({ id: body.business_id }))[0];
       if (!business || !ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.' });
