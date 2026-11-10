@@ -9,7 +9,7 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 // 3) Sporočilo brez želje po ponudbi → navaden odgovor (nova stranka) ali nič (obstoječa — opravilo že ustvari crmEvents).
 // Klic: { business_id, lead_id, text, subject, is_reply, internal_secret }  (iz syncInbox) ali kot lastnik { business_id, lead_id }.
 
-const VERSION = 'auto-offer-2026-11-11';
+const VERSION = 'auto-offer-2026-11-11b';
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     // 1) Ali želi ponudbo in kaj manjka
     const sys = `Si asistent slovenskega podjetja »${business.name}«. Prebereš sporočilo stranke in odločiš:
 - wants_offer: ali stranka želi ponudbo, ceno, predračun ali izvedbo konkretne storitve (true), ali pa piše o čem drugem (vprašanje, termin, zahvala, zavrnitev, odjava, splošna informacija → false).
-- missing: seznam podatkov, BREZ katerih ni mogoče narediti natančne ponudbe po spodnjem ceniku in pravilih (npr. površina, lokacija, število izdelkov, rok). Vprašaj samo za tisto, kar res vpliva na ceno ali obseg in česar ni v sporočilu ali podatkih o stranki. Največ 4, kratko, v obliki vprašanja v vikanju. Če je vse znano, prazen seznam.
+- missing: samo podatki, BREZ katerih po spodnjem ceniku sploh ni mogoče izbrati cene ali obsega (npr. površina, kadar je cena na m²; lokacija, kadar je cena odvisna od lokacije). NE sprašuj za podatke, ki jih cenik sam izračuna ali jih lahko razumno oceniš (npr. število krogov iz površine, standardna izvedba), niti za podrobnosti, ki ne spremenijo cene. Največ 3, kratko, VEDNO v vikanju (vi, vaš). Če je mogoče narediti ponudbo, prazen seznam.
 - service: katera storitev podjetja (kratko).
 Vrni ZGOLJ JSON: {"wants_offer": true, "missing": ["…"], "service": "…"}`;
     const usr = `STORITVE PODJETJA:\n${business.services || '(ni vpisano)'}\n\nCENIK IN PRAVILA:\n${business.offers_price_rules || '(ni vpisan)'}\n\nPODATKI O STRANKI: ${lead.name || ''}${lead.company_id ? ' (podjetje)' : ''}${lead.phone ? ', tel. ' + lead.phone : ''}\nPREJŠNJE OPOMBE: ${String(lead.notes || '').slice(0, 1500)}\n\nZADEVA: ${subject}\nSPOROČILO STRANKE:\n${text}`;
