@@ -273,12 +273,12 @@ export function parseFontName(name) {
   const sub = SUBSTITUTE[fam.replace(/\s+/g, '').toLowerCase()];
   return { family: sub || fam, weight, italic, substituted: !!sub };
 }
-// Google Fonts → TTF (s starim User-Agent vrne celotno datoteko TTF z latin-ext znaki č, š, ž)
+// Google Fonts → TTF: User-Agent »Mozilla/4.0« vrne datoteko TTF (novejši brskalniki dobijo woff/woff2, ki ju pdf-lib ne zna).
 export async function fetchGoogleFont(name) {
   const { family, weight, italic } = parseFontName(name);
   const tryOne = async (fam, w, it) => {
     const url = `https://fonts.googleapis.com/css?family=${encodeURIComponent(fam)}:${w}${it ? 'i' : ''}&subset=latin-ext`;
-    const css = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:20.0) Gecko/20100101 Firefox/20.0' } }).then((r) => (r.ok ? r.text() : '')).catch(() => '');
+    const css = await fetch(url, { headers: { 'User-Agent': 'Mozilla/4.0' } }).then((r) => (r.ok ? r.text() : '')).catch(() => '');
     const m = css.match(/url\((https:[^)]+\.(?:ttf|otf))\)/);
     if (!m) return null;
     return new Uint8Array(await fetch(m[1]).then((r) => r.arrayBuffer()));
