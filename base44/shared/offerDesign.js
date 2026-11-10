@@ -5,7 +5,7 @@
 
 const r1 = (n) => Math.round(n * 10) / 10;
 const hex = (r, g, b) => '#' + [r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
-const cleanFont = (n) => String(n || '').replace(/^[A-Z]{6}\+/, '').replace(/,/g, '-');
+const cleanFont = (n) => String(n || '').replace(/^[A-Z]{6}\+/, '').replace(/,/g, '-').replace(/-\d{2,6}$/, '');
 
 // ───────────────────────── 1. BRANJE: besedilo s položajem, pisavo, velikostjo in barvo ─────────────────────────
 export async function extractSpans(bytes, { getDocumentProxy, getResolvedPDFJS }) {
