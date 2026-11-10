@@ -10,7 +10,18 @@ import { extractSpans, buildDesign, buildLetterhead, renderOffer, fetchGoogleFon
 //  action: "generate" { business_id, template_id, client_name?, request_text?, extra?, lead_id?, company_id? } → nova ponudba v istem dizajnu
 // Glava, noga in ozadje so izvirne strani PDF brez besedila; besedilo izrišemo v istih pisavah, velikostih, barvah in razmikih.
 
-const VERSION = 'offer-design-2026-11-11';
+const VERSION = 'offer-design-2026-11-11b';
+
+// Skupni znesek preberemo iz dokumenta (zadnja vrstica s »skupaj«), ne iz ločenega polja AI — da se znesek v seznamu ujema s ponudbo.
+const eur = (t) => { const m = String(t).match(/(\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?|\d+(?:,\d{1,2})?)\s*(?:€|EUR)/i); return m ? parseFloat(m[1].replace(/[.\s]/g, '').replace(',', '.')) : null; };
+const totalFromContent = (content) => {
+  let found = null;
+  content.pages.forEach((pg) => pg.forEach((b) => {
+    const left = (b.runs || []).map((r) => r.t).join(''); const right = (b.right || []).map((r) => r.t).join('');
+    if (/skupaj|za plačilo|končni znesek|total/i.test(left) && !/točk[ae]\s+\d+\s*:/i.test(left)) { const v = eur(right) ?? eur(left); if (v) found = v; }
+  }));
+  return found;
+};
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const MODELS = ['claude-sonnet-4-5', 'claude-haiku-4-5'];
 const PRICE = { 'claude-sonnet-4-5': [2.76, 13.8], 'claude-haiku-4-5': [0.92, 4.6] }; // EUR na milijon žetonov
@@ -24,7 +35,7 @@ const err = (error, code) => Response.json({ error, ...(code ? { code } : {}), v
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const fontCache = {};
-const getFont = (name) => (fontCache[name] = fontCache[name] || fetchGoogleFont(name).catch((e) => { delete fontCache[name]; throw e; }));
+const getFont = (name) => (fontCache[name] = fontCache[name] || fetchGoogleFont(name, fontkit).catch((e) => { delete fontCache[name]; throw e; }));
 const loadFont = async (name) => (await getFont(name)).bytes;
 const upload = async (base44, bytes, filename) => (await base44.asServiceRole.integrations.Core.UploadFile({ file: new File([bytes], filename, { type: 'application/pdf' }) }))?.file_url;
 const fetchBytes = async (url) => { const r = await fetch(url); if (!r.ok) throw new Error('Datoteke ni bilo mogoče prebrati.'); return new Uint8Array(await r.arrayBuffer()); };
@@ -54,7 +65,7 @@ Deno.serve(async (req) => {
       const chars = pages.reduce((a, p) => a + p.spans.reduce((x, s) => x + s.str.length, 0), 0);
       if (chars < 40) return err('V tem PDF-ju ni besedila — verjetno je skeniran kot slika. Naložite izvirni PDF (izvožen iz Worda ali drugega programa).', 'NO_TEXT');
       const design = buildDesign(pages);
-      const lh = await buildLetterhead(src, PDFLib);
+      const lh = await buildLetterhead(src, PDFLib, design);
       const fontNames = [...new Set(Object.values(design.styles).map((s) => s.font))];
       const design_fonts = [];
       for (const n of fontNames) {
@@ -91,6 +102,8 @@ Deno.serve(async (req) => {
       const brief = designBrief(design);
       const now = new Date();
       const monthSl = now.toLocaleDateString('sl-SI', { month: 'long', year: 'numeric', timeZone: 'Europe/Ljubljana' });
+      const todaySl = now.toLocaleDateString('sl-SI', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'Europe/Ljubljana' });
+      const seq = (await sr.OfferGeneration.filter({ business_id }).catch(() => [])).filter((g) => g.status === 'completed' && g.kind === 'full').length + 1;
 
       const system = `Si pisec ponudb za slovensko podjetje »${business.name}«. Dobiš NJIHOVO obstoječo ponudbo, zapisano kot seznam strani; vsaka stran je seznam blokov (vrstic ali odstavkov).
 OBLIKA BLOKA: "top" = navpični položaj prve vrstice na strani (samo prvi blok strani); "gap" = razmik od prejšnje vrstice v točkah; "x" = levi odmik (samo kadar odstopa); "runs" = deli besedila [{"s": slog, "t": besedilo, "strike": true za prečrtano, "dx": dodaten vodoravni odmik}]; "right" = desno poravnan del iste vrstice (npr. znesek); "rule" = vodoravna črta.
@@ -104,7 +117,8 @@ NALOGA: napiši NOVO ponudbo za novo stranko v POPOLNOMA ISTI obliki, da bo doku
 - Odstavek napiši kot EN blok (vrstice prelomi sistem). Naslov razdeli v dve vrstici samo, če je tako razdeljen v izvirniku in je dolg.
 - CENE: uporabi izključno »CENIK IN PRAVILA« ter podatke iz povpraševanja. Upoštevaj pogojna pravila (npr. lokacija, velikost, količina) in v ponudbi z enim stavkom pojasni, zakaj je izbrana ta različica. Če za postavko ni cene, napiši »po dogovoru« — nikoli si ne izmišljuj zneskov. Zneski v obliki 1.200 €. Seštevki morajo biti računsko pravilni. Prečrtane »stare« cene uporabi samo, če jih cenik izrecno navaja.
 - Ponujaj samo storitve s seznama storitev podjetja. Slovenščina, vikanje, brez praznih fraz.
-- Datum: ${monthSl} (obliko prepiši iz izvirnika).
+- Današnji datum je ${todaySl} (${monthSl}); uporabi ga v obliki, kot je datum zapisan v izvirniku. Ne izmišljuj drugih datumov.
+- Če ima izvirnik številko ponudbe, ohrani njeno obliko in uporabi zaporedno številko ${seq} (razen če lastnik v navodilih navede drugo).
 Vrni ZGOLJ JSON brez razlage: {"client_name": "naziv stranke", "total_eur": skupni znesek kot število ali null, "pages": [[blok, ...], ...]}`;
 
       const userMsg = `IZVIRNA PONUDBA (primer oblike):
@@ -142,7 +156,7 @@ ${String(body.extra || '').slice(0, 3000) || '(ni)'}`;
       const output_markdown = contentToMarkdown(content, design);
       const tin = res.usage?.input_tokens || 0; const tout = res.usage?.output_tokens || 0;
       const cost = ((PRICE[model] || PRICE[MODELS[0]])[0] * tin + (PRICE[model] || PRICE[MODELS[0]])[1] * tout) / 1_000_000;
-      const total = Number(parsed.total_eur);
+      const total = totalFromContent(content) ?? Number(parsed.total_eur);
       const generation = await sr.OfferGeneration.create({
         business_id, template_id: template.id, ...(lead ? { lead_id: lead.id } : {}), ...(company ? { company_id: company.id } : {}),
         client_name: clientName, ...(Number.isFinite(total) && total > 0 ? { amount: total } : {}), offer_status: 'draft', kind: 'full', input_method: 'form',
