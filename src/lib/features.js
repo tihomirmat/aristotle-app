@@ -10,4 +10,5 @@ export const FEATURES = [
   { key: "invoices", title: "Računi za računovodjo", desc: "Prejete račune zbere iz pošte in jih mesečno pošlje računovodji.", icon: FileText, path: "/racuni" },
 ];
 // Starejši računi (brez izbire) vidijo vse.
-export const featureOn = (business, key) => !Array.isArray(business?.enabled_features) || business.enabled_features.includes(key);
+// Prazen seznam = vse vidno: platforma je ob objavi 10. 11. starejšim računom nastavila [] (prej skrilo vse pomočnike).
+export const featureOn = (business, key) => !Array.isArray(business?.enabled_features) || business.enabled_features.length === 0 || business.enabled_features.includes(key);
