@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
         if (!step) { await sr.CampaignEnrollment.update(e.id, { status: 'completed' }); summary.completed++; continue; }
 
         let ok = false;
+        let created = null;
         if (step.ai_personalize && aiUsed < MAX_AI_PER_RUN) {
           aiUsed++;
           try {
@@ -98,6 +99,7 @@ Deno.serve(async (req) => {
             const d = res?.data ?? res;
             if (d?.error) throw new Error(d.error);
             ok = !!d?.draft;
+            created = d?.draft || null;
           } catch (err) {
             summary.errors.push(`${camp.name}/${lead.name}: ${err?.response?.data?.error || err?.message || err}`);
           }
@@ -107,7 +109,7 @@ Deno.serve(async (req) => {
         if (!ok && !step.ai_personalize) {
           const fn = firstName(lead.name);
           const bodyText = String(step.body || '').replace(/^Spoštovani,/m, fn ? `Pozdravljeni, ${fn},` : 'Pozdravljeni,');
-          await sr.DraftMessage.create({
+          created = await sr.DraftMessage.create({
             business_id: camp.business_id, lead_id: lead.id, pillar: 'campaign', channel: 'email', subject: step.subject, body: bodyText,
             status: 'pending', quality_score: 8, campaign_id: camp.id, campaign_step: idx + 1, scheduled_at: new Date().toISOString(),
             ai_reasoning: `Kampanja »${camp.name}«, sporočilo ${idx + 1} od ${steps.length}.`, created_by: business.created_by, owner_email: owner,
@@ -115,6 +117,16 @@ Deno.serve(async (req) => {
           ok = true;
         }
         if (!ok) continue;
+        // Samodejno pošiljanje kampanje: odobri tukaj (ne zanašaj se samo na dogodek »CRM - sporocila«, ki občasno ne pride).
+        // Sprememba v »approved« sproži workflow »Send Email on Draft Approved«.
+        if (created?.id && camp.auto_send && business.subscription_status !== 'trialing') {
+          try {
+            const fresh = (await sr.DraftMessage.filter({ id: created.id }))[0];
+            if (fresh && fresh.status === 'pending' && (fresh.quality_score ?? 7) >= 7) {
+              await sr.DraftMessage.update(fresh.id, { status: 'approved', reviewer_notes: `${fresh.reviewer_notes ? fresh.reviewer_notes + ' ' : ''}Samodejno poslano (kampanja).` });
+            }
+          } catch (err) { summary.errors.push(`auto_send ${lead.name}: ${err?.message || err}`); }
+        }
         summary.drafts++;
         const next = steps[idx + 1];
         await sr.CampaignEnrollment.update(e.id, next
