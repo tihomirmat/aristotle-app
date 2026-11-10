@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import nodemailer from 'npm:nodemailer@6.9.9';
-import { ImapFlow } from 'npm:imapflow@1.0.164';
+import { imapConnect, findSentBox } from '../../shared/imap.js';
 
 const EMAIL_APP_URL = (Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app').replace(/\/$/, '');
 const EMAIL_FOOTER_COMPANY = Deno.env.get('EMAIL_FOOTER_COMPANY') || 'AI Aristotle';
@@ -197,12 +197,8 @@ Deno.serve(async (req) => {
       }
       if (!sendError && raw && business.imap_enabled && business.imap_host && business.imap_user && business.imap_pass) {
         try {
-          const c = new ImapFlow({ host: business.imap_host, port: Number(business.imap_port) || 993, secure: business.imap_secure !== false, auth: { user: business.imap_user, pass: business.imap_pass }, logger: false, connectionTimeout: 10000 });
-          await c.connect();
-          const boxes = await c.list();
-          const sent = boxes.find((b) => b.specialUse === '\\Sent') || boxes.find((b) => /^(inbox[./])?(sent|sent items|sent messages|poslano|poslana pošta)$/i.test(b.path));
-          if (sent) await c.append(sent.path, raw, ['\\Seen']);
-          await c.logout();
+          const c = await imapConnect({ host: business.imap_host, port: Number(business.imap_port) || 993, user: business.imap_user, pass: business.imap_pass, timeoutMs: 10000 });
+          try { const sent = findSentBox(await c.list()); if (sent) await c.append(sent.path, raw, ['\\Seen']); } finally { await c.logout(); }
         } catch { /* ignore */ }
       }
     } else {

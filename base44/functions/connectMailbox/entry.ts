@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { ImapFlow } from 'npm:imapflow@1.0.164';
+import { imapConnect } from '../../shared/imap.js';
 import nodemailer from 'npm:nodemailer@6.9.9';
 
 // Poveže poštni predal podjetja z enim e-naslovom in geslom.
@@ -13,9 +13,8 @@ const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.c
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 
 async function tryImap(host, port, user, pass) {
-  const c = new ImapFlow({ host, port, secure: port === 993, auth: { user, pass }, logger: false, connectionTimeout: 9000, greetingTimeout: 9000 });
-  try { await withTimeout(c.connect(), 12000); await c.logout().catch(() => {}); return { ok: true }; }
-  catch (e) { try { c.close(); } catch { /* */ } return { ok: false, auth: /auth|login|credential|password/i.test(`${e?.message} ${e?.responseText || ''}`), msg: e?.responseText || e?.message }; }
+  try { const c = await imapConnect({ host, port, user, pass, timeoutMs: 10000 }); await c.logout(); return { ok: true }; }
+  catch (e) { return { ok: false, auth: !!e.auth, msg: e?.message }; }
 }
 
 async function trySmtp(host, port, user, pass) {
@@ -53,11 +52,12 @@ Deno.serve(async (req) => {
     }
 
     const imapHosts = body.imap_host ? [String(body.imap_host).trim()] : [`mail.${domain}`, `imap.${domain}`, domain];
+    let imapNote = '';
     const smtpHosts = body.smtp_host ? [String(body.smtp_host).trim()] : [`mail.${domain}`, `smtp.${domain}`, domain];
 
     let imap = null; let imapErr = null;
     for (const h of imapHosts) {
-      for (const p of body.imap_port ? [Number(body.imap_port)] : [993, 143]) {
+      for (const p of [993]) { // samo SSL 993: STARTTLS (143) v Base44 okolju ne deluje
         const r = await tryImap(h, p, email, password);
         if (r.ok) { imap = { host: h, port: p }; break; }
         if (r.auth) { imapErr = 'auth'; break; }
@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
     };
     if (smtp) Object.assign(updates, { email_provider: 'smtp', smtp_host: smtp.host, smtp_port: smtp.port, smtp_pass: password, smtp_encryption: smtp.port === 465 ? 'ssl_tls' : 'starttls', email_last_health_check_status: 'ok', email_last_health_check_error: '' });
     else Object.assign(updates, { email_last_health_check_status: 'error', email_last_health_check_error: smtpErr === 'auth' ? 'Pošiljanje: prijava zavrnjena.' : 'Pošiljanje: strežnika nismo našli.' });
+    if (!imap) updates.imap_last_error = imapErr === 'auth' ? 'Prijava za branje pošte ni uspela.' : `Branja pošte nismo mogli vklopiti (${String(imapErr || 'strežnik ni odgovoril').slice(0, 120)}).`;
     if (imap) Object.assign(updates, { imap_enabled: true, imap_host: imap.host, imap_port: imap.port, imap_secure: imap.port === 993, imap_pass: password, imap_last_error: '' });
     if (!business.smtp_from_name) updates.smtp_from_name = business.name;
 

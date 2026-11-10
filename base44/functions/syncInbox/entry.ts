@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { ImapFlow } from 'npm:imapflow@1.0.164';
+import { imapConnect, imapDate } from '../../shared/imap.js';
 import { simpleParser } from 'npm:mailparser@3.7.1';
 import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 
@@ -38,55 +38,54 @@ async function syncOne(base44, business) {
   const out = { business_id: business.id, scanned: 0, inquiries: 0, new_leads: 0, updated_leads: 0, invoices: 0, error: null };
   if (!business.imap_host || !business.imap_user || !business.imap_pass) { out.error = 'Poštni predal ni povezan.'; return out; }
 
-  const client = new ImapFlow({
-    host: business.imap_host, port: Number(business.imap_port) || 993, secure: business.imap_secure !== false,
-    auth: { user: business.imap_user, pass: business.imap_pass }, logger: false,
-    connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 60000,
-  });
+  let client = null;
   const ownAddresses = new Set([lower(business.imap_user), lower(business.smtp_user), lower(business.smtp_from_email)].filter(Boolean));
   const rules = String(business.inquiry_rules || '').split('\n').map(lower).filter(Boolean);
   let maxUid = Number(business.imap_last_uid) || 0;
   const mails = [];
 
   try {
-    await client.connect();
-    const lock = await client.getMailboxLock('INBOX');
-    try {
+    client = await imapConnect({ host: business.imap_host, port: Number(business.imap_port) || 993, user: business.imap_user, pass: business.imap_pass, timeoutMs: 15000, socketTimeoutMs: 60000 });
+    await client.select('INBOX');
+    {
       const lastUid = Number(business.imap_last_uid) || 0;
       let uids = lastUid > 0
-        ? await client.search({ uid: `${lastUid + 1}:*` }, { uid: true })
-        : await client.search({ since: new Date(Date.now() - FIRST_RUN_DAYS * 86400000) }, { uid: true });
+        ? await client.uidSearch(`UID ${lastUid + 1}:*`)
+        : await client.uidSearch(`SINCE ${imapDate(new Date(Date.now() - FIRST_RUN_DAYS * 86400000))}`);
       uids = (uids || []).filter((u) => u > lastUid).sort((a, b) => a - b).slice(-MAX_PER_RUN);
       if (uids.length) {
-        for await (const msg of client.fetch(uids, { uid: true, size: true, envelope: true, source: true }, { uid: true })) {
-          maxUid = Math.max(maxUid, msg.uid);
-          if ((msg.size || 0) > 3_000_000) continue;
-          const parsed = await simpleParser(msg.source);
-          const from = parsed.from?.value?.[0] || {};
-          const fromEmail = lower(from.address);
-          if (!fromEmail || ownAddresses.has(fromEmail)) continue;
-          const headers = parsed.headers;
-          const autoSubmitted = lower(headers.get('auto-submitted'));
-          const precedence = lower(headers.get('precedence'));
-          const subject = parsed.subject || '';
-          const text = (parsed.text || (parsed.html ? String(parsed.html).replace(/<[^>]+>/g, ' ') : '')).replace(/\s+\n/g, '\n').trim();
-          const forced = rules.some((r) => fromEmail.includes(r) || lower(subject).includes(r));
-          const attachments = (parsed.attachments || [])
-            .filter((a) => a.content && a.size < 8_000_000 && (/pdf|xml/i.test(a.contentType || '') || /\.(pdf|xml)$/i.test(a.filename || '')))
-            .slice(0, 3)
-            .map((a) => ({ filename: a.filename || 'racun.pdf', contentType: a.contentType || 'application/pdf', content: a.content }));
-          const invoiceLike = attachments.length > 0 && /račun|racun|faktur|invoice|e-račun|eracun|bill/i.test(`${subject} ${attachments.map((a) => a.filename).join(' ')}`);
-          const bulk = !!headers.get('list-unsubscribe') || ['bulk', 'list', 'junk'].includes(precedence) || (autoSubmitted && autoSubmitted !== 'no');
-          if (bulk && !forced && !invoiceLike && !/obrazec|povpra|form|kontakt|inquiry|naročil/i.test(subject)) continue;
-          mails.push({ uid: msg.uid, messageId: parsed.messageId || `${business.id}-${msg.uid}`, fromName: from.name || '', fromEmail, subject, text, date: parsed.date || new Date(), forced, attachments });
+        const sizes = await client.uidSizes(uids);
+        for (const u of uids) maxUid = Math.max(maxUid, u);
+        const small = uids.filter((u) => (sizes.get(u) || 0) <= 3_000_000);
+        const fetched = [];
+        for (let i = 0; i < small.length; i += 10) fetched.push(...await client.uidFetchSource(small.slice(i, i + 10)));
+        for (const msg of fetched) {
+            const parsed = await simpleParser(msg.source);
+            const from = parsed.from?.value?.[0] || {};
+            const fromEmail = lower(from.address);
+            if (!fromEmail || ownAddresses.has(fromEmail)) continue;
+            const headers = parsed.headers;
+            const autoSubmitted = lower(headers.get('auto-submitted'));
+            const precedence = lower(headers.get('precedence'));
+            const subject = parsed.subject || '';
+            const text = (parsed.text || (parsed.html ? String(parsed.html).replace(/<[^>]+>/g, ' ') : '')).replace(/\s+\n/g, '\n').trim();
+            const forced = rules.some((r) => fromEmail.includes(r) || lower(subject).includes(r));
+            const attachments = (parsed.attachments || [])
+              .filter((a) => a.content && a.size < 8_000_000 && (/pdf|xml/i.test(a.contentType || '') || /\.(pdf|xml)$/i.test(a.filename || '')))
+              .slice(0, 3)
+              .map((a) => ({ filename: a.filename || 'racun.pdf', contentType: a.contentType || 'application/pdf', content: a.content }));
+            const invoiceLike = attachments.length > 0 && /račun|racun|faktur|invoice|e-račun|eracun|bill/i.test(`${subject} ${attachments.map((a) => a.filename).join(' ')}`);
+            const bulk = !!headers.get('list-unsubscribe') || ['bulk', 'list', 'junk'].includes(precedence) || (autoSubmitted && autoSubmitted !== 'no');
+            if (bulk && !forced && !invoiceLike && !/obrazec|povpra|form|kontakt|inquiry|naročil/i.test(subject)) continue;
+            mails.push({ uid: msg.uid, messageId: parsed.messageId || `${business.id}-${msg.uid}`, fromName: from.name || '', fromEmail, subject, text, date: parsed.date || new Date(), forced, attachments });
         }
       }
-    } finally { lock.release(); }
+    }
     await client.logout().catch(() => {});
   } catch (e) {
-    out.error = /auth/i.test(e?.message || e?.responseText || '') ? 'Prijava v poštni predal ni uspela. Preverite geslo.' : `Povezava s poštnim strežnikom ni uspela (${e?.message || e}).`;
+    out.error = (e?.auth || /AUTHENTICATIONFAILED/i.test(e?.message || '')) ? 'Prijava v poštni predal ni uspela. Preverite geslo.' : `Povezava s poštnim strežnikom ni uspela (${e?.message || e}).`;
     await base44.asServiceRole.entities.Business.update(business.id, { imap_last_error: out.error, imap_last_sync_at: new Date().toISOString() });
-    try { await client.logout(); } catch { /* ignore */ }
+    try { client?.close(); } catch { /* ignore */ }
     return out;
   }
   out.scanned = mails.length;
