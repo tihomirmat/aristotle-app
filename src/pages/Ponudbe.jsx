@@ -6,7 +6,7 @@ import { useBusiness } from "@/lib/business-context";
 import { hasModule } from "@/lib/entitlements";
 import { eur } from "@/lib/crm";
 import { Button } from "@/components/ui/button";
-import { FileSignature, FileText, Plus, Upload, Pencil, Download, AlertCircle, ArrowRight, Settings } from "lucide-react";
+import { FileSignature, FileText, Plus, Upload, Pencil, Download, AlertCircle, ArrowRight, Settings, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import OfferPreview from "@/components/ponudbe/OfferPreview";
@@ -78,6 +78,37 @@ export default function Ponudbe() {
           <Link to="/ponudbe/nastavitve"><Button size="sm" variant="outline" className="bg-white">Odpri nastavitve</Button></Link>
         </div>
       )}
+
+      {/* Samodejne ponudbe ob povpraševanju — samo z vzorcem v vašem dizajnu */}
+      {templates.some((t) => t.letterhead_url) && (() => {
+        const mode = business?.offer_auto || "review";
+        const set = async (v) => { try { await base44.entities.Business.update(business.id, { offer_auto: v }); qc.invalidateQueries({ queryKey: ["business"] }); toast.success("Shranjeno."); } catch { toast.error("Shranjevanje ni uspelo."); } };
+        const OPTS = [
+          ["off", "Izklopljeno", "Ponudbe pripravljate sami."],
+          ["review", "Pripravi, pregledam jaz", "Ko stranka povpraša, je ponudba s spremnim sporočilom že pripravljena. Vi samo preberete in pošljete."],
+          ["send", "Pošlji samo", "Če so vsi podatki, gre ponudba stranki sama. Če kaj manjka, AI stranko najprej vpraša — to vedno pregledate vi."],
+        ];
+        return (
+          <div className="card-elevated p-5">
+            <div className="flex items-start gap-3 flex-wrap">
+              <span className="w-10 h-10 rounded-xl bg-accent text-primary flex items-center justify-center shrink-0"><Zap className="w-5 h-5" /></span>
+              <div className="flex-1 min-w-[240px]">
+                <p className="font-semibold">Samodejne ponudbe ob povpraševanju</p>
+                <p className="text-sm text-muted-foreground">Ko stranka po e-pošti povpraša ali odgovori na vaše sporočilo, AI preveri, ali ima vse podatke, in pripravi ponudbo po vašem ceniku v vašem dizajnu.</p>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-3 gap-2 mt-4">
+              {OPTS.map(([k, l, d]) => (
+                <button key={k} onClick={() => k !== mode && set(k)} className={`text-left rounded-xl border-2 p-3 transition-colors ${mode === k ? "border-primary bg-accent/40" : "hover:border-primary/40"}`}>
+                  <span className="font-semibold text-sm block">{l}</span><span className="text-xs text-muted-foreground">{d}</span>
+                </button>
+              ))}
+            </div>
+            {!business?.offers_price_rules && mode !== "off" && <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">Cenik še ni vpisan, zato bodo cene »po dogovoru«. Vpišete ga pri »Nova ponudba« → Cenik in pravila.</p>}
+            {business?.subscription_status === "trialing" && mode === "send" && <p className="text-xs text-muted-foreground mt-2">Med preizkusnim obdobjem se nič ne pošlje samo — vse gre v pregled.</p>}
+          </div>
+        );
+      })()}
 
       {/* Brez ponudb: en jasen začetek */}
       {!isLoading && offers.length === 0 && (

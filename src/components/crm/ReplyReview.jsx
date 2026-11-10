@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Send, X, Pencil, Loader2, ThumbsUp, ThumbsDown, Globe, MessageSquare, RotateCcw, Star, CalendarDays, Bot, Megaphone, PenLine, Mail, ShieldCheck, ArrowRight, Sparkles, Inbox } from "lucide-react";
+import { Send, X, Pencil, Loader2, ThumbsUp, ThumbsDown, Globe, MessageSquare, RotateCcw, Star, CalendarDays, Bot, Megaphone, PenLine, Mail, ShieldCheck, ArrowRight, Sparkles, Inbox, FileSignature, Paperclip, HelpCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { SOURCES, ACTIVITY, ago, fmtDateTime } from "@/lib/crm";
 import { useCrmInvalidate } from "@/components/crm/CrmDialogs";
@@ -27,12 +28,14 @@ export const REASONS = {
   assistant_action: { label: "Predlog asistenta", why: "Asistent je predlagal to sporočilo.", icon: Bot, color: "bg-slate-100 text-slate-700" },
   campaign: { label: "Kampanja", why: "Naslednje sporočilo vaše kampanje. Ko stranka odgovori, se kampanja zanjo ustavi.", icon: Megaphone, color: "bg-orange-100 text-orange-700" },
   manual: { label: "Vaše sporočilo", why: "Sporočilo, ki ste ga začeli pisati pri stranki.", icon: PenLine, color: "bg-slate-100 text-slate-700" },
+  offer: { label: "Ponudba", why: "Stranka je povprašala. AI je po vašem ceniku pripravil ponudbo v vašem dizajnu in jo priložil odgovoru.", icon: FileSignature, color: "bg-violet-100 text-violet-700" },
+  offer_questions: { label: "Manjkajo podatki", why: "Stranka želi ponudbo, a za natančno ceno manjka nekaj podatkov. AI jo vljudno vpraša zanje.", icon: HelpCircle, color: "bg-amber-100 text-amber-800" },
 };
 export const reasonFor = (p) => REASONS[p] || { label: "Sporočilo", why: "AI je pripravil to sporočilo.", icon: Mail, color: "bg-slate-100 text-slate-700" };
 
 const INBOUND = ["email_in", "form", "chat"];
 // Pri teh vrstah je odgovor na sporočilo stranke; pri ostalih (ocena, vabilo, kampanja) pokažemo razlog.
-const REPLY_PILLARS = ["web_form_lead", "chatbot_handoff", "booking_proposal", "booking_confirmation", "manual", "assistant_action"];
+const REPLY_PILLARS = ["web_form_lead", "chatbot_handoff", "booking_proposal", "booking_confirmation", "manual", "assistant_action", "offer", "offer_questions"];
 // Kaj je stranka nazadnje poslala: zadnji prejeti dogodek ali izvirno sporočilo iz opomb.
 export const lastInbound = (lead, activities = []) => {
   const a = activities.filter((x) => x.lead_id === lead?.id && INBOUND.includes(x.type))
@@ -155,6 +158,13 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
           {lowQuality && (
             <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-3 py-2 flex items-start gap-2"><ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />AI ni povsem zadovoljen s tem odgovorom ({draft.quality_score ?? "?"}/10). Preberite ga pred pošiljanjem.</p>
           )}
+          {draft.pillar === "offer_questions" && (draft.missing_info || []).length > 0 && (
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm">
+              <p className="font-semibold text-amber-900 flex items-center gap-1.5"><HelpCircle className="w-4 h-4" />Za natančno ponudbo manjka</p>
+              <ul className="list-disc pl-5 mt-1 text-amber-900">{draft.missing_info.map((m, i) => <li key={i}>{m}</li>)}</ul>
+              <p className="text-xs text-amber-800 mt-1.5">Ko stranka odgovori, AI sam pripravi ponudbo.</p>
+            </div>
+          )}
           {editing ? (
             <div className="space-y-2">
               <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Zadeva" />
@@ -164,6 +174,14 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
             <div className="rounded-xl bg-card border p-4">
               <p className="text-sm font-semibold">{subject}</p>
               <p className="text-sm whitespace-pre-wrap mt-2 leading-relaxed">{body}</p>
+            </div>
+          )}
+          {(draft.attachments || []).length > 0 && (
+            <div className="rounded-xl border bg-card p-3 flex items-center gap-3 flex-wrap">
+              <span className="w-9 h-9 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center shrink-0"><Paperclip className="w-4 h-4" /></span>
+              <div className="flex-1 min-w-[160px]"><p className="text-xs text-muted-foreground">Priloga</p><p className="text-sm font-medium truncate">{draft.attachments.map((a) => a.name).join(", ")}</p></div>
+              {draft.attachments.map((a) => <a key={a.url} href={a.url} target="_blank" rel="noreferrer"><Button size="sm" variant="outline">Odpri ponudbo</Button></a>)}
+              {draft.offer_generation_id && <Link to={`/ponudbe/nova?duplicate=${draft.offer_generation_id}`}><Button size="sm" variant="ghost">Spremeni ponudbo</Button></Link>}
             </div>
           )}
           <div className="flex items-center gap-2 flex-wrap pt-1">
