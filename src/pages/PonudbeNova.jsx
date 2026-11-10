@@ -76,7 +76,8 @@ export default function PonudbeNova() {
     queryKey: ["offer-templates-default", business?.id],
     queryFn: () => base44.entities.OfferTemplate.filter({ business_id: business.id }),
     enabled: !templateId && !!business?.id,
-    select: (d) => d[0],
+    // najprej vzorec z vašim dizajnom (najnovejši), nato glavni, nato prvi
+    select: (d) => [...d].filter((t) => t.letterhead_url && t.design).sort((x, y) => new Date(y.created_date) - new Date(x.created_date))[0] || d.find((t) => t.is_default) || d[0],
   });
 
   // Vsi vzorci podjetja — za izbiro vzorca na prvem koraku.
