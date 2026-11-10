@@ -16,6 +16,7 @@ import { offerExtract } from "@/functions/offerExtract";
 import { offerSend } from "@/functions/offerSend";
 import { Label } from "@/components/ui/label";
 import OfferPreview from "@/components/ponudbe/OfferPreview";
+import DesignOffer from "@/components/ponudbe/DesignOffer";
 
 // Backend funkcije vračajo { error, code } s statusom 402/403 — SDK vrže axios napako, sporočilo je v err.response.data
 const fnError = (err) => err?.response?.data?.error || err?.data?.error || err?.message || "Neznana napaka";
@@ -256,6 +257,10 @@ export default function PonudbeNova() {
         <Link to="/nastavitve?tab=billing"><Button className="btn-brand">Vključi ponudbe</Button></Link>
       </div>
     );
+  }
+
+  if (activeTemplate?.letterhead_url && activeTemplate?.design) {
+    return <DesignOffer business={business} template={activeTemplate} templates={allTemplates} onChooseTemplate={chooseTemplate} leadId={srcLeadId} companyId={srcCompanyId} clientName={crmClientName || ""} source={sourceOffer || null} />;
   }
 
   return (

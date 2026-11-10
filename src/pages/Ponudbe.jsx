@@ -85,7 +85,7 @@ export default function Ponudbe() {
           <div className="card-elevated p-8">
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">{templates.length ? "Naslednji korak" : "Začnite tukaj"}</p>
             <h2 className="!text-2xl mt-1">{templates.length ? "Pripravite prvo ponudbo" : "Dodajte ponudbo, ki jo že pošiljate strankam"}</h2>
-            <p className="text-muted-foreground mt-2 max-w-xl">{templates.length ? "Vzorec že imate. Vpišete stranko, storitev in ceno — ponudbo najprej vidite, šele nato jo prenesete ali pošljete." : "Naložite PDF ali Word, fotografijo ali prilepite besedilo. Iz nje nastane vaš vzorec, zato bodo nove ponudbe videti enako kot vaše dosedanje."}</p>
+            <p className="text-muted-foreground mt-2 max-w-xl">{templates.length ? "Vzorec že imate. Vpišete stranko, storitev in ceno — ponudbo najprej vidite, šele nato jo prenesete ali pošljete." : "Naložite jo kot PDF. Preberemo glavo, nogo, pisave, barve in razporeditev — nove ponudbe bodo videti enako, spremenijo se samo stranka, postavke in cene."}</p>
             <Link to={templates.length ? "/ponudbe/nova" : "/ponudbe/skener"}><Button size="lg" className="btn-brand gap-2 text-base px-7 mt-6">{templates.length ? <Plus className="w-5 h-5" /> : <Upload className="w-5 h-5" />}{templates.length ? "Nova ponudba" : "Dodaj obstoječo ponudbo"}</Button></Link>
           </div>
           <div className="rounded-2xl border-2 border-dashed p-8 flex flex-col justify-center">
@@ -145,7 +145,7 @@ export default function Ponudbe() {
         <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
           {templates.map((t) => (
             <div key={t.id} className="card-elevated p-4 flex flex-col">
-              <div className="flex items-start gap-2"><FileText className="w-4 h-4 text-primary mt-0.5 shrink-0" /><p className="font-semibold text-sm flex-1">{t.name}</p>{t.is_default && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent text-primary">Glavni</span>}</div>
+              <div className="flex items-start gap-2"><FileText className="w-4 h-4 text-primary mt-0.5 shrink-0" /><p className="font-semibold text-sm flex-1">{t.name}</p>{t.letterhead_url && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Vaš dizajn</span>}{t.is_default && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent text-primary">Glavni</span>}</div>
               <div className="flex gap-2 mt-4">
                 <Link to={`/ponudbe/nova?template=${t.id}`} className="flex-1"><Button size="sm" className="w-full btn-brand gap-1"><Plus className="w-3.5 h-3.5" />Nova ponudba</Button></Link>
                 <Link to={`/ponudbe/templati/${t.id}`}><Button size="sm" variant="outline">Uredi vzorec</Button></Link>
@@ -153,7 +153,7 @@ export default function Ponudbe() {
             </div>
           ))}
           <Link to="/ponudbe/skener" className="border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors min-h-[104px] text-center">
-            <Upload className="w-5 h-5" /><span className="text-sm font-medium">Dodaj vzorec iz obstoječe ponudbe</span>
+            <Upload className="w-5 h-5" /><span className="text-sm font-medium">Dodaj svojo ponudbo (PDF) — ohranimo dizajn</span>
           </Link>
         </div>
       </section>}

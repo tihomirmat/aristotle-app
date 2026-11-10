@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, ChevronRight, ChevronLeft, Loader2, CheckCircle, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { offerScan } from "@/functions/offerScan";
+import { offerDesign } from "@/functions/offerDesign";
 
 import { fnError } from "@/lib/fn-error";
 const STEPS = ["Dodajte ponudbo", "Branje besedila", "AI pripravi vzorec", "Shranite vzorec"];
@@ -57,6 +58,20 @@ export default function PonudbeSkener() {
         } else if (['pdf', 'docx', 'txt'].includes(ext)) {
           // Use ExtractDataFromUploadedFile
           const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
+          if (ext === 'pdf') {
+            // PDF: preberemo tudi dizajn (glava, noga, pisave, barve, razmiki) — nove ponudbe bodo videti enako
+            try {
+              const dres = await offerDesign({ action: "scan", business_id: business.id, file_url, name: uploadedFile.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").slice(0, 80) });
+              const dd = dres?.data ?? dres;
+              if (dd?.template_id) {
+                const f = dd.summary?.fonts || [];
+                toast.success(`Dizajn je prebran: ${dd.summary?.pages} ${dd.summary?.pages === 1 ? "stran" : "strani"}, pisave ${[...new Set(f.map((x) => x.used.replace(/ \d+.*$/, "")))].join(", ")}. Nove ponudbe bodo videti enako.`, { duration: 9000 });
+                navigate(`/ponudbe/nova?template=${dd.template_id}`);
+                return;
+              }
+              if (dd?.error) toast.info(`${dd.error} Nadaljujem samo z besedilom.`, { duration: 9000 });
+            } catch (e) { toast.info("Dizajna ni bilo mogoče prebrati, nadaljujem samo z besedilom."); }
+          }
           const extracted = await base44.integrations.Core.ExtractDataFromUploadedFile({
             file_url,
             json_schema: { type: "object", properties: { full_text: { type: "string" } } },
