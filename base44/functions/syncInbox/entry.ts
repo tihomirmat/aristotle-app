@@ -12,7 +12,7 @@ const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const MAX_PER_RUN = 40;
 const FIRST_RUN_DAYS = 7;
-const VERSION = 'mini-imap-2026-11-10b';
+const VERSION = 'mini-imap-2026-11-11-autooffer';
 
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
   || (!!user.email && (b.created_by === user.email || b.owner_email === user.email)));
@@ -95,6 +95,9 @@ async function syncOne(base44, business) {
   const invoices = business.invoice_enabled === false ? [] : await base44.asServiceRole.entities.Invoice.filter({ business_id: business.id }).catch(() => []);
   const seenInvoices = new Set(invoices.map((x) => x.message_id).filter(Boolean));
   const owner = business.owner_email || business.created_by;
+  // Samodejne ponudbe: vklopljene, če ima podjetje vzorec z dizajnom in jih ni izklopilo (autoOffer odloči, ali sporočilo sploh želi ponudbo)
+  const offerAuto = business.offer_auto !== 'off' && (await base44.asServiceRole.entities.OfferTemplate.filter({ business_id: business.id }).catch(() => [])).some((t) => t.letterhead_url && t.design);
+  const autoOffer = (lead, m, isReply) => base44.asServiceRole.functions.invoke('autoOffer', { business_id: business.id, lead_id: lead.id, text: m.text.slice(0, 6000), subject: m.subject, is_reply: isReply, internal_secret: INTERNAL_SECRET }).catch(() => {});
   let tokensIn = 0, tokensOut = 0;
   for (let i = 0; i < mails.length; i += 10) {
     const batch = mails.slice(i, i + 10).filter((m) => !seenIds.has(m.messageId));
@@ -137,6 +140,7 @@ async function syncOne(base44, business) {
           notes: `${note}\n${existing.notes || ''}`.slice(0, 4000),
         });
         out.updated_leads++;
+        if (offerAuto) autoOffer(existing, m, true);
       } else {
         const lead = await base44.asServiceRole.entities.Lead.create({
           business_id: business.id, name: (r.name || m.fromName || email.split('@')[0]).trim(), email,
@@ -147,7 +151,8 @@ async function syncOne(base44, business) {
         });
         byEmail.set(email, lead);
         out.new_leads++;
-        base44.asServiceRole.functions.invoke('generateDraft', {
+        if (offerAuto) autoOffer(lead, m, false);
+        else base44.asServiceRole.functions.invoke('generateDraft', {
           business_id: business.id, lead_id: lead.id, pillar: 'web_form_lead', sequence_step: 1, internal_secret: INTERNAL_SECRET,
         }).catch(() => {});
       }
