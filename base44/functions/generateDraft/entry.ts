@@ -256,13 +256,14 @@ Deno.serve(async (req) => {
       subject: draftData.subject || '',
       body_text: draftData.body_text || '',
       industry: business.industry_template,
-      lead_name: lead.name,
+      lead_name: lead.name, // PREJEMNIK
+      sender_name: business.name, // POŠILJATELJ — podpis je vedno pošiljatelj
     };
     const t2Start = Date.now();
     const reviewRes = await anthropic.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 800,
-      system: QUALITY_REVIEWER_PROMPT + '\nVRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.',
+      system: QUALITY_REVIEWER_PROMPT + '\nPODPIS: lead_name je PREJEMNIK, sender_name je POŠILJATELJ. Podpisa ne dodajaj in ne spreminjaj; nikoli se ne podpiši z imenom prejemnika.\nVRNI ZGOLJ ČIST JSON BREZ MARKDOWN OGRAJ.',
       messages: [{ role: 'user', content: JSON.stringify(reviewPayload) }],
     });
     const reviewText = reviewRes.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
@@ -272,6 +273,13 @@ Deno.serve(async (req) => {
     const tokensIn2 = reviewRes.usage?.input_tokens || 0;
     const tokensOut2 = reviewRes.usage?.output_tokens || 0;
     const cost2 = costEur('claude-haiku-4-5', tokensIn2, tokensOut2);
+
+    // Varovalo: če je pregledovalec v zadnje vrstice vpisal ime prejemnika (napačen podpis), obdrži izvirnik.
+    const tail = (s) => String(s || '').trim().split('\n').slice(-2).join(' ').toLowerCase();
+    const leadName = String(lead.name || '').toLowerCase().replace(/\(.*?\)/g, '').trim();
+    if (leadName && reviewData.revised_body && tail(reviewData.revised_body).includes(leadName) && !tail(draftData.body_text).includes(leadName)) {
+      reviewData.revised_body = draftData.body_text;
+    }
 
     const qualityScore = reviewData.quality_score || 7;
     // If draft_mode is OFF, auto-approve high-quality drafts (skip manual review)
