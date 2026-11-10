@@ -104,8 +104,9 @@ export function buildDesign(pages) {
   });
   let rightEdge = 0; let left = W;
   pageLines.forEach((rows, pi) => rows.forEach((r) => r.spans.forEach((s) => {
+    if (r.y < H * 0.12 || r.y > H * 0.9) return;
     if (styleKey(s) === keys[0]) left = Math.min(left, s.x);
-    if (r.y < H * 0.9 && !(pi === 0 && pages.length > 2)) rightEdge = Math.max(rightEdge, s.x + s.w);
+    if (!(pi === 0 && pages.length > 2)) rightEdge = Math.max(rightEdge, s.x + s.w);
   })));
   if (!rightEdge) rightEdge = W - 60;
   if (left >= W) left = 60;
@@ -133,7 +134,8 @@ export function buildDesign(pages) {
     if (!hit && ln.x1 - ln.x0 > (rightEdge - left) * 0.5) hrules[pi].push(ln);
   }));
 
-  // številka strani + ponavljajoča se besedila (glava/noga kot besedilo)
+  // številka strani + »pohištvo« strani (glava/noga): ostane v listu v izvirni obliki, ne izrisujemo ga znova
+  const coverLike = pages.length > 2;
   let pageNumber = null; const repeatMap = {};
   pageLines.forEach((rows, pi) => rows.forEach((r) => {
     const text = r.spans.map((s) => s.str).join(' ').trim();
@@ -147,14 +149,36 @@ export function buildDesign(pages) {
     const k = `${Math.round(r.y)}|${text}`;
     (repeatMap[k] = repeatMap[k] || { rows: [], text }).rows.push({ pi, r });
   }));
-  const repeat = [];
   Object.values(repeatMap).forEach((g) => {
-    if (pages.length >= 2 && g.rows.length >= Math.max(2, Math.ceil(pages.length * 0.6))) {
-      g.rows.forEach(({ r }) => { r.isRepeat = true; });
-      const r = g.rows[0].r;
-      repeat.push({ x: r.spans[0].x, y: r.y, runs: r.spans.map((s) => ({ s: idOf[styleKey(s)], t: s.str })) });
-    }
+    if (pages.length >= 2 && g.rows.length >= Math.max(2, Math.ceil(pages.length * 0.6))) g.rows.forEach(({ r }) => { r.isRepeat = true; });
   });
+  const hasCover = coverLike && !!pageNumber && !pageLines[0].some((r) => r.isPageNo);
+  // glava: vrstice v zgornjih 12 % strani, ločene od vsebine; noga: vrstice v spodnjih 10 %, ločene od vsebine
+  pageLines.forEach((rows, pi) => {
+    if (pi === 0 && hasCover) return;
+    const live = rows.filter((r) => !r.isPageNo);
+    let h = 0; while (h < live.length && live[h].y < H * 0.12) h++;
+    if (h > 0 && (h === live.length || live[h].y - live[h - 1].y >= 20)) live.slice(0, h).forEach((r) => { r.isRepeat = true; });
+    let f = live.length; while (f > 0 && live[f - 1].y > H * 0.9) f--;
+    if (f < live.length && (f === 0 || live[f].y - live[f - 1].y >= 24)) live.slice(f).forEach((r) => { r.isRepeat = true; });
+  });
+  let keepAbove = 0; let keepBelow = H; let firstBody = H; let lastBody = 0; let anyFooter = false; let anyHeader = false;
+  pageLines.forEach((rows, pi) => {
+    if (pi === 0 && hasCover) return;
+    rows.forEach((r) => {
+      const size = Math.max(...r.spans.map((s) => s.size));
+      if (r.isRepeat && r.y < H * 0.5) { keepAbove = Math.max(keepAbove, r.y + 3); anyHeader = true; }
+      else if (r.isRepeat) { keepBelow = Math.min(keepBelow, r.y - size - 1); anyFooter = true; }
+      else if (!r.isPageNo) { firstBody = Math.min(firstBody, r.y - size); lastBody = Math.max(lastBody, r.y); }
+    });
+    (pages[pi].rules || []).forEach((ln) => { if (ln.y < H * 0.12) { keepAbove = Math.max(keepAbove, ln.y + 3); anyHeader = true; } if (ln.y > H * 0.9) { keepBelow = Math.min(keepBelow, ln.y - 3); anyFooter = true; } });
+  });
+  if (pageNumber) keepBelow = Math.min(keepBelow, pageNumber.y - styles[pageNumber.style].size - 4);
+  if (!anyFooter && !pageNumber) keepBelow = Math.max(lastBody + 6, H * 0.88);
+  if (!anyHeader) keepAbove = Math.max(0, Math.min(firstBody - 4, H * 0.3));
+  keepBelow = Math.max(keepBelow, lastBody + 4 > H * 0.97 ? H : Math.min(lastBody + 4, H));
+  // vodoravne črte v glavi/nogi so del lista, ne vsebine
+  hrules.forEach((list, pi) => { hrules[pi] = list.filter((ln) => ln.y > keepAbove && ln.y < keepBelow); });
   if (pageNumber) {
     const spread = (a) => Math.max(...a) - Math.min(...a);
     pageNumber.align = spread(pageNumber.rights) <= spread(pageNumber.xs) ? 'right' : 'left';
@@ -224,20 +248,86 @@ export function buildDesign(pages) {
     return blocks.map(({ lastY, lastEnd, ...b }) => b);
   });
 
-  const lastYs = pageLines.map((rows) => Math.max(0, ...rows.filter((r) => !r.isPageNo && !r.isRepeat).map((r) => r.y)));
-  const bottom = Math.round(Math.min(pageNumber ? pageNumber.y - 24 : H - 60, Math.max(H * 0.8, Math.max(...lastYs) + 10)));
-  return { page: { w: W, h: H }, left: r1(left), rightEdge, bottom, styles, pageNumber, repeat, example, hasCover: pages.length > 2 && !pageLines[0].some((r) => r.isPageNo) && !!pageNumber };
+  const bottom = Math.round(Math.min(keepBelow - 8, pageNumber ? pageNumber.y - 20 : H));
+  return { page: { w: W, h: H }, left: r1(left), rightEdge, bottom, keepAbove: r1(keepAbove), keepBelow: r1(keepBelow), styles, pageNumber, example, hasCover };
 }
 
 // ───────────────────────── 3. LIST: izvirne strani brez besedila ─────────────────────────
-export async function buildLetterhead(bytes, PDFLib, opts = {}) {
+// Pregleda vsebinski tok strani: sledi matrikam (cm, Tm, Td …) in izreže (a) izpise besedila, ki jih keepText ne potrdi,
+// (b) risane poti (črte, okvirji, podlage), ki jih dropPath potrdi. Slike in vstavljeni objekti (Do) ostanejo.
+export function processContent(src, H, keepText, dropPath) {
+  const n = src.length; let i = 0; const cuts = [];
+  const isWs = (c) => c === ' ' || c === '\n' || c === '\r' || c === '\t' || c === '\f' || c === '\0';
+  const DELIM = '()<>[]{}/%';
+  const mul = (m, k) => [m[0] * k[0] + m[1] * k[2], m[0] * k[1] + m[1] * k[3], m[2] * k[0] + m[3] * k[2], m[2] * k[1] + m[3] * k[3], m[4] * k[0] + m[5] * k[2] + k[4], m[4] * k[1] + m[5] * k[3] + k[5]];
+  let ctm = [1, 0, 0, 1, 0, 0]; const gs = [];
+  let tm = [1, 0, 0, 1, 0, 0]; let tlm = tm.slice(); let leading = 0;
+  let path = null; let stack = [];
+  const nums = (k) => stack.slice(-k).map((o) => o.v || 0);
+  const skipString = () => { let depth = 1; i++; while (i < n && depth > 0) { const c = src[i]; if (c === '\\') i += 2; else { if (c === '(') depth++; else if (c === ')') depth--; i++; } } };
+  const addPt = (x, y) => { path.pts.push([ctm[0] * x + ctm[2] * y + ctm[4], ctm[1] * x + ctm[3] * y + ctm[5]]); };
+  while (i < n) {
+    const c = src[i];
+    if (isWs(c)) { i++; continue; }
+    if (c === '%') { while (i < n && src[i] !== '\n' && src[i] !== '\r') i++; continue; }
+    const start = i;
+    if (c === '(') { skipString(); stack.push({ s: start }); continue; }
+    if (c === '<' && src[i + 1] === '<') { let d = 1; i += 2; while (i < n && d > 0) { if (src[i] === '<' && src[i + 1] === '<') { d++; i += 2; } else if (src[i] === '>' && src[i + 1] === '>') { d--; i += 2; } else if (src[i] === '(') skipString(); else i++; } stack.push({ s: start }); continue; }
+    if (c === '<') { while (i < n && src[i] !== '>') i++; i++; stack.push({ s: start }); continue; }
+    if (c === '[') { let d = 1; i++; while (i < n && d > 0) { const ch = src[i]; if (ch === '(') skipString(); else { if (ch === '[') d++; else if (ch === ']') d--; i++; } } stack.push({ s: start }); continue; }
+    if (c === '/') { i++; while (i < n && !isWs(src[i]) && !DELIM.includes(src[i])) i++; stack.push({ s: start }); continue; }
+    let j = i; while (j < n && !isWs(src[j]) && !DELIM.includes(src[j])) j++;
+    if (j === i) { i++; continue; }
+    const tok = src.slice(i, j); i = j;
+    if (/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(tok)) { stack.push({ s: start, v: parseFloat(tok) }); continue; }
+    const opStart = stack.length ? stack[0].s : start;
+    const showAt = () => { const m = mul(tm, ctm); return [m[4], H - m[5]]; };
+    switch (tok) {
+      case 'q': gs.push(ctm.slice()); break;
+      case 'Q': if (gs.length) ctm = gs.pop(); break;
+      case 'cm': ctm = mul(nums(6), ctm); break;
+      case 'BT': tm = [1, 0, 0, 1, 0, 0]; tlm = tm.slice(); break;
+      case 'Tm': tm = nums(6); tlm = tm.slice(); break;
+      case 'Td': { const [x, y] = nums(2); tlm = mul([1, 0, 0, 1, x, y], tlm); tm = tlm.slice(); break; }
+      case 'TD': { const [x, y] = nums(2); leading = -y; tlm = mul([1, 0, 0, 1, x, y], tlm); tm = tlm.slice(); break; }
+      case 'TL': leading = nums(1)[0]; break;
+      case 'T*': tlm = mul([1, 0, 0, 1, 0, -leading], tlm); tm = tlm.slice(); break;
+      case 'Tj': case 'TJ': { const [x, y] = showAt(); if (!keepText(x, y)) cuts.push([opStart, i, ' ']); break; }
+      case "'": case '"': { tlm = mul([1, 0, 0, 1, 0, -leading], tlm); tm = tlm.slice(); const [x, y] = showAt(); if (!keepText(x, y)) cuts.push([opStart, i, ' T* ']); break; }
+      case 'BI': { const k = src.indexOf('ID', i); const m = /\sEI(?=\s|$)/.exec(src.slice(k < 0 ? i : k)); i = m ? (k < 0 ? i : k) + m.index + 3 : n; break; }
+      case 'm': case 'l': { if (!path) path = { start: opStart, pts: [], clip: false }; const [x, y] = nums(2); addPt(x, y); break; }
+      case 're': { if (!path) path = { start: opStart, pts: [], clip: false }; const [x, y, w, h] = nums(4); addPt(x, y); addPt(x + w, y + h); addPt(x + w, y); addPt(x, y + h); break; }
+      case 'c': { if (!path) path = { start: opStart, pts: [], clip: false }; const v = nums(6); addPt(v[0], v[1]); addPt(v[2], v[3]); addPt(v[4], v[5]); break; }
+      case 'v': case 'y': { if (!path) path = { start: opStart, pts: [], clip: false }; const v = nums(4); addPt(v[0], v[1]); addPt(v[2], v[3]); break; }
+      case 'h': break;
+      case 'W': case 'W*': if (path) path.clip = true; break;
+      case 'S': case 's': case 'f': case 'F': case 'f*': case 'B': case 'B*': case 'b': case 'b*': case 'n': {
+        if (path && path.pts.length && tok !== 'n' && !path.clip) {
+          const xs = path.pts.map((p) => p[0]); const ys = path.pts.map((p) => H - p[1]);
+          if (dropPath({ x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) })) cuts.push([path.start, i, ' ']);
+        }
+        path = null; break;
+      }
+      default:
+    }
+    stack = [];
+  }
+  if (!cuts.length) return src;
+  cuts.sort((a, b) => a[0] - b[0]);
+  let out = ''; let pos = 0;
+  for (const [a, b, r] of cuts) { if (a < pos) continue; out += src.slice(pos, a) + r; pos = b; }
+  return out + src.slice(pos);
+}
+
+export async function buildLetterhead(bytes, PDFLib, design) {
   const { PDFDocument, PDFName, PDFArray, PDFRawStream, decodePDFRawStream } = PDFLib;
   const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
   const n = src.getPageCount();
-  const stripped = [];
-  for (let i = 0; i < n; i++) {
-    const node = src.getPage(i).node;
-    const contents = node.Contents();
+  const H = design.page.h; const pn = design.pageNumber;
+  const keepText = (x, y) => (y <= design.keepAbove || y >= design.keepBelow) && !(pn && Math.abs(y - pn.y) < 3);
+  const dropPath = (b) => b.y0 > design.keepAbove && b.y1 < design.keepBelow;
+  const read = (i) => {
+    const contents = src.getPage(i).node.Contents();
     const streams = contents instanceof PDFArray ? contents.asArray().map((ref) => src.context.lookup(ref)) : [contents];
     let text = '';
     for (const s of streams) {
@@ -247,12 +337,14 @@ export async function buildLetterhead(bytes, PDFLib, opts = {}) {
       for (let k = 0; k < raw.length; k += 8192) chunk += String.fromCharCode.apply(null, raw.subarray(k, k + 8192));
       text += chunk + '\n';
     }
-    stripped.push(text.replace(/(^|[\s\]>)])BT[\s\S]*?(?:[\s\])>])ET(?=[\s\/\[<(]|$)/g, '$1'));
-  }
-  const inner = opts.inner ?? (n > 1 ? stripped.map((s, i) => [s.length, i]).filter(([, i]) => i > 0).sort((a, b) => a[0] - b[0])[0][1] : 0);
+    return text;
+  };
+  const cover = design.hasCover ? processContent(read(0), H, () => false, () => false) : null;
+  const cleaned = []; for (let i = 0; i < n; i++) cleaned.push(i === 0 && cover ? cover : processContent(read(i), H, keepText, dropPath));
+  const inner = n > 1 ? cleaned.map((s, i) => [s.length, i]).filter(([, i]) => i > 0).sort((a, b) => a[0] - b[0])[0][1] : 0;
   const use = n > 1 ? [0, inner] : [0];
   use.forEach((i) => {
-    const bytesOut = Uint8Array.from(stripped[i], (c) => c.charCodeAt(0) & 0xff);
+    const bytesOut = Uint8Array.from(cleaned[i], (c) => c.charCodeAt(0) & 0xff);
     src.getPage(i).node.set(PDFName.of('Contents'), src.context.register(src.context.flateStream(bytesOut)));
   });
   const out = await PDFDocument.create();
@@ -273,23 +365,33 @@ export function parseFontName(name) {
   const sub = SUBSTITUTE[fam.replace(/\s+/g, '').toLowerCase()];
   return { family: sub || fam, weight, italic, substituted: !!sub };
 }
-// Google Fonts → TTF: User-Agent »Mozilla/4.0« vrne datoteko TTF (novejši brskalniki dobijo woff/woff2, ki ju pdf-lib ne zna).
-export async function fetchGoogleFont(name) {
+// Pisava kot TTF. Vira: Google Fonts CSS (User-Agent »Mozilla/4.0« vrne TTF) in GitHub google/fonts.
+// Datoteko sprejmemo samo, če ima č, š, ž in € (Googlova Lato npr. nima č) — sicer naslednji vir ali nadomestna pisava.
+const STYLE_NAME = { 100: 'Thin', 200: 'ExtraLight', 300: 'Light', 400: 'Regular', 500: 'Medium', 600: 'SemiBold', 700: 'Bold', 800: 'ExtraBold', 900: 'Black' };
+const NEED = [0x10d, 0x161, 0x17e, 0x10c, 0x160, 0x17d, 0x20ac];
+export async function fetchGoogleFont(name, fontkit) {
   const { family, weight, italic } = parseFontName(name);
-  const tryOne = async (fam, w, it) => {
-    const url = `https://fonts.googleapis.com/css?family=${encodeURIComponent(fam)}:${w}${it ? 'i' : ''}&subset=latin-ext`;
-    const css = await fetch(url, { headers: { 'User-Agent': 'Mozilla/4.0' } }).then((r) => (r.ok ? r.text() : '')).catch(() => '');
-    const m = css.match(/url\((https:[^)]+\.(?:ttf|otf))\)/);
-    if (!m) return null;
-    return new Uint8Array(await fetch(m[1]).then((r) => r.arrayBuffer()));
+  const covers = (bytes) => { if (!fontkit) return true; try { const f = fontkit.create(bytes); return NEED.every((cp) => f.hasGlyphForCodePoint(cp)); } catch { return false; } };
+  const get = async (url, headers) => { try { const r = await fetch(url, headers ? { headers } : undefined); return r.ok ? r : null; } catch { return null; } };
+  const viaCss = async (fam, w, it) => {
+    const r = await get(`https://fonts.googleapis.com/css?family=${encodeURIComponent(fam)}:${w}${it ? 'i' : ''}&subset=latin-ext`, { 'User-Agent': 'Mozilla/4.0' });
+    const m = r && (await r.text()).match(/url\((https:[^)]+\.(?:ttf|otf))\)/);
+    const f = m && (await get(m[1]));
+    return f ? new Uint8Array(await f.arrayBuffer()) : null;
   };
-  const exact = await tryOne(family, weight, italic);
-  if (exact) return { bytes: exact, used: `${family} ${weight}`, exact: true };
-  const near = await tryOne(family, weight >= 600 ? 700 : 400, false);
-  if (near) return { bytes: near, used: `${family} ${weight >= 600 ? 700 : 400}`, exact: false };
-  const fb = await tryOne('Arimo', weight >= 600 ? 700 : 400, italic);
-  if (!fb) throw new Error(`Pisave ${family} ni bilo mogoče naložiti.`);
-  return { bytes: fb, used: `Arimo ${weight >= 600 ? 700 : 400}`, exact: false };
+  const viaRepo = async (fam, w, it) => {
+    const dir = fam.replace(/\s+/g, '').toLowerCase(); const style = (w === 400 && it ? '' : STYLE_NAME[w] || 'Regular') + (it ? 'Italic' : '');
+    for (const lic of ['ofl', 'apache', 'ufl']) { const r = await get(`https://raw.githubusercontent.com/google/fonts/main/${lic}/${dir}/${fam.replace(/\s+/g, '')}-${style}.ttf`); if (r) return new Uint8Array(await r.arrayBuffer()); }
+    return null;
+  };
+  const near = weight >= 600 ? 700 : 400;
+  for (const [fam, w, it, exact] of [[family, weight, italic, true], [family, near, false, false]]) {
+    for (const src of [viaCss, viaRepo]) { const b = await src(fam, w, it); if (b && covers(b)) return { bytes: b, used: `${fam} ${w}${it ? ' italic' : ''}`, exact }; }
+  }
+  for (const fam of ['Arimo', 'Noto Sans', 'Roboto']) {
+    for (const src of [viaCss, viaRepo]) { const b = await src(fam, near, false); if (b && covers(b)) return { bytes: b, used: `${fam} ${near}`, exact: false }; }
+  }
+  throw new Error(`Pisave ${family} ni bilo mogoče naložiti.`);
 }
 
 // ───────────────────────── 5. IZRIS nove ponudbe ─────────────────────────
@@ -322,9 +424,8 @@ export async function renderOffer({ letterhead, design, content, loadFont }, PDF
   const newPage = () => {
     page = doc.addPage([W, H]);
     const isCover = pageNo === 0 && design.hasCover;
-    page.drawPage(isCover ? coverTpl : innerTpl);
+    page.drawPage(pageNo === 0 ? coverTpl : innerTpl);
     if (!isCover) {
-      (design.repeat || []).forEach((r) => { let x = r.x; r.runs.forEach((run) => { const t = safe(run.s, run.t); draw(page, run.s, t, x, r.y); x += width(run.s, t); }); });
       if (design.pageNumber) {
         const pn = design.pageNumber; const num = String(pn.firstNumber + (pageNo - pn.firstPage));
         if (pageNo >= pn.firstPage) draw(page, pn.style, num, pn.align === 'right' ? pn.x - width(pn.style, num) : pn.x, pn.y);
