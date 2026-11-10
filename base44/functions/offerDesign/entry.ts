@@ -22,17 +22,20 @@ const isTrialExpired = (b) => b?.subscription_status === 'trialing' && !!b.trial
 const hasModule = (b, k) => !!b && (isTrialActive(b) || b[k] === true);
 const err = (error, code) => Response.json({ error, ...(code ? { code } : {}), version: VERSION });
 
+const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const fontCache = {};
-const loadFont = async (name) => (fontCache[name] = fontCache[name] || (await fetchGoogleFont(name))).bytes;
+const getFont = (name) => (fontCache[name] = fontCache[name] || fetchGoogleFont(name).catch((e) => { delete fontCache[name]; throw e; }));
+const loadFont = async (name) => (await getFont(name)).bytes;
 const upload = async (base44, bytes, filename) => (await base44.asServiceRole.integrations.Core.UploadFile({ file: new File([bytes], filename, { type: 'application/pdf' }) }))?.file_url;
 const fetchBytes = async (url) => { const r = await fetch(url); if (!r.ok) throw new Error('Datoteke ni bilo mogoče prebrati.'); return new Uint8Array(await r.arrayBuffer()); };
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me().catch(() => null);
-    if (!user) return Response.json({ error: 'Unauthorized', version: VERSION }, { status: 401 });
     const body = await req.json().catch(() => ({}));
+    const internal = !!INTERNAL_SECRET && body?.internal_secret === INTERNAL_SECRET;
+    const user = internal ? { role: 'admin', id: 'internal' } : await base44.auth.me().catch(() => null);
+    if (!user) return Response.json({ error: 'Unauthorized', version: VERSION }, { status: 401 });
     const { action, business_id } = body;
     const sr = base44.asServiceRole.entities;
     const business = business_id ? (await sr.Business.filter({ id: business_id }))[0] : null;
@@ -55,7 +58,7 @@ Deno.serve(async (req) => {
       const fontNames = [...new Set(Object.values(design.styles).map((s) => s.font))];
       const design_fonts = [];
       for (const n of fontNames) {
-        try { const f = await (fontCache[n] = fontCache[n] || fetchGoogleFont(n)); const p = parseFontName(n); design_fonts.push({ name: n, used: f.used, exact: f.exact && !p.substituted }); }
+        try { const f = await getFont(n); const p = parseFontName(n); design_fonts.push({ name: n, used: f.used, exact: f.exact && !p.substituted }); }
         catch { design_fonts.push({ name: n, used: 'Arimo', exact: false }); }
       }
       // kontrola: izvirno vsebino izrišemo z našim izrisom — če to ne uspe, vzorca ne shranimo
