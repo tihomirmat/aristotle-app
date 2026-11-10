@@ -152,6 +152,14 @@ Deno.serve(async (req) => {
     }
     const unsubUrl = `${APP_URL}/api/apps/${APP_ID}/functions/unsubscribe?lead=${encodeURIComponent(lead.id)}&t=${await unsubscribeToken(lead.id)}`;
     const footer = MARKETING ? `\n\n---\nČe teh sporočil ne želite več prejemati, se lahko odjavite tukaj: ${unsubUrl}\nali odgovorite na to sporočilo z besedo »Odjava«.` : '';
+    // Priloge (npr. PDF ponudbe): pri SMTP kot prava priloga; pri pošiljanju prek platforme kot povezava v besedilu.
+    const attachList = (Array.isArray(draft.attachments) ? draft.attachments : []).filter((a) => a && a.url).slice(0, 5);
+    const attachments = [];
+    for (const a of attachList) {
+      try { const r = await fetch(a.url); if (r.ok) attachments.push({ filename: String(a.name || 'priloga.pdf'), content: new Uint8Array(await r.arrayBuffer()), contentType: r.headers.get('content-type') || 'application/pdf' }); } catch { /* povezava ostane v besedilu */ }
+    }
+    const missingAttach = attachList.filter((a) => !attachments.some((x) => x.filename === String(a.name || 'priloga.pdf')));
+    if (missingAttach.length) draft.body = `${draft.body || ''}\n\n${missingAttach.map((a) => `${a.name || 'Priloga'}: ${a.url}`).join('\n')}`;
     const fullBody = (draft.body || '') + signature + footer;
     const personalHtml = `<!doctype html><html lang="sl"><head><meta charset="utf-8"></head><body style="margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#111827">${textToHtml((draft.body || '') + signature)}</body></html>`;
     const fullHtml = !MARKETING ? personalHtml : emailHtml({
@@ -191,6 +199,7 @@ Deno.serve(async (req) => {
         subject,
         text: fullBody,
         html: fullHtml,
+        ...(attachments.length ? { attachments } : {}),
         ...threadHeaders,
       };
       let raw = null;
@@ -211,7 +220,8 @@ Deno.serve(async (req) => {
       }
     } else {
       try {
-        await base44.asServiceRole.integrations.Core.SendEmail({ to: lead.email, subject, body: fullHtml, from_name: business.name });
+        const links = attachList.length && !missingAttach.length ? `<p>${attachList.map((a) => `<a href="${escHtml(a.url)}">${escHtml(a.name || 'Priloga')}</a>`).join('<br>')}</p>` : '';
+        await base44.asServiceRole.integrations.Core.SendEmail({ to: lead.email, subject, body: links ? fullHtml.replace('</body>', `${links}</body>`) : fullHtml, from_name: business.name });
       } catch (e) {
         sendError = e.message || 'Platformsko pošiljanje ni uspelo';
       }
