@@ -74,11 +74,12 @@ Vrni ZGOLJ JSON: {"wants_offer": true, "missing": ["…"], "service": "…"}`;
     const amountTxt = offer.amount ? `Skupni znesek v ponudbi: ${eurFmt(offer.amount)} (brez DDV, če ponudba tako navaja).` : '';
     const d = await invoke('generateDraft', {
       business_id: business.id, lead_id: lead.id, pillar: 'manual', sequence_step: 1,
-      instruction: `Kratko spremno sporočilo (4–6 stavkov) k ponudbi, ki je v PRILOGI kot PDF, za »${a.service || 'storitev'}«. ${amountTxt} Zahvali se za povpraševanje, povej, da je ponudba v prilogi, in povabi k vprašanjem ali kratkemu klicu. Ne ponavljaj postavk in ne izmišljuj podatkov. Brez podpisa (podpis se doda sam).`,
+      instruction: `Kratko spremno sporočilo (4–6 stavkov) k ponudbi, ki je v PRILOGI kot PDF, za »${a.service || 'storitev'}«. ${amountTxt} Zahvali se za povpraševanje, povej, da je ponudba v prilogi, in povabi k vprašanjem ali kratkemu klicu. Naravna, pravilna slovenščina. Ne ponavljaj postavk in ne izmišljuj podatkov. Brez podpisa (podpis se doda sam).`,
     });
     const draftId = d?.draft?.id;
     if (!draftId) throw new Error('Spremnega sporočila ni bilo mogoče pripraviti.');
-    const fileName = decodeURIComponent(String(offer.output_pdf_url).split('/').pop() || 'Ponudba.pdf').replace(/^[0-9a-f]{6,}_/, '');
+    // ime priloge s šumniki (platforma jih iz imena shranjene datoteke odstrani)
+    const fileName = `Ponudba ${String(offer.client_name || lead.name || '').replace(/[\\/:*?"<>|]+/g, ' ').trim() || business.name}.pdf`.replace(/\s+/g, ' ');
     await sr.DraftMessage.update(draftId, {
       pillar: 'offer', attachments: [{ name: fileName, url: offer.output_pdf_url }], offer_generation_id: offer.generation_id,
       ai_reasoning: `Ponudba po vašem ceniku in dizajnu${offer.amount ? `, skupaj ${eurFmt(offer.amount)}` : ''}.`,
