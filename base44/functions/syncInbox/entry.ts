@@ -12,6 +12,7 @@ const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const MAX_PER_RUN = 40;
 const FIRST_RUN_DAYS = 7;
+const VERSION = 'mini-imap-2026-11-10';
 
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
   || (!!user.email && (b.created_by === user.email || b.owner_email === user.email)));
@@ -192,7 +193,7 @@ Deno.serve(async (req) => {
       if (!b.imap_enabled) continue;
       try { results.push(await syncOne(base44, b)); } catch (e) { results.push({ business_id: b.id, error: e?.message || String(e) }); }
     }
-    return Response.json({ success: true, results });
+    return Response.json({ success: true, version: VERSION, results });
   } catch (error) {
     return Response.json({ error: 'Napaka pri branju pošte: ' + (error?.message || String(error)) });
   }
