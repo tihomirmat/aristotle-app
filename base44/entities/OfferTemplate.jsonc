@@ -22,7 +22,8 @@
       "enum": [
         "scanned",
         "manual",
-        "cloned"
+        "cloned",
+        "design"
       ]
     },
     "source_file_id": {
@@ -33,6 +34,24 @@
     },
     "body_styles": {
       "type": "object"
+    },
+    "design": {
+      "type": "object",
+      "description": "Dizajn izvirne ponudbe (PDF): slogi (pisava, velikost, barva, razmik), robovi, \u0161tevilka strani in izvirna vsebina kot primer (base44/shared/offerDesign.js)"
+    },
+    "letterhead_url": {
+      "type": "string",
+      "description": "PDF z izvirnimi stranmi brez besedila (glava, noga, ozadje) \u2014 podlaga za nove ponudbe"
+    },
+    "source_pdf_url": {
+      "type": "string"
+    },
+    "design_fonts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "[{ name, used, exact }] \u2014 katere pisave so bile najdene in s \u010dim so nadome\u0161\u010dene"
     },
     "variables": {
       "type": "array",
