@@ -45,12 +45,13 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
     const internal = !!INTERNAL_SECRET && body?.internal_secret === INTERNAL_SECRET;
-    const user = internal ? { role: 'admin', id: 'internal' } : await base44.auth.me().catch(() => null);
+    // notranji klic (npr. autoOffer) ima dostop, a kvota velja kot za lastnika (ni admin)
+    const user = internal ? { role: 'internal', id: 'internal' } : await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized', version: VERSION }, { status: 401 });
     const { action, business_id } = body;
     const sr = base44.asServiceRole.entities;
     const business = business_id ? (await sr.Business.filter({ id: business_id }))[0] : null;
-    if (!business || !ownsBusiness(user, business)) return err('Nimate dostopa do tega podjetja.', 'FORBIDDEN');
+    if (!business || !(internal || ownsBusiness(user, business))) return err('Nimate dostopa do tega podjetja.', 'FORBIDDEN');
     if (isTrialExpired(business) || !hasModule(business, 'pillar_offers')) return err('Priprava ponudb ni vključena v vaš paket.', 'MODULE_LOCKED');
     const owner = business.owner_email || business.created_by;
 
