@@ -575,6 +575,15 @@
     "offers_global_vars": {
       "type": "object"
     },
+    "offer_auto": {
+      "type": "string",
+      "enum": [
+        "off",
+        "review",
+        "send"
+      ],
+      "description": "Samodejne ponudbe ob povpra\u0161evanju/odgovoru: off = ne; review = pripravi, lastnik pregleda; send = po\u0161lje sam, ko so vsi podatki (sicer stranko vpra\u0161a za manjkajo\u010de, v pregled). Prazno = review, \u010de obstaja vzorec z dizajnom."
+    },
     "offers_price_rules": {
       "type": "string",
       "description": "Cenik in pravila za ponudbe v prostem besedilu (npr. cene po postavkah in pogoji: \u00bbna obali drug sistem kot v hribih\u00ab). AI ga uporabi pri vsaki ponudbi."
