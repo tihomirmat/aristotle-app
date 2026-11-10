@@ -21,6 +21,7 @@ Deno.serve(async (req) => {
       p.drawText('CENA: 1.200 €', { x: 50, y: 700, size: 12, font: fb });
       p.drawText(String(i + 1), { x: 540, y: 30, size: 10, font: fl });
     }
+    steps.push(`has č=${fl.getCharacterSet().includes(0x10d)} š=${fl.getCharacterSet().includes(0x161)} €=${fl.getCharacterSet().includes(0x20ac)}`);
     const src = await d.save(); steps.push(`src ${src.length} @${Date.now() - t0}`);
     const pages = await extractSpans(src, unpdf); steps.push(`spans ${pages.map((p) => p.spans.length).join(',')} font=${pages[0].spans[0]?.font} @${Date.now() - t0}`);
     const design = buildDesign(pages); steps.push(`styles ${Object.values(design.styles).map((s) => `${s.font} ${s.size} ${s.color}`).join(' | ')} pn=${JSON.stringify(design.pageNumber)}`);
