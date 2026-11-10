@@ -110,6 +110,10 @@
     "parent_id": {
       "type": "string"
     },
+    "content_json": {
+      "type": "object",
+      "description": "Vsebina ponudbe v dizajnu izvirnika: { pages: [[blok]] } (base44/shared/offerDesign.js)"
+    },
     "owner_email": {
       "type": "string"
     },
