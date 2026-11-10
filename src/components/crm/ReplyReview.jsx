@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Send, X, Pencil, Loader2, ThumbsUp, ThumbsDown, Globe, MessageSquare, RotateCcw, Star, CalendarDays, Bot, Megaphone, PenLine, Mail, ShieldCheck, ArrowRight, Sparkles, Inbox, FileSignature, Paperclip, HelpCircle } from "lucide-react";
-import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { SOURCES, ACTIVITY, ago, fmtDateTime } from "@/lib/crm";
 import { useCrmInvalidate } from "@/components/crm/CrmDialogs";
