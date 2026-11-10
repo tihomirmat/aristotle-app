@@ -240,6 +240,7 @@ Deno.serve(async (req) => {
     await Promise.all([
       base44.asServiceRole.entities.DraftMessage.update(draftId, { status: 'sent', sent_at: now, ...(sendNote ? { reviewer_notes: `Poslano (${sentVia}). ${sendNote}` } : {}) }),
       base44.asServiceRole.entities.Lead.update(lead.id, { last_contacted_at: now, status: lead.status === 'new' ? 'contacted' : lead.status }),
+      ...(draft.offer_generation_id ? [base44.asServiceRole.entities.OfferGeneration.update(draft.offer_generation_id, { offer_status: 'sent' }).catch(() => null)] : []),
       base44.asServiceRole.entities.UsageLog.create({ business_id: business.id, date: now.split('T')[0], pillar: draft.pillar, feature: 'email_send', subfeature: 'sent', model: 'none', input_tokens: 0, output_tokens: 0, cost_eur: 0, is_demo: draft.is_demo || false }),
     ]);
 
