@@ -52,7 +52,6 @@ Deno.serve(async (req) => {
     }
 
     const imapHosts = body.imap_host ? [String(body.imap_host).trim()] : [`mail.${domain}`, `imap.${domain}`, domain];
-    let imapNote = '';
     const smtpHosts = body.smtp_host ? [String(body.smtp_host).trim()] : [`mail.${domain}`, `smtp.${domain}`, domain];
 
     let imap = null; let imapErr = null;
