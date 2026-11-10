@@ -575,6 +575,10 @@
     "offers_global_vars": {
       "type": "object"
     },
+    "offers_price_rules": {
+      "type": "string",
+      "description": "Cenik in pravila za ponudbe v prostem besedilu (npr. cene po postavkah in pogoji: \u00bbna obali drug sistem kot v hribih\u00ab). AI ga uporabi pri vsaki ponudbi."
+    },
     "owner_email": {
       "type": "string",
       "description": "E-po\u0161ta lastnika podjetja. Nujno za RLS vidljivost, ker service-role zapisi dobijo created_by = service+... (completeOnboarding)."
