@@ -38,7 +38,7 @@ async function syncOne(base44, business) {
   const out = { business_id: business.id, scanned: 0, inquiries: 0, new_leads: 0, updated_leads: 0, invoices: 0, error: null };
   if (!business.imap_host || !business.imap_user || !business.imap_pass) { out.error = 'Poštni predal ni povezan.'; return out; }
 
-  let client = null;
+  let client = null; // lasten IMAP odjemalec (shared/imap.js) — imapflow v Deno obvisi
   const ownAddresses = new Set([lower(business.imap_user), lower(business.smtp_user), lower(business.smtp_from_email)].filter(Boolean));
   const rules = String(business.inquiry_rules || '').split('\n').map(lower).filter(Boolean);
   let maxUid = Number(business.imap_last_uid) || 0;
