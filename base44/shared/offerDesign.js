@@ -1,7 +1,9 @@
 // Ohranitev dizajna ponudbe: iz izvirnega PDF prebere slog (pisave, velikosti, barve, razmiki, položaji),
 // naredi »list« brez besedila (glava, noga, ozadje ostanejo) in novo vsebino izriše v istem slogu.
 // Knjižnice so podane od zunaj (deps), da ista koda teče v Node (preizkus) in Deno (Base44).
-// Preizkušeno 11. 11. 2026 na Ponudba_ZANS.pdf: ponovni izris izvirnika je slikovno enak izvirniku.
+// Preizkušeno 11. 11. 2026 na Ponudba_ZANS.pdf (14 strani, naslovnica) in na enostranski ponudbi z glavo/nogo:
+// ponovni izris izvirne vsebine je slikovno enak izvirniku. Glava in noga ostaneta izvirni (tudi njuno besedilo).
+// Omejitve: obarvane podlage in navpične črte tabel v vsebini se ne prenesejo (ostanejo vodoravne ločnice).
 
 const r1 = (n) => Math.round(n * 10) / 10;
 const hex = (r, g, b) => '#' + [r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
