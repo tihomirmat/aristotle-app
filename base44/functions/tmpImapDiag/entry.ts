@@ -1,13 +1,23 @@
-import { ImapFlow } from 'npm:imapflow@1.0.164';
+// ZAČASNO: diagnostika povezave IMAP/SMTP (brez prijave). Izbriši po uporabi.
+const tm = (p, ms, label) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout ' + label)), ms))]);
 
-// ZAČASNO: diagnostika povezave IMAP (brez pravih podatkov). Izbriši po uporabi.
+async function probe(host, port, tls) {
+  const t0 = Date.now();
+  let conn;
+  try {
+    conn = await tm(tls ? Deno.connectTls({ hostname: host, port }) : Deno.connect({ hostname: host, port }), 8000, 'connect');
+    const tConn = Date.now() - t0;
+    const buf = new Uint8Array(512);
+    const n = await tm(conn.read(buf), 8000, 'greeting');
+    return { host, port, tls, connectMs: tConn, totalMs: Date.now() - t0, greeting: new TextDecoder().decode(buf.subarray(0, n || 0)).slice(0, 160) };
+  } catch (e) { return { host, port, tls, ms: Date.now() - t0, error: e?.message }; }
+  finally { try { conn?.close(); } catch { /* */ } }
+}
+
 Deno.serve(async () => {
-  const out = [];
-  for (const [host, port] of [['mail.spletnost.si', 993], ['mail.spletnost.si', 143]]) {
-    const t0 = Date.now();
-    const c = new ImapFlow({ host, port, secure: port === 993, auth: { user: 'diag-nobody@spletnost.si', pass: 'x' }, logger: false, connectionTimeout: 9000, greetingTimeout: 9000 });
-    try { await c.connect(); out.push({ host, port, ok: true, ms: Date.now() - t0 }); await c.logout().catch(() => {}); }
-    catch (e) { out.push({ host, port, ms: Date.now() - t0, message: e?.message, responseText: e?.responseText, code: e?.code, authFailed: e?.authenticationFailed, serverResponseCode: e?.serverResponseCode }); try { c.close(); } catch { /* */ } }
-  }
+  const out = await Promise.all([
+    probe('mail.spletnost.si', 993, true), probe('mail.spletnost.si', 143, false),
+    probe('mail.spletnost.si', 587, false), probe('mail.spletnost.si', 465, true),
+  ]);
   return Response.json(out);
 });
