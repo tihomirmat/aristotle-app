@@ -28,8 +28,27 @@
         "booking_proposal",
         "booking_confirmation",
         "campaign",
-        "manual"
+        "manual",
+        "offer",
+        "offer_questions"
       ]
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Priloge e-sporo\u010dila: [{ name, url }] (npr. PDF ponudbe)"
+    },
+    "offer_generation_id": {
+      "type": "string"
+    },
+    "missing_info": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Podatki, ki manjkajo za natan\u010dno ponudbo (AI stranko vpra\u0161a zanje)"
     },
     "channel": {
       "type": "string",
