@@ -23,6 +23,20 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const leadId = url.searchParams.get('lead') || '';
     const token = url.searchParams.get('t') || '';
+    // Naslov s seznama za kampanje (?c=<ListContact.id>&t=HMAC('c:'+id)); deluje tudi za POST (List-Unsubscribe-Post).
+    const contactId = url.searchParams.get('c') || '';
+    if (contactId) {
+      if (!token || !/^[a-zA-Z0-9]+$/.test(contactId) || (await expectedToken('c:' + contactId)) !== token) return page('Neveljavna povezava', 'Odjavna povezava ni veljavna.');
+      const base44 = createClientFromRequest(req);
+      const sr = base44.asServiceRole.entities;
+      const c = (await sr.ListContact.filter({ id: contactId }))[0];
+      if (!c) return page('Neveljavna povezava', 'Zapisa ni mogoče najti.');
+      const same = (await sr.ListContact.filter({ business_id: c.business_id, email: c.email }));
+      for (const x of same) if (x.status !== 'unsubscribed') await sr.ListContact.update(x.id, { status: 'unsubscribed' });
+      const enr = await sr.CampaignEnrollment.filter({ business_id: c.business_id, email: c.email, status: 'active' });
+      for (const e of enr) await sr.CampaignEnrollment.update(e.id, { status: 'stopped_unsubscribed' });
+      return page('Uspešno ste se odjavili', 'Sporočil tega pošiljatelja ne boste več prejemali.');
+    }
     if (!leadId || !token || !/^[a-zA-Z0-9]+$/.test(leadId)) return page('Neveljavna povezava', 'Odjavna povezava ni popolna.');
 
     const expected = await expectedToken(leadId);
