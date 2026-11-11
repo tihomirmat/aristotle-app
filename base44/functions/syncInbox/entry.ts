@@ -12,12 +12,14 @@ const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const MAX_PER_RUN = 40;
 const FIRST_RUN_DAYS = 7;
-const VERSION = 'mini-imap-2026-11-11-autooffer';
+const VERSION = 'mini-imap-2026-11-11-invoices';
 
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
   || (!!user.email && (b.created_by === user.email || b.owner_email === user.email)));
 
 const lower = (s) => String(s || '').toLowerCase().trim();
+// Privzeti naslov za račune: ime+racuni@domena (večina strežnikov to dostavi v isti predal ali mapo »racuni«).
+const invoiceAddressFor = (u) => (u && u.includes('@') ? u.replace('@', '+racuni@') : '');
 
 async function classify(items, business) {
   if (!items.length) return { results: [], usage: null };
@@ -27,7 +29,7 @@ NI povpraševanje: novice, reklame, računi dobaviteljev, sistemska obvestila, p
 Pri obvestilih spletnih obrazcev (pošiljatelj je spletna stran ali no-reply) vzemi ime, e-naslov in telefon STRANKE iz telesa, ne pošiljatelja.
 Posebej označi PREJETI RAČUN (is_invoice=true): dobavitelj nam pošilja račun/fakturo/e-račun za plačilo (npr. telekom, elektrika, računovodstvo, gostovanje, material). Ne velja za ponudbe, opomine brez računa ali račune, ki jih mi izdajamo. Pri računu izpolni supplier (naziv dobavitelja), amount (znesek z DDV kot število, če je naveden) in invoice_date (YYYY-MM-DD, če je naveden).
 Vrni ZGOLJ JSON tabelo v istem vrstnem redu: [{"i":0,"is_inquiry":true,"is_invoice":false,"supplier":"","amount":null,"invoice_date":"","name":"","email":"","phone":"","service":"","summary":"1-2 stavka v slovenščini, kaj stranka želi"}]. Ne izmišljuj podatkov.`;
-  const user = items.map((m, i) => `#${i}\nOD: ${m.fromName} <${m.fromEmail}>\nZADEVA: ${m.subject}${m.attachments?.length ? `\nPRILOGE: ${m.attachments.map((a) => a.filename).join(', ')}` : ''}\nBESEDILO:\n${m.text.slice(0, 1500)}`).join('\n\n---\n\n');
+  const user = items.map((m, i) => `#${i}\nOD: ${m.fromName} <${m.fromEmail}>\nZADEVA: ${m.subject}${m.attachments?.length ? `\nPRILOGE: ${m.attachments.map((a) => a.filename).join(', ')}` : ''}${m.forcedInvoice ? '\nOPOMBA: to je zagotovo PREJETI RAČUN (lahko posredovan) — dobavitelja, znesek in datum preberi iz vsebine ali posredovane glave, ne iz pošiljatelja.' : ''}\nBESEDILO:\n${m.text.slice(0, 1500)}`).join('\n\n---\n\n');
   const res = await anthropic.messages.create({ model: 'claude-haiku-4-5', max_tokens: 2500, system: sys, messages: [{ role: 'user', content: user }] });
   const raw = (res.content?.[0]?.text || '[]').trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
   let arr = [];
@@ -191,7 +193,7 @@ async function syncOne(base44, business) {
   }
 
   await base44.asServiceRole.entities.Business.update(business.id, {
-    imap_last_uid: maxUid, imap_last_sync_at: new Date().toISOString(), imap_last_error: '',
+    imap_last_uid: maxUid, imap_last_sync_at: new Date().toISOString(), imap_last_error: '', ...(folderMaxUid ? { invoice_folder_last_uid: folderMaxUid } : {}),
   });
   if (tokensIn || tokensOut) {
     base44.asServiceRole.entities.UsageLog.create({
