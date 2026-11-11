@@ -136,6 +136,7 @@ async function syncOne(base44, business) {
         await base44.asServiceRole.entities.Lead.update(existing.id, {
           last_inbound_at: new Date(m.date).toISOString(),
           email_subject: m.subject, email_message_id: m.messageId,
+          last_inbound_body: m.text.slice(0, 8000), last_inbound_from: `${m.fromName ? m.fromName + ' ' : ''}<${m.fromEmail}>`,
           status: ['contacted', 'new'].includes(existing.status) ? 'replied' : existing.status,
           notes: `${note}\n${existing.notes || ''}`.slice(0, 4000),
         });
@@ -147,6 +148,7 @@ async function syncOne(base44, business) {
           phone: r.phone || '', notes: `${note}\n\nIzvirno sporočilo:\n${m.text.slice(0, 2500)}`,
           service_requested: r.service || '', source: 'email', status: 'new', consent_email: true,
           email_subject: m.subject, email_message_id: m.messageId, last_inbound_at: new Date(m.date).toISOString(),
+          last_inbound_body: m.text.slice(0, 8000), last_inbound_from: `${m.fromName ? m.fromName + ' ' : ''}<${m.fromEmail}>`,
           created_by: owner, owner_email: owner,
         });
         byEmail.set(email, lead);
