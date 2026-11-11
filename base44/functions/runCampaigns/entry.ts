@@ -321,9 +321,12 @@ Deno.serve(async (req) => {
           }
           if (!ok && !step.ai_personalize) {
             const fn = firstName(lead.name);
-            const bodyText = String(step.body || '').replace(/^Spoštovani,/m, fn ? `Pozdravljeni, ${fn},` : 'Pozdravljeni,');
+            const greet = fn ? `Pozdravljeni, ${fn},` : 'Pozdravljeni,';
+            const bodyHtml = hasHtml(step.body_html) ? emailifyHtml(String(step.body_html).replace(/(^|<p[^>]*>)Spoštovani,/m, `$1${greet}`)) : '';
+            const bodyText = bodyHtml ? htmlToText(bodyHtml) : String(step.body || '').replace(/^Spoštovani,/m, greet);
             created = await sr.DraftMessage.create({
               business_id: camp.business_id, lead_id: lead.id, pillar: 'campaign', channel: 'email', subject: step.subject, body: bodyText,
+              ...(bodyHtml ? { body_html: bodyHtml } : {}), ...(step.attachments?.length ? { attachments: step.attachments } : {}),
               status: 'pending', quality_score: 8, campaign_id: camp.id, campaign_step: idx + 1, scheduled_at: new Date().toISOString(),
               ...(mailboxId ? { mailbox_id: mailboxId } : {}),
               ai_reasoning: `Kampanja »${camp.name}«, sporočilo ${idx + 1} od ${steps.length}.`, created_by: business.created_by, owner_email: owner,
@@ -331,7 +334,9 @@ Deno.serve(async (req) => {
             ok = true;
           }
           if (!ok) continue;
-          if (created?.id && mailboxId && !created.mailbox_id) await sr.DraftMessage.update(created.id, { mailbox_id: mailboxId }).catch(() => null);
+          if (created?.id && ((mailboxId && !created.mailbox_id) || (step.attachments?.length && !created.attachments?.length))) {
+            await sr.DraftMessage.update(created.id, { ...(mailboxId ? { mailbox_id: mailboxId } : {}), ...(step.attachments?.length ? { attachments: step.attachments } : {}) }).catch(() => null);
+          }
           // Samodejno pošiljanje: odobri tukaj (sprememba v »approved« sproži »Send Email on Draft Approved«).
           if (created?.id && camp.auto_send && business.subscription_status !== 'trialing') {
             try {
