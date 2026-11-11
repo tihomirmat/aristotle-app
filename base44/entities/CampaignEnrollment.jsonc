@@ -11,6 +11,23 @@
     "lead_id": {
       "type": "string"
     },
+    "contact_id": {
+      "type": "string",
+      "description": "ListContact (kampanja iz seznama naslovov)"
+    },
+    "email": {
+      "type": "string"
+    },
+    "mailbox_id": {
+      "type": "string",
+      "description": "Predal, s katerega gredo vsa sporo\u010dila tej osebi"
+    },
+    "last_message_id": {
+      "type": "string"
+    },
+    "bounce_reason": {
+      "type": "string"
+    },
     "current_step": {
       "type": "number",
       "default": 0
@@ -26,7 +43,8 @@
         "completed",
         "stopped_replied",
         "stopped_unsubscribed",
-        "stopped_manual"
+        "stopped_manual",
+        "stopped_bounced"
       ],
       "default": "active"
     },
@@ -44,8 +62,7 @@
   },
   "required": [
     "business_id",
-    "campaign_id",
-    "lead_id"
+    "campaign_id"
   ],
   "rls": {
     "read": {
