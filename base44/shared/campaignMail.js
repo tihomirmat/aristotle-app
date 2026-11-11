@@ -155,6 +155,36 @@ export function shouldPause({ bouncesSinceResume, bouncedTotal, contacted, newTh
   return newThisRun > 0 && contacted >= MIN_FOR_RATE && bouncedTotal / contacted > PAUSE_RATE;
 }
 
+// Preveri kampanjo po novih odbitih; po potrebi jo ustavi in obvesti lastnika. Vrne true, če je ustavljena.
+// enrollments = vse vključitve te kampanje (sveže stanje), emailOf(e) → naslov.
+export async function pauseIfTooManyBounces({ sr, sendEmail, business, camp, enrollments, emailOf, newCount, appUrl }) {
+  if (!camp || camp.status !== 'active' || !newCount) return false;
+  const contacted = enrollments.filter((e) => e.last_sent_at || Number(e.current_step) > 0).length;
+  const bounced = enrollments.filter((e) => e.status === 'stopped_bounced');
+  const since = camp.resumed_at ? new Date(camp.resumed_at).getTime() : 0;
+  const bouncesSinceResume = bounced.filter((e) => e.bounced_at && new Date(e.bounced_at).getTime() > since).length;
+  if (!shouldPause({ bouncesSinceResume, bouncedTotal: bounced.length, contacted, newThisRun: newCount })) return false;
+  const alert = {
+    at: new Date().toISOString(), count: bounced.length, since_resume: bouncesSinceResume, sent: contacted, rate: contacted ? bounced.length / contacted : 0,
+    addresses: bounced.slice(0, 30).map((e) => ({ email: emailOf(e), reason: e.bounce_reason || '' })),
+  };
+  await sr.Campaign.update(camp.id, { status: 'paused', paused_reason: 'bounces', paused_at: alert.at, bounce_alert: alert });
+  camp.status = 'paused';
+  const to = business.owner_email || business.created_by;
+  if (to && sendEmail) {
+    const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const list = alert.addresses.slice(0, 10).map((a) => `• ${esc(a.email)} — ${esc(a.reason)}`).join('<br>');
+    const body = `<p>Pozdravljeni,</p>
+<p>kampanjo <b>»${esc(camp.name)}«</b> smo <b>začasno ustavili</b>, ker se je vrnilo ${alert.count} sporočil (od ${alert.sent} prejemnikov, ${(alert.rate * 100).toFixed(1).replace('.', ',')} %). Ti naslovi verjetno ne obstajajo več:</p>
+<p>${list}</p>
+<p><b>Zakaj je to pomembno:</b> ponudniki e-pošte (Gmail, Outlook, Siol …) spremljajo, koliko vaših sporočil se vrne. Ko jih je več kot nekaj odstotkov, vašo pošto začnejo uvrščati med neželeno ali jo zavračati — lahko tudi običajna sporočila z iste domene. Popravljanje ugleda traja tedne.</p>
+<p><b>Kaj priporočamo:</b> preden nadaljujete, preverite preostale naslove v spletni storitvi za preverjanje e-naslovov (npr. Bouncer, MillionVerifier, ZeroBounce ali NeverBounce) in uvozite očiščen seznam. Vrnjeni naslovi so že izločeni — nanje ne bomo več pisali.</p>
+<p>Kampanjo lahko nadaljujete v aplikaciji: <a href="${appUrl}/kampanje">E-poštne kampanje</a>.</p>`;
+    await sendEmail({ to, subject: `Kampanja »${camp.name}« je ustavljena: preveč vrnjenih sporočil`, body, from_name: 'AI Aristotle' }).catch(() => null);
+  }
+  return true;
+}
+
 // Vse zapise (paginacija), ker filter brez meje vrne le prvo stran.
 export async function allRecords(entity, query, sort = '-created_date') {
   const out = [];
