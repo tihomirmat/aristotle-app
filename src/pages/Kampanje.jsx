@@ -437,7 +437,7 @@ export default function Kampanje() {
         const msgs = tpl.steps.length;
         const reach = isList
           ? (n > 0 ? `Naslovov na vaših seznamih: ${n}` : "Najprej uvozite seznam naslovov")
-          : (n > 0 ? `Zdaj bi jo prejel${n === 1 ? "a" : "o"}: ${cnt(n, ["stranka", "stranki", "stranke", "strank"])}` : "Zdaj ni strank, ki bi ustrezale");
+          : (n > 0 ? `Zdaj ustreza: ${cnt(n, ["stranka", "stranki", "stranke", "strank"])}` : "Zdaj ni strank, ki bi ustrezale");
         return (
           <button key={k} onClick={() => pick(k)} className="text-left card-elevated p-4 flex flex-col hover:border-primary/50 hover:shadow-md transition-all group">
             <div className="flex items-center gap-3">
