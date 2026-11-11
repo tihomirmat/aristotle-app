@@ -19,6 +19,7 @@ import { fnError } from "@/lib/fn-error";
 import GlasZnamkeTab from "@/components/nastavitve/GlasZnamkeTab";
 import TerminiTab from "@/components/nastavitve/TerminiTab";
 import MailboxCard from "@/components/nastavitve/MailboxCard";
+import ConnectionsOverview, { CampaignMailboxesCard, InvoiceAddressCard } from "@/components/nastavitve/ConnectionsOverview";
 import AutoSendCard from "@/components/nastavitve/AutoSendCard";
 import FeaturesCard from "@/components/nastavitve/FeaturesCard";
 import SourcesTab from "@/components/nastavitve/SourcesTab";
@@ -218,7 +219,7 @@ export default function Nastavitve() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Nastavitve</h1>
-        <p className="text-muted-foreground mt-1">Upravljajte profil, integracije in naročnino.</p>
+        <p className="text-muted-foreground mt-1">Profil podjetja, povezave (pošta, koledar, računi, klepet) in naročnina.</p>
       </div>
 
       <Tabs defaultValue={defaultTab}>
@@ -227,7 +228,7 @@ export default function Nastavitve() {
           <TabsTrigger value="glas" className="gap-2"><Mic className="w-4 h-4" /> Glas znamke</TabsTrigger>
           <TabsTrigger value="pomocniki" className="gap-2"><LayoutGrid className="w-4 h-4" /> Pomočniki</TabsTrigger>
           <TabsTrigger value="viri" className="gap-2"><UsersIcon className="w-4 h-4" /> Viri strank</TabsTrigger>
-          <TabsTrigger value="integracije" className="gap-2"><Mail className="w-4 h-4" /> Integracije</TabsTrigger>
+          <TabsTrigger value="integracije" className="gap-2"><Mail className="w-4 h-4" /> Povezave</TabsTrigger>
           <TabsTrigger value="termini" className="gap-2"><Calendar className="w-4 h-4" /> Termini</TabsTrigger>
           <TabsTrigger value="billing" className="gap-2"><CreditCard className="w-4 h-4" /> Naročnina</TabsTrigger>
           {user?.role === "admin" && <TabsTrigger value="racuni" className="gap-2"><FileText className="w-4 h-4" /> Računi (admin)</TabsTrigger>}
@@ -328,9 +329,11 @@ export default function Nastavitve() {
 
         {/* INTEGRACIJE */}
         <TabsContent value="integracije">
+          <div className="mb-5"><ConnectionsOverview business={business} /></div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
             <div className="space-y-5">
-            <MailboxCard business={business} />
+            <div id="predal" className="scroll-mt-24"><MailboxCard business={business} /></div>
+            <InvoiceAddressCard business={business} />
 
             <div className="card-elevated p-6 flex items-center gap-4">
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[hsl(229,88%,31%)] to-[hsl(258,92%,40%)] flex items-center justify-center shrink-0">
@@ -347,6 +350,7 @@ export default function Nastavitve() {
 
             </div>
             <div className="space-y-5">
+            <CampaignMailboxesCard business={business} />
             <AutoSendCard business={business} isTrialing={isTrialing} />
 
             {/* AI model — samo skrbnik */}
