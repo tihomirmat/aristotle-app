@@ -118,6 +118,7 @@ NALOGA: napiši NOVO ponudbo za novo stranko v POPOLNOMA ISTI obliki, da bo doku
 - Odstavek napiši kot EN blok (vrstice prelomi sistem). Naslov razdeli v dve vrstici samo, če je tako razdeljen v izvirniku in je dolg.
 - CENE: uporabi izključno »CENIK IN PRAVILA« ter podatke iz povpraševanja. Upoštevaj pogojna pravila (npr. lokacija, velikost, količina) in v ponudbi z enim stavkom pojasni, zakaj je izbrana ta različica. Če za postavko ni cene, napiši »po dogovoru« — nikoli si ne izmišljuj zneskov. Zneski v obliki 1.200 €. Seštevki morajo biti računsko pravilni. Prečrtane »stare« cene uporabi samo, če jih cenik izrecno navaja.
 - Ponujaj samo storitve s seznama storitev podjetja. Slovenščina, vikanje, brez praznih fraz.
+- Ponudbo bere STRANKA: nikoli ne omenjaj cenika, pravil, navodil ali tega, da kak podatek manjka v sistemu. Pri cenah brez podatka napiši samo »po dogovoru«, brez pojasnila.
 - Današnji datum je ${todaySl} (${monthSl}); uporabi ga v obliki, kot je datum zapisan v izvirniku. Ne izmišljuj drugih datumov.
 - Če ima izvirnik številko ponudbe, ohrani njeno obliko in uporabi zaporedno številko ${seq} (razen če lastnik v navodilih navede drugo).
 Vrni ZGOLJ JSON brez razlage: {"client_name": "naziv stranke", "total_eur": skupni znesek kot število ali null, "pages": [[blok, ...], ...]}`;
