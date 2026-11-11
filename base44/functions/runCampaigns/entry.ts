@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import nodemailer from 'npm:nodemailer@6.9.9';
 import { imapConnect, findSentBox } from '../../shared/imap.js';
 import { lower, inSendWindow, ljNow, remainingToday, perRunCap, sentToday, mergeFields, pauseIfTooManyBounces, allRecords } from '../../shared/campaignMail.js';
+import { syncCampaignMailboxesFor } from '../../shared/campaignSync.js';
 
 // E-poštne kampanje (vsako uro).
 // 1) Najprej prebere kampanjske predale (odbita sporočila, odgovori, odjave) — syncCampaignMailboxes.
@@ -11,7 +12,7 @@ import { lower, inSendWindow, ljNow, remainingToday, perRunCap, sentToday, merge
 //    Najprej nadaljevanja sekvence (follow-up), nato novi naslovi. Vsaka oseba dobiva vsa sporočila z istega predala.
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
-const VERSION = 'run-campaigns-2026-11-11-lists-b';
+const VERSION = 'run-campaigns-2026-11-11-lists-c';
 const MAX_AI_PER_RUN = 15;
 const MAX_LIST_SENDS_PER_RUN = 40;
 const DAY = 86400000;
@@ -213,8 +214,8 @@ Deno.serve(async (req) => {
 
     // 1) Najprej odbita sporočila in odgovori iz kampanjskih predalov (da ne pišemo neobstoječim naslovom).
     if (campaigns.some((c) => (c.mailbox_ids || []).length)) {
-      const r = await withTimeout(base44.asServiceRole.functions.invoke('syncCampaignMailboxes', { internal_secret: INTERNAL_SECRET, ...(body.business_id ? { business_id: body.business_id } : {}) }).catch((e) => ({ error: e?.message })), 100000);
-      summary.mailbox_sync = r?.timeout ? 'timeout' : ((r?.data ?? r)?.error || 'ok');
+      const r = await withTimeout(syncCampaignMailboxesFor(base44, { businessId: body.business_id }).then((x) => ({ results: x })).catch((e) => ({ error: e?.message })), 90000);
+      summary.mailbox_sync = r?.timeout ? 'timeout' : (r?.error || (r.results || []).map((x) => `${x.bounces || 0} vrnjenih, ${x.replies || 0} odgovorov${x.error ? ', ' + x.error : ''}`).join('; ') || 'ok');
       summary.ms_sync = Date.now() - t0;
       campaigns = (await Promise.all(campaigns.map((c) => sr.Campaign.filter({ id: c.id }).then((x) => x[0])))).filter((c) => c && c.status === 'active');
     }
