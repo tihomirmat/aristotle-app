@@ -59,7 +59,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       title: "Stranke",
       items: [
         { path: "/stranke", label: "Stranke", icon: Users, badge: pendingCount > 0 ? pendingCount : (newLeadsCount > 0 ? newLeadsCount : null) },
-        { feature: "campaigns", path: "/kampanje", label: "Kampanje", icon: Megaphone, locked: !hasModule(business, "pillar_reactivation"), lockDesc: "Redna sporočila strankam: vrnite stare stranke, novice, pridobivanje." },
+        { feature: "campaigns", path: "/kampanje", label: "E-poštne kampanje", icon: Megaphone, locked: !hasModule(business, "pillar_reactivation"), lockDesc: "Sekvence e-sporočil strankam ali naslovom s seznama: pridobivanje, novice, vrnite stare stranke." },
       ],
     },
     {
