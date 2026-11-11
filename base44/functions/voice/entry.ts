@@ -35,6 +35,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const business = body.business_id ? (await base44.asServiceRole.entities.Business.filter({ id: body.business_id }))[0] : null;
     if (!business || !ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.', version: VERSION });
+    if (body.action === 'status') return Response.json({ success: true, enabled: !!KEY, version: VERSION });
     if (!KEY) return Response.json({ error: 'Glasovni vnos še ni vklopljen.', code: 'NO_KEY', version: VERSION });
 
     if (body.action === 'transcribe') {
