@@ -44,6 +44,36 @@ async function syncOne(base44, business) {
   const rules = String(business.inquiry_rules || '').split('\n').map(lower).filter(Boolean);
   let maxUid = Number(business.imap_last_uid) || 0;
   const mails = [];
+  // Računi: (1) naslovi/domene dobaviteljev (vedno račun), (2) naslov za račune <predal>+racuni@domena (poslano, v kopiji ali posredovano),
+  // (3) mapa »racuni«, kamor takšno pošto razvrsti strežnik (npr. cPanel/Neoserv).
+  const invoiceSenders = String(business.invoice_senders || '').split(/[\n,;]+/).map(lower).filter(Boolean);
+  const invAddr = lower(business.invoice_address || invoiceAddressFor(business.imap_user));
+  const isInvoiceSender = (em) => invoiceSenders.some((s) => (s.startsWith('@') ? em.endsWith(s) : s.includes('@') ? em === s : (em.endsWith('@' + s) || em.endsWith('.' + s))));
+  let folderMaxUid = Number(business.invoice_folder_last_uid) || 0;
+  const toMail = async (msg, { fromFolder = false } = {}) => {
+    const parsed = await simpleParser(msg.source);
+    const from = parsed.from?.value?.[0] || {};
+    const fromEmail = lower(from.address);
+    const headers = parsed.headers;
+    const rcpts = [...(parsed.to?.value || []), ...(parsed.cc?.value || [])].map((a) => lower(a.address));
+    const toInvoiceAddr = !!invAddr && (rcpts.includes(invAddr) || ['delivered-to', 'x-original-to', 'envelope-to'].some((h) => lower(JSON.stringify(headers.get(h) || '')).includes(invAddr)));
+    const forcedInvoice = fromFolder || toInvoiceAddr || (!!fromEmail && isInvoiceSender(fromEmail));
+    if (!fromEmail || (ownAddresses.has(fromEmail) && !forcedInvoice)) return null;
+    const autoSubmitted = lower(headers.get('auto-submitted'));
+    const precedence = lower(headers.get('precedence'));
+    const subject = parsed.subject || '';
+    const text = (parsed.text || (parsed.html ? String(parsed.html).replace(/<[^>]+>/g, ' ') : '')).replace(/\s+\n/g, '\n').trim();
+    const forced = rules.some((r) => fromEmail.includes(r) || lower(subject).includes(r));
+    const okType = (a) => /pdf|xml/i.test(a.contentType || '') || /\.(pdf|xml)$/i.test(a.filename || '') || (forcedInvoice && (/image\/(jpe?g|png|webp|heic|heif)/i.test(a.contentType || '') || /\.(jpe?g|png|webp|heic)$/i.test(a.filename || '')));
+    const attachments = (parsed.attachments || [])
+      .filter((a) => a.content && a.size < 8_000_000 && a.contentDisposition !== 'inline' && okType(a))
+      .slice(0, 5)
+      .map((a) => ({ filename: a.filename || 'racun.pdf', contentType: a.contentType || 'application/pdf', content: a.content }));
+    const invoiceLike = attachments.length > 0 && /račun|racun|faktur|invoice|e-račun|eracun|bill/i.test(`${subject} ${attachments.map((a) => a.filename).join(' ')}`);
+    const bulk = !!headers.get('list-unsubscribe') || ['bulk', 'list', 'junk'].includes(precedence) || (autoSubmitted && autoSubmitted !== 'no');
+    if (bulk && !forced && !forcedInvoice && !invoiceLike && !/obrazec|povpra|form|kontakt|inquiry|naročil/i.test(subject)) return null;
+    return { uid: msg.uid, messageId: parsed.messageId || `${business.id}-${fromFolder ? 'f' : ''}${msg.uid}`, fromName: from.name || '', fromEmail, subject, text, date: parsed.date || new Date(), forced, forcedInvoice, viaInvoiceAddress: fromFolder || toInvoiceAddr, attachments };
+  };
 
   try {
     client = await imapConnect({ host: business.imap_host, port: Number(business.imap_port) || 993, user: business.imap_user, pass: business.imap_pass, timeoutMs: 15000, socketTimeoutMs: 60000 });
@@ -59,26 +89,24 @@ async function syncOne(base44, business) {
       const small = uids.filter((u) => (sizes.get(u) || 0) <= 3_000_000);
       const fetched = [];
       for (let i = 0; i < small.length; i += 10) fetched.push(...await client.uidFetchSource(small.slice(i, i + 10)));
-      for (const msg of fetched) {
-        const parsed = await simpleParser(msg.source);
-        const from = parsed.from?.value?.[0] || {};
-        const fromEmail = lower(from.address);
-        if (!fromEmail || ownAddresses.has(fromEmail)) continue;
-        const headers = parsed.headers;
-        const autoSubmitted = lower(headers.get('auto-submitted'));
-        const precedence = lower(headers.get('precedence'));
-        const subject = parsed.subject || '';
-        const text = (parsed.text || (parsed.html ? String(parsed.html).replace(/<[^>]+>/g, ' ') : '')).replace(/\s+\n/g, '\n').trim();
-        const forced = rules.some((r) => fromEmail.includes(r) || lower(subject).includes(r));
-        const attachments = (parsed.attachments || [])
-          .filter((a) => a.content && a.size < 8_000_000 && (/pdf|xml/i.test(a.contentType || '') || /\.(pdf|xml)$/i.test(a.filename || '')))
-          .slice(0, 3)
-          .map((a) => ({ filename: a.filename || 'racun.pdf', contentType: a.contentType || 'application/pdf', content: a.content }));
-        const invoiceLike = attachments.length > 0 && /račun|racun|faktur|invoice|e-račun|eracun|bill/i.test(`${subject} ${attachments.map((a) => a.filename).join(' ')}`);
-        const bulk = !!headers.get('list-unsubscribe') || ['bulk', 'list', 'junk'].includes(precedence) || (autoSubmitted && autoSubmitted !== 'no');
-        if (bulk && !forced && !invoiceLike && !/obrazec|povpra|form|kontakt|inquiry|naročil/i.test(subject)) continue;
-        mails.push({ uid: msg.uid, messageId: parsed.messageId || `${business.id}-${msg.uid}`, fromName: from.name || '', fromEmail, subject, text, date: parsed.date || new Date(), forced, attachments });
-      }
+      for (const msg of fetched) { const m = await toMail(msg); if (m) mails.push(m); }
+    }
+    // Mapa za račune (strežnik tja razvrsti pošto za <predal>+racuni@…)
+    if (business.invoice_enabled !== false) {
+      try {
+        const box = (await client.list()).find((b) => /(^|[./])(racuni|računi)$/i.test(b.path));
+        if (box) {
+          await client.select(box.path);
+          let fu = folderMaxUid > 0 ? await client.uidSearch(`UID ${folderMaxUid + 1}:*`) : await client.uidSearch(`SINCE ${imapDate(new Date(Date.now() - 60 * 86400000))}`);
+          fu = (fu || []).filter((u) => u > folderMaxUid).sort((a, b) => a - b).slice(0, 20);
+          if (fu.length) {
+            const sizes = await client.uidSizes(fu);
+            for (const u of fu) folderMaxUid = Math.max(folderMaxUid, u);
+            const small = fu.filter((u) => (sizes.get(u) || 0) <= 15_000_000);
+            for (let i = 0; i < small.length; i += 5) for (const msg of await client.uidFetchSource(small.slice(i, i + 5))) { const m = await toMail(msg, { fromFolder: true }); if (m) mails.push(m); }
+          }
+        }
+      } catch (e) { console.error('invoice folder', e?.message); }
     }
     await client.logout().catch(() => {});
   } catch (e) {
