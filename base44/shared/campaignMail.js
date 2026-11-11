@@ -175,7 +175,7 @@ export async function pauseIfTooManyBounces({ sr, sendEmail, business, camp, enr
     const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
     const list = alert.addresses.slice(0, 10).map((a) => `• ${esc(a.email)} — ${esc(a.reason)}`).join('<br>');
     const body = `<p>Pozdravljeni,</p>
-<p>kampanjo <b>»${esc(camp.name)}«</b> smo <b>začasno ustavili</b>, ker se je vrnilo ${alert.count} sporočil (od ${alert.sent} prejemnikov, ${(alert.rate * 100).toFixed(1).replace('.', ',')} %). Ti naslovi verjetno ne obstajajo več:</p>
+<p>kampanjo <b>»${esc(camp.name)}«</b> smo <b>začasno ustavili</b>, ker se sporočila vračajo — vrnjena sporočila: ${alert.count} od ${alert.sent} prejemnikov (${(alert.rate * 100).toFixed(1).replace('.', ',')} %). Ti naslovi verjetno ne obstajajo več:</p>
 <p>${list}</p>
 <p><b>Zakaj je to pomembno:</b> ponudniki e-pošte (Gmail, Outlook, Siol …) spremljajo, koliko vaših sporočil se vrne. Ko jih je več kot nekaj odstotkov, vašo pošto začnejo uvrščati med neželeno ali jo zavračati — lahko tudi običajna sporočila z iste domene. Popravljanje ugleda traja tedne.</p>
 <p><b>Kaj priporočamo:</b> preden nadaljujete, preverite preostale naslove v spletni storitvi za preverjanje e-naslovov (npr. Bouncer, MillionVerifier, ZeroBounce ali NeverBounce) in uvozite očiščen seznam. Vrnjeni naslovi so že izločeni — nanje ne bomo več pisali.</p>
