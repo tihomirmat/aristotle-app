@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Users, MessageSquare, Bot,
   Star, Settings, ChevronLeft, ChevronRight,
   Building2, BarChart3, Lock, LayoutGrid, FileText, FileSignature, Rocket, ListChecks, Megaphone
+  CalendarDays,
 } from "lucide-react";
 import { useBusiness } from "@/lib/business-context";
 import { hasModule } from "@/lib/entitlements";
@@ -52,6 +53,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       items: [
         { path: "/", label: "Pregled", icon: LayoutDashboard },
         { path: "/opravila", label: "Opravila", icon: ListChecks, badge: dueTasksCount > 0 ? dueTasksCount : null },
+        { path: "/termini", label: "Termini", icon: CalendarDays },
         { path: "/asistent", label: "Asistent", icon: Bot, locked: !hasModule(business, "pillar_assistant"), lockDesc: "Dnevni pregled nalog in termini." },
       ],
     },
