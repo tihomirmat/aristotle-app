@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import nodemailer from 'npm:nodemailer@6.9.9';
 import { imapConnect, findSentBox } from '../../shared/imap.js'; // kopija v Poslano (imapflow v Deno obvisi)
+import { htmlToText, emailifyHtml, hasHtml } from '../../shared/campaignMail.js';
 
 const EMAIL_APP_URL = (Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app').replace(/\/$/, '');
 const EMAIL_FOOTER_COMPANY = Deno.env.get('EMAIL_FOOTER_COMPANY') || 'AI Aristotle';
@@ -151,7 +152,11 @@ Deno.serve(async (req) => {
         imap_enabled: !!campaignMailbox.imap_enabled, imap_host: campaignMailbox.imap_host, imap_port: campaignMailbox.imap_port, imap_user: campaignMailbox.email, imap_pass: campaignMailbox.imap_pass,
       });
     }
-    const signature = business.email_signature ? `\n\n${business.email_signature}` : `\n\nLep pozdrav,\n${business.name}`;
+    // Podpis: HTML podpis predala za kampanje (lahko z logotipom) ali podpis podjetja.
+    const sigHtml = campaignMailbox && hasHtml(campaignMailbox.signature_html) ? emailifyHtml(campaignMailbox.signature_html) : '';
+    const signature = sigHtml ? `\n\n${htmlToText(sigHtml)}` : business.email_signature ? `\n\n${business.email_signature}` : `\n\nLep pozdrav,\n${business.name}`;
+    // Oblikovano besedilo kampanje (slike, povezave) — samo, če osnutka v aplikaciji niso spremenili.
+    const richBody = hasHtml(draft.body_html) && htmlToText(draft.body_html).replace(/\s+/g, ' ').trim() === String(draft.body || '').replace(/\s+/g, ' ').trim() ? emailifyHtml(draft.body_html) : '';
     // AI pogosto sam doda »Lep pozdrav, Ime« — odreži ga, ker spodaj vedno dodamo podpis podjetja (sicer je podpis dvojen).
     {
       const lines = String(draft.body || '').replace(/\s+$/, '').split('\n');
@@ -171,12 +176,15 @@ Deno.serve(async (req) => {
     const missingAttach = attachList.filter((a) => !attachments.some((x) => x.filename === String(a.name || 'priloga.pdf')));
     if (missingAttach.length) draft.body = `${draft.body || ''}\n\n${missingAttach.map((a) => `${a.name || 'Priloga'}: ${a.url}`).join('\n')}`;
     const fullBody = (draft.body || '') + signature + footer;
-    const personalHtml = `<!doctype html><html lang="sl"><head><meta charset="utf-8"></head><body style="margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#111827">${textToHtml((draft.body || '') + signature)}</body></html>`;
+    const contentHtml = richBody || sigHtml
+      ? `${richBody || textToHtml(draft.body || '')}${missingAttach.length && richBody ? textToHtml(missingAttach.map((a) => `${a.name || 'Priloga'}: ${a.url}`).join('\n')) : ''}<div style="margin-top:16px">${sigHtml || textToHtml(signature)}</div>`
+      : textToHtml((draft.body || '') + signature);
+    const personalHtml = `<!doctype html><html lang="sl"><head><meta charset="utf-8"></head><body style="margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#111827">${contentHtml}</body></html>`;
     const fullHtml = !MARKETING ? personalHtml : emailHtml({
       brand: business.name,
       brandSub: business.phone ? String(business.phone) : '',
       title: '',
-      bodyHtml: textToHtml((draft.body || '') + signature),
+      bodyHtml: contentHtml,
       footerNote: `Če teh sporočil ne želite več prejemati, se lahko <a href="${escHtml(unsubUrl)}" style="color:#6b7280">odjavite tukaj</a> ali odgovorite na to sporočilo z besedo »Odjava«.`,
     });
     const origSubject = String(lead.email_subject || '').trim();
