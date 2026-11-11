@@ -76,7 +76,7 @@ export default function ReplyInbox({ drafts = [], leads = [], activities = [] })
                     <p className="font-semibold text-sm truncate">{l?.name || "Stranka"}</p>
                     <span className="text-[11px] text-muted-foreground shrink-0">{ago(d.created_date)}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><r.icon className="w-3 h-3" />{r.label}{active === "inquiries" && src ? ` · ${src.label}` : ""}{d.status === "flagged_for_review" ? " · preverite" : ""}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><r.icon className="w-3 h-3" />{active === "campaign_replies" && d.pillar === "web_form_lead" ? "Odgovor na kampanjo" : r.label}{active === "inquiries" && src ? ` · ${src.label}` : ""}{d.status === "flagged_for_review" ? " · preverite" : ""}</p>
                   <p className="text-xs mt-1 line-clamp-1">{d.subject || firstLine(d.body)}</p>
                 </button>
               );
