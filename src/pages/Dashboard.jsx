@@ -161,7 +161,7 @@ export default function Dashboard() {
                 </ul>
               )}
             </Panel>
-            <Panel icon={Calendar} title="Termini v 7 dneh" count={upcoming.length} to={business?.google_calendar_connected ? "/asistent" : "/nastavitve?tab=termini"} cta={business?.google_calendar_connected ? "Koledar" : "Poveži koledar"}>
+            <Panel icon={Calendar} title="Termini v 7 dneh" count={upcoming.length} to="/termini" cta="Koledar">
               {upcoming.length === 0 ? <p className="px-5 py-6 text-sm text-muted-foreground">{business?.google_calendar_connected ? "V naslednjih 7 dneh ni dogovorjenih terminov." : "Koledar ni povezan, zato terminov ne vidimo."}</p> : (
                 <ul className="divide-y">
                   {upcoming.slice(0, 6).map((b) => { const l = leadsById[b.lead_id]; return (
