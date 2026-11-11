@@ -521,5 +521,5 @@ export function contentToMarkdown(content, design) {
       else out.push('', line);
     });
   });
-  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return out.join('\n').replace(/\*\*\*\*/g, ' ').replace(/\*\*\s*\*\*/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
