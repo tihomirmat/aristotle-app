@@ -9,6 +9,7 @@ Deno.serve(async (req) => {
   const hist = await g('/v1/history?page_size=10');
   const voice = VID ? await g('/v1/voices/' + VID) : null;
   const now = Math.floor(Date.now() / 1000);
-  const usage = await g(`/v1/usage/character-stats?start_unix=${(now - 86400 * 2) * 1000}&end_unix=${now * 1000}&breakdown_type=product_type`);
+  const q = (b) => g(`/v1/usage/character-stats?start_unix=${(now - 86400 * 2) * 1000}&end_unix=${now * 1000}&aggregation_interval=hour&breakdown_type=${b}`);
+  const usage = { product: await q('product_type'), model: await q('model'), keys: await q('all_api_keys'), resource: await q('resource') };
   return Response.json({ keyLen: KEY.length, vidLen: VID.length, sub, hist, voice: voice && { status: voice.status, body: voice.body.slice(0, 400) }, usage });
 });
