@@ -25,6 +25,7 @@ const STATUS = {
   captured: { label: "Čaka na pošiljanje", cls: "bg-amber-100 text-amber-800" },
   packaged: { label: "Pripravljen za pošiljanje", cls: "bg-blue-100 text-blue-700" },
   sent: { label: "Poslan računovodji", cls: "bg-emerald-100 text-emerald-700" },
+  excluded: { label: "Ne pošiljaj računovodji", cls: "bg-slate-100 text-slate-600" },
 };
 const sourceOf = (inv) => (inv.source === "email" ? "Iz e-pošte" : inv.source === "forward" ? "Posredovan po e-pošti" : inv.source_email_from && inv.source_email_from !== "manual upload" && !inv.source ? "Posredovan po e-pošti" : "Dodali ste sami");
 const supplierOf = (inv) => inv.supplier_name || (inv.source_email_from && inv.source_email_from !== "manual upload" ? inv.source_email_from : "") || inv.file_name || "Račun";
@@ -85,6 +86,14 @@ export default function Racuni() {
   const sortedPackages = [...packages].sort((a, b) => (b.period_year * 100 + b.period_month) - (a.period_year * 100 + a.period_month));
 
   const refreshBusiness = () => queryClient.invalidateQueries({ queryKey: ["business"] });
+  // Lastnik izbere, ali gre račun računovodji: Čaka na pošiljanje (gre z mesečnim paketom) ali Ne pošiljaj (izločen).
+  const setInvoiceStatus = async (inv, status) => {
+    try {
+      await base44.entities.Invoice.update(inv.id, { status });
+      queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] });
+      toast.success(status === "excluded" ? "Ta račun ne gre računovodji." : "Račun gre z naslednjim pošiljanjem računovodji.");
+    } catch (e) { toast.error(fnError(e)); }
+  };
   const deleteInvoice = useMutation({
     mutationFn: (id) => base44.entities.Invoice.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["invoices", business?.id] }); toast.success("Račun izbrisan."); },
@@ -216,10 +225,15 @@ export default function Racuni() {
                           <td className="px-2 py-3 text-right font-medium whitespace-nowrap">{money(inv.amount)}</td>
                           <td className="px-2 py-3 text-muted-foreground whitespace-nowrap">{dateOf(inv) ? format(new Date(inv.invoice_date || dateOf(inv)), "d. M. yyyy") : "—"}</td>
                           <td className="px-2 py-3 text-muted-foreground hidden md:table-cell whitespace-nowrap">{sourceOf(inv)}</td>
-                          <td className="px-2 py-3"><span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${St.cls}`}>{St.label}</span></td>
+                          <td className="px-2 py-3">{["captured", "excluded"].includes(inv.status || "captured")
+                            ? <select value={inv.status || "captured"} onChange={(e) => setInvoiceStatus(inv, e.target.value)} aria-label="Ali gre račun računovodji" title="Ali naj gre ta račun računovodji?"
+                                className={`rounded-full pl-2 pr-1 py-0.5 text-[11px] font-medium border-0 cursor-pointer ${St.cls}`}>
+                                <option value="captured">Čaka na pošiljanje</option><option value="excluded">Ne pošiljaj računovodji</option>
+                              </select>
+                            : <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${St.cls}`}>{St.label}</span>}</td>
                           <td className="px-2 py-3"><div className="flex items-center justify-end gap-1">
                             {inv.file_url && <a href={inv.file_url} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline" className="h-8 gap-1.5"><Download className="w-3.5 h-3.5" />Odpri</Button></a>}
-                            {inv.status === "captured" && <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-red-600" title="Izbriši račun" onClick={() => { if (window.confirm(`Izbrišem račun »${supplierOf(inv)}«?`)) deleteInvoice.mutate(inv.id); }}><Trash2 className="w-4 h-4" /></Button>}
+                            {["captured", "excluded"].includes(inv.status || "captured") && <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-red-600" title="Izbriši račun" onClick={() => { if (window.confirm(`Izbrišem račun »${supplierOf(inv)}«?`)) deleteInvoice.mutate(inv.id); }}><Trash2 className="w-4 h-4" /></Button>}
                           </div></td>
                         </tr>
                       );
@@ -247,7 +261,8 @@ export default function Racuni() {
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}Pošlji račune za {monthLabel(prevKey)} zdaj
             </Button>
             {!accOn && <p className="text-xs text-muted-foreground mt-2">Najprej vpišite e-naslov računovodje (korak 3 zgoraj).</p>}
-            {accOn && <p className="text-xs text-muted-foreground mt-2">Sicer jih pošljemo sami 1. v mesecu. Računi tekočega meseca gredo naslednji mesec.</p>}
+            {accOn && <p className="text-xs text-muted-foreground mt-2">Sicer jih pošljemo sami 1. v mesecu. Računi tekočega meseca gredo naslednji mesec. Računi z oznako »Ne pošiljaj računovodji« ne gredo nikoli.</p>}
+            {business?.accountant_email && <label className="flex items-center gap-2 text-xs text-muted-foreground mt-3 pt-3 border-t cursor-pointer"><Switch checked={!!business.invoice_enabled} onCheckedChange={toggleAuto} />Pošlji samodejno vsakega 1. v mesecu</label>}
           </div>
 
           <div className="card-elevated p-5">
