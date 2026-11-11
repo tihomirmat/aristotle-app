@@ -309,7 +309,7 @@ export default function Asistent() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild><Link to="/termini"><Calendar className="w-4 h-4 mr-2" />Termini</Link></Button>
-          <Button className="btn-brand" onClick={() => setChatOpen(true)}><MessageSquare className="w-4 h-4 mr-2" />Vprašaj asistenta</Button>
+          <Button variant="outline" className="border-primary/40 text-primary hover:text-primary" onClick={() => setChatOpen(true)}><MessageSquare className="w-4 h-4 mr-2" />Vprašaj asistenta</Button>
         </div>
       </div>
       {!calendarConnected && (
