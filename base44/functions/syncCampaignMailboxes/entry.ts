@@ -105,9 +105,12 @@ async function syncBusiness(base44, business, mailboxes) {
             e.status = 'stopped_bounced'; e.bounced_at = now;
             (newBounceByCamp[e.campaign_id] ||= []).push({ email: em, reason: b.reason.slice(0, 200) });
           }
-          for (const c of contactsByEmail.get(em) || []) await sr.ListContact.update(c.id, { status: 'bounced', bounce_reason: b.reason.slice(0, 300), bounced_at: now });
-          const lead = leadByEmail.get(em);
-          if (lead && !lead.email_bounced) await sr.Lead.update(lead.id, { email_bounced: true });
+          // »Zavrnjeno kot neželeno« ne pomeni, da naslov ne obstaja (težava je ugled pošiljatelja) — naslova ne izločimo za vedno.
+          if (b.kind !== 'blocked') {
+            for (const c of contactsByEmail.get(em) || []) await sr.ListContact.update(c.id, { status: 'bounced', bounce_reason: b.reason.slice(0, 300), bounced_at: now });
+            const lead = leadByEmail.get(em);
+            if (lead && !lead.email_bounced) await sr.Lead.update(lead.id, { email_bounced: true });
+          }
         }
         continue;
       }
