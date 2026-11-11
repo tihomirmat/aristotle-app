@@ -23,7 +23,7 @@ function Panel({ icon: Icon, title, count, to, cta, children, tone = "text-prima
       <header className="flex items-center gap-2.5 px-5 py-3.5 border-b">
         <Icon className={`w-4 h-4 ${tone}`} />
         <h2 className="text-[15px] font-semibold">{title}</h2>
-        {count > 0 && <span className="text-[11px] font-bold text-white bg-primary rounded-full min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center">{count}</span>}
+        {count > 0 && <span className="text-[11px] font-semibold text-accent-foreground bg-primary/15 rounded-full min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center">{count}</span>}
         {to && <Link to={to} className="ml-auto text-sm text-primary font-medium inline-flex items-center gap-1 hover:underline">{cta}<ArrowRight className="w-3.5 h-3.5" /></Link>}
       </header>
       <div className="flex-1">{children}</div>
@@ -112,18 +112,18 @@ export default function Dashboard() {
       {trialCostOut && !trialSendsOut && <StatusBanner variant="warning" message="AI kredit za preizkus je porabljen. Aktivirajte naročnino za nova sporočila." action={{ label: "Aktiviraj", href: "/nastavitve?tab=billing" }} />}
 
       {/* Glava: ena vrstica — kaj čaka danes */}
-      <div className="relative overflow-hidden rounded-2xl bg-space bg-space-stars text-white px-6 py-5">
+      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-[hsl(24_70%_97%)] via-card to-[hsl(222_60%_97%)] px-6 py-5">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-white/70">{greeting()}{firstName ? `, ${firstName}` : ""} · {format(now, "EEEE, d. MMMM", { locale: sl })}</p>
-            <h1 className="text-white mt-0.5 text-2xl md:text-[28px]">
-              {waiting > 0 ? <>Danes vas čaka: <span className="text-gradient-brand">{[drafts.length > 0 && cnt(drafts.length, ["odgovor", "odgovora", "odgovori", "odgovorov"]), dueTasks.length > 0 && cnt(dueTasks.length, ["opravilo", "opravili", "opravila", "opravil"])].filter(Boolean).join(" in ")}</span></> : <>Vse je <span className="text-gradient-brand">urejeno</span>. AI dela v ozadju.</>}
+            <p className="text-sm text-muted-foreground">{greeting()}{firstName ? `, ${firstName}` : ""} · {format(now, "EEEE, d. MMMM", { locale: sl })}</p>
+            <h1 className="mt-0.5 text-2xl md:text-[28px]">
+              {waiting > 0 ? <>Danes vas čaka: <span className="text-accent-foreground">{[drafts.length > 0 && cnt(drafts.length, ["odgovor", "odgovora", "odgovori", "odgovorov"]), dueTasks.length > 0 && cnt(dueTasks.length, ["opravilo", "opravili", "opravila", "opravil"])].filter(Boolean).join(" in ")}</span></> : <>Vse je <span className="text-accent-foreground">urejeno</span>. AI dela v ozadju.</>}
             </h1>
           </div>
           <div className="flex gap-2 shrink-0">
             {drafts.length > 0 && <Button asChild className="btn-brand h-10 px-5 rounded-xl"><Link to="/stranke?tab=odgovori">Preglej odgovore <ArrowRight className="w-4 h-4 ml-1.5" /></Link></Button>}
             {featureOn(business, "campaigns") && drafts.length === 0 && (
-              <div className="[&>button]:h-10 [&>button]:rounded-xl [&>button]:bg-white/10 [&>button]:border-white/20 [&>button]:text-white [&>button:hover]:bg-white/20"><ReactivationPanel /></div>
+              <div className="[&>button]:h-10 [&>button]:rounded-xl"><ReactivationPanel /></div>
             )}
           </div>
         </div>
