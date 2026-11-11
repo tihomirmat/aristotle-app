@@ -6,7 +6,9 @@ import { useBusiness } from "@/lib/business-context";
 import { hasModule } from "@/lib/entitlements";
 import { eur } from "@/lib/crm";
 import { Button } from "@/components/ui/button";
-import { FileSignature, FileText, Plus, Upload, Pencil, Download, AlertCircle, ArrowRight, Settings, Zap } from "lucide-react";
+import { FileSignature, FileText, Plus, Upload, Pencil, Download, AlertCircle, ArrowRight, Settings, Zap, User } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import IconHint from "@/components/ui/IconHint";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import OfferPreview from "@/components/ponudbe/OfferPreview";
@@ -26,8 +28,7 @@ export default function Ponudbe() {
   const isAdmin = user?.role === "admin";
   const qc = useQueryClient();
   const hasOffers = hasModule(business, "pillar_offers");
-  const [selId, setSelId] = useState(null);
-  const previewRef = useRef(null);
+  const [textOffer, setTextOffer] = useState(null); // starejše ponudbe brez PDF → besedilo v oknu
 
   const { data: templates = [] } = useQuery({
     queryKey: ["offer-templates", business?.id],
@@ -41,12 +42,10 @@ export default function Ponudbe() {
   });
 
   const offers = generations.filter((g) => g.status !== "failed" && (g.output_markdown || g.output_pdf_url));
-  const sel = offers.find((o) => o.id === selId) || offers[0] || null;
   const freeGenLeft = Math.max(0, 5 - (business?.offers_free_generations_used || 0));
   const hasByok = business?.offers_byok_provider && business?.offers_byok_verified_at;
   const quotaExhausted = freeGenLeft === 0 && !hasByok;
 
-  const pick = (o) => { setSelId(o.id); if (window.innerWidth < 1280) setTimeout(() => previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); };
   const setStatus = async (o, offer_status) => {
     try { await base44.entities.OfferGeneration.update(o.id, { offer_status }); qc.invalidateQueries({ queryKey: ["offer-generations", business.id] }); toast.success("Shranjeno."); }
     catch { toast.error("Shranjevanje ni uspelo."); }
@@ -79,8 +78,9 @@ export default function Ponudbe() {
         </div>
       )}
 
-      {/* Samodejne ponudbe ob povpraševanju — samo z vzorcem v vašem dizajnu */}
-      {templates.some((t) => t.letterhead_url) && (() => {
+      {(() => {
+      // Desni stolpec: samodejne ponudbe (če je vzorec z dizajnom) + vzorci + kvota
+      const autoCard = templates.some((t) => t.letterhead_url) && (() => {
         const mode = business?.offer_auto || "review";
         const set = async (v) => { try { await base44.entities.Business.update(business.id, { offer_auto: v }); qc.invalidateQueries({ queryKey: ["business"] }); toast.success("Shranjeno."); } catch { toast.error("Shranjevanje ni uspelo."); } };
         const OPTS = [
@@ -89,18 +89,19 @@ export default function Ponudbe() {
           ["send", "Pošlji samo", "Če so vsi podatki, gre ponudba stranki sama. Če kaj manjka, AI stranko najprej vpraša — to vedno pregledate vi."],
         ];
         return (
-          <div className="card-elevated p-5">
-            <div className="flex items-start gap-3 flex-wrap">
-              <span className="w-10 h-10 rounded-xl bg-accent text-primary flex items-center justify-center shrink-0"><Zap className="w-5 h-5" /></span>
-              <div className="flex-1 min-w-[240px]">
-                <p className="font-semibold">Samodejne ponudbe ob povpraševanju</p>
-                <p className="text-sm text-muted-foreground">Ko stranka po e-pošti povpraša ali odgovori na vaše sporočilo, AI preveri, ali ima vse podatke, in pripravi ponudbo po vašem ceniku v vašem dizajnu.</p>
+          <div className="card-elevated p-4">
+            <div className="flex items-start gap-3">
+              <span className="w-9 h-9 rounded-xl bg-accent text-primary flex items-center justify-center shrink-0"><Zap className="w-4 h-4" /></span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">Samodejne ponudbe ob povpraševanju</p>
+                <p className="text-xs text-muted-foreground">Ko stranka povpraša ali odgovori, AI pripravi ponudbo po vašem ceniku v vašem dizajnu.</p>
               </div>
             </div>
-            <div className="grid md:grid-cols-3 gap-2 mt-4">
+            <div className="space-y-1.5 mt-3">
               {OPTS.map(([k, l, d]) => (
-                <button key={k} onClick={() => k !== mode && set(k)} className={`text-left rounded-xl border-2 p-3 transition-colors ${mode === k ? "border-primary bg-accent/40" : "hover:border-primary/40"}`}>
-                  <span className="font-semibold text-sm block">{l}</span><span className="text-xs text-muted-foreground">{d}</span>
+                <button key={k} onClick={() => k !== mode && set(k)} className={`w-full text-left rounded-lg border px-3 py-2 transition-colors ${mode === k ? "border-primary/50 bg-accent/50" : "hover:border-primary/30"}`}>
+                  <span className="text-sm font-medium flex items-center gap-2"><span className={`w-3 h-3 rounded-full border-2 ${mode === k ? "border-primary bg-primary" : "border-slate-300"}`} />{l}</span>
+                  {mode === k && <span className="block text-xs text-muted-foreground mt-0.5 pl-5">{d}</span>}
                 </button>
               ))}
             </div>
@@ -108,6 +109,64 @@ export default function Ponudbe() {
             {business?.subscription_status === "trialing" && mode === "send" && <p className="text-xs text-muted-foreground mt-2">Med preizkusnim obdobjem se nič ne pošlje samo — vse gre v pregled.</p>}
           </div>
         );
+      })();
+      if (offers.length === 0) return autoCard || null;
+      return (
+        <div className="grid xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+          {/* Levo: ponudbe kot kompakten seznam — ikona PDF odpre pravo ponudbo */}
+          <div className="rounded-xl border bg-card overflow-hidden">
+            <p className="px-4 py-2.5 border-b text-sm font-semibold">Vaše ponudbe <span className="text-muted-foreground font-normal">({offers.length})</span></p>
+            <div className="divide-y">
+              {offers.map((o) => {
+                const st = o.offer_status || "draft"; const St = STATUS[st] || STATUS.draft;
+                const openDoc = () => (o.output_pdf_url ? window.open(o.output_pdf_url, "_blank", "noopener") : setTextOffer(o));
+                return (
+                  <div key={o.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30">
+                    <IconHint label={o.output_pdf_url ? "Odpri ponudbo (PDF)" : "Odpri ponudbo"}>
+                      <button onClick={openDoc} aria-label="Odpri ponudbo" className="w-9 h-9 rounded-lg bg-violet-50 text-violet-700 border border-violet-100 flex items-center justify-center shrink-0 hover:bg-violet-100"><FileText className="w-4 h-4" /></button>
+                    </IconHint>
+                    <button onClick={openDoc} className="min-w-0 flex-1 text-left">
+                      <p className="text-sm font-medium truncate hover:text-primary">{clientOf(o)}</p>
+                      <p className="text-xs text-muted-foreground">{day(o.created_date)}{o.amount ? <span className="text-foreground font-medium"> · {eur(o.amount)}</span> : null}</p>
+                    </button>
+                    <select value={st} onChange={(e) => setStatus(o, e.target.value)} aria-label="Kaj se je zgodilo s ponudbo" title="Kaj se je zgodilo s ponudbo?"
+                      className={`text-[11px] font-medium rounded-full px-2 py-1 border-0 cursor-pointer ${St.cls}`}>
+                      {Object.entries(STATUS).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
+                    </select>
+                    <span className="flex items-center gap-0.5 shrink-0">
+                      {o.output_pdf_url && <IconHint label="Prenesi PDF"><a href={o.output_pdf_url} target="_blank" rel="noreferrer" download aria-label="Prenesi PDF" className="w-8 h-8 rounded-md inline-flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"><Download className="w-4 h-4" /></a></IconHint>}
+                      <IconHint label="Spremeni (nova različica)"><Link to={`/ponudbe/nova?duplicate=${o.id}`} aria-label="Spremeni ponudbo" className="w-8 h-8 rounded-md inline-flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil className="w-4 h-4" /></Link></IconHint>
+                      {o.lead_id && <IconHint label="Odpri stranko"><Link to={`/stranke/${o.lead_id}`} aria-label="Odpri stranko" className="w-8 h-8 rounded-md inline-flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"><User className="w-4 h-4" /></Link></IconHint>}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <aside className="space-y-4 xl:sticky xl:top-20">
+            {autoCard}
+            <div className="card-elevated p-4">
+              <p className="font-semibold text-sm">Vaši vzorci</p>
+              <p className="text-xs text-muted-foreground">Po njih nastane vsaka nova ponudba.</p>
+              <div className="divide-y mt-2">
+                {templates.map((t) => (
+                  <div key={t.id} className="py-2 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-sm flex-1 truncate">{t.name}</span>
+                    {t.letterhead_url && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Vaš dizajn</span>}
+                    <Link to={`/ponudbe/templati/${t.id}`} className="text-xs text-muted-foreground hover:text-foreground">Uredi</Link>
+                  </div>
+                ))}
+              </div>
+              <Link to="/ponudbe/skener" className="mt-2 text-xs text-primary font-medium inline-flex items-center gap-1"><Upload className="w-3.5 h-3.5" />Dodaj svojo ponudbo (PDF)</Link>
+            </div>
+            <div className="text-xs text-muted-foreground flex items-center gap-3 flex-wrap px-1">
+              {!hasByok && !quotaExhausted && <span>Brezplačno še <strong className="text-foreground">{freeGenLeft}</strong> od 5 ponudb.</span>}
+              <Link to="/ponudbe/nastavitve" className="ml-auto inline-flex items-center gap-1 hover:text-foreground"><Settings className="w-3.5 h-3.5" />Nastavitve ponudb</Link>
+            </div>
+          </aside>
+        </div>
+      );
       })()}
 
       {/* Brez ponudb: en jasen začetek */}
