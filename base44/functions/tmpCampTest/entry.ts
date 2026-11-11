@@ -62,6 +62,18 @@ Deno.serve(async (req) => {
       await c.logout();
       return Response.json({ sel, msgs: ms.map((m) => { const h = new TextDecoder().decode(m.source).split(/\r?\n\r?\n/)[0]; return { uid: m.uid, h: h.split(/\r?\n/).filter((l) => /^(from|subject|to|delivered-to|x-failed-recipients|date):/i.test(l)).join(' | ').slice(0, 400) }; }) });
     }
+    if (body.action === 'unsub') {
+      const c = (await sr.ListContact.filter({ email: body.email }))[0];
+      const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(S || 'no-secret'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode('c:' + c.id));
+      const t = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+      const r = await fetch(`https://aristotle-smart-growth.base44.app/api/apps/69fb8760fa0b118b8a291e26/functions/unsubscribe?c=${c.id}&t=${t}`, { method: 'POST' });
+      const html = await r.text();
+      const after = (await sr.ListContact.filter({ id: c.id }))[0];
+      const enr = await sr.CampaignEnrollment.filter({ contact_id: c.id });
+      return Response.json({ http: r.status, title: (html.match(/<h1>([^<]+)/) || [])[1], status: after.status, enr: enr.map((e) => e.status) });
+    }
+    if (body.action === 'delinv') { await sr.Invoice.delete(body.id); return Response.json({ ok: true }); }
     if (body.action === 'run') return Response.json(await inv('runCampaigns', { business_id: BID }));
     if (body.action === 'sync') return Response.json(await inv('syncCampaignMailboxes', { business_id: BID }));
     if (body.action === 'state') {
