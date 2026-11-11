@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { imapConnect, imapDate } from '../../shared/imap.js';
+import { openMailbox } from '../../shared/secretBox.js';
 import { simpleParser } from 'npm:mailparser@3.7.1';
 import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 
@@ -12,7 +13,7 @@ const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const MAX_PER_RUN = 40;
 const FIRST_RUN_DAYS = 7;
-const VERSION = 'mini-imap-2026-11-11-invoices';
+const VERSION = 'mini-imap-2026-11-12-enc';
 
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
   || (!!user.email && (b.created_by === user.email || b.owner_email === user.email)));
@@ -38,6 +39,7 @@ Vrni ZGOLJ JSON tabelo v istem vrstnem redu: [{"i":0,"is_inquiry":true,"is_invoi
 }
 
 async function syncOne(base44, business) {
+  business = await openMailbox(business); // geslo odšifrirano samo v pomnilniku
   const out = { business_id: business.id, scanned: 0, inquiries: 0, new_leads: 0, updated_leads: 0, invoices: 0, error: null };
   if (!business.imap_host || !business.imap_user || !business.imap_pass) { out.error = 'Poštni predal ni povezan.'; return out; }
 
