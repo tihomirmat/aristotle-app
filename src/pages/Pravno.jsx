@@ -23,7 +23,7 @@ const Ul = ({ items }) => (
 
 // Kratek povzetek — prikazan v uvodu in ob ponovnem sprejemu. Ne nadomešča celotnih pogojev.
 export const KRATKO = [
-  "Vaši podatki so vaši: ne prodajamo jih, ne delimo jih z drugimi podjetji in AI modeli se na njih ne učijo. Izvoz ali izbris kadar koli.",
+  "Vaši podatki so vaši: ne prodajamo jih, ne delimo jih z drugimi podjetji in naš AI ponudnik (Anthropic) se na njih ne uči. Izvoz ali izbris kadar koli.",
   "Hranimo to, kar vidite v aplikaciji, v bazi na strežnikih Base44 (ZDA). Vidi jih le vaše podjetje; skrbnik aplikacije ima tehnični dostop za podporo in vzdrževanje.",
   "Gesla e-poštnih predalov so v bazi šifrirana (AES-256). Uporabi jih samo naš strežnik.",
   "Aplikacija bere vaš predal (vsakih 10 minut), da najde povpraševanja, odgovore in račune; ničesar ne briše. Vsebino obdela AI ponudnika Anthropic (ZDA).",
@@ -74,7 +74,7 @@ export function PogojiVsebina() {
         "Ponudbe AI pripravi na podlagi cenika in pravil, ki jih vpišete vi. Če cenika ni, lahko ponudba ostane brez cen. Pred pošiljanjem ponudbo preverite.",
         "AI se uči iz vaših popravkov in zavrnitev: iz njih izpelje kratka pravila, ki so shranjena samo v vašem računu. Vidite jih v Nastavitve → Glas znamke in jih lahko spremenite ali izbrišete.",
         "Pred pošiljanjem drugi AI preveri kakovost besedila in mu dodeli oceno. Ocena ni jamstvo pravilnosti.",
-        "Vaši podatki se ne uporabljajo za učenje AI modelov ponudnikov in jih ne vidijo druga podjetja v aplikaciji.",
+        "Anthropic podatkov, ki mu jih pošljemo, ne uporablja za učenje svojih modelov. Platforma Base44 si v svojih pogojih pridržuje pravico, da podatke aplikacij na paketih pod Enterprise uporabi za učenje svojih AI modelov (glej točko 9). Vaših podatkov ne vidijo druga podjetja v aplikaciji.",
       ]} />
 
       <H>6. Samodejno pošiljanje in e-poštne kampanje</H>
@@ -99,7 +99,7 @@ export function PogojiVsebina() {
       <H>9. Kje so podatki in kdo jih obdeluje</H>
       <p>Pri delovanju aplikacije sodelujejo ti zunanji ponudniki (podobdelovalci):</p>
       <Ul items={[
-        "Base44 — gostovanje aplikacije, baza podatkov, shramba datotek in pošiljanje sistemske e-pošte. Strežniki so privzeto v ZDA.",
+        "Base44 — gostovanje aplikacije, baza podatkov, shramba datotek in pošiljanje sistemske e-pošte. Strežniki so v ZDA. Base44 ima certifikata SOC 2 Type II in ISO 27001. Po pogojih Base44 se lahko podatki na paketih pod Enterprise uporabijo za učenje njihovih AI modelov.",
         "Anthropic (ZDA) — AI modeli. Prejme vsebino, ki jo AI obdela (npr. prejeto sporočilo, podatke o stranki, vaš cenik).",
         "ElevenLabs (ZDA) — samo če uporabljate glasovni vnos ali branje na glas.",
         "Google — samo če povežete Google Koledar (termini in razpoložljivost).",
