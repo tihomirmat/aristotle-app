@@ -15,6 +15,7 @@ import { HelperHeader, PillTabs, Stepper, StepCard, Stat, Empty } from "@/compon
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import ReplyReview from "@/components/crm/ReplyReview";
+import { DraftIcon } from "@/components/crm/DraftMark";
 import { X } from "lucide-react";
 
 const DELAYS = [[2, "Še isti dan", "Čez 2 uri"], [24, "Naslednji dan", "Priporočamo"], [72, "Čez 3 dni", "Ko se vtisi poležejo"]];
@@ -208,6 +209,7 @@ export default function Ocene() {
                       <div className="flex-1 min-w-0"><p className="font-medium truncate">{nameOf(d.lead_id) || d.subject || "Prošnja za oceno"}</p><p className="text-xs text-muted-foreground">{d.created_date ? format(new Date(d.created_date), "d. M. yyyy") : ""}</p></div>
                       {p ? (
                         <span className="flex items-center gap-1.5 shrink-0">
+                          <DraftIcon hint="Prošnja je pripravljena — še ni poslana" />
                           <Button size="sm" variant="outline" className="border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100" onClick={() => setReviewId(d.id)} title="Preberite prošnjo in jo pošljite">Preglej in pošlji<ArrowRight className="w-3.5 h-3.5 ml-1" /></Button>
                           <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-600 px-2" onClick={() => setToCancel(d)} aria-label="Prekliči prošnjo" title="Prekliči prošnjo"><X className="w-4 h-4" /></Button>
                         </span>
