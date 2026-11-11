@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import nodemailer from 'npm:nodemailer@6.9.9';
+import { imapConnect } from '../../shared/imap.js';
 // ZAČASNO: preizkus e-poštnih kampanj iz seznama (pošiljanje, takojšnja zavrnitev, odbita sporočila, ustavitev). Izbriši po testu.
 const S = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const BID = '69fdc32dd7a14b17ffa223d1';
@@ -30,6 +32,22 @@ Deno.serve(async (req) => {
       const imp = await inv('importContacts', { business_id: BID, list_id: camp.list_ids[0], rows: body.rows || [] });
       await sr.Campaign.update(camp.id, { status: 'active', paused_reason: '', resumed_at: new Date().toISOString() });
       return Response.json({ imp });
+    }
+    if (body.action === 'plustest') {
+      const b = (await sr.Business.filter({ id: BID }))[0];
+      const to = body.to || 'tihomir+racuni@spletnost.si';
+      const subject = `TEST račun AI Aristotle ${Date.now()} (izbriši)`;
+      const t = nodemailer.createTransport({ host: b.smtp_host, port: Number(b.smtp_port) || 587, secure: Number(b.smtp_port) === 465, requireTLS: Number(b.smtp_port) === 587, auth: { user: b.smtp_user, pass: b.smtp_pass } });
+      let sendErr = null;
+      try { await t.sendMail({ from: b.smtp_user, to, subject, text: 'Preizkus naslova za račune (+racuni). Sporočilo lahko izbrišete.', attachments: [{ filename: 'test-racun.pdf', content: '%PDF-1.4\n%test\n', contentType: 'application/pdf' }] }); } catch (e) { sendErr = e?.message; }
+      await new Promise((r) => setTimeout(r, 15000));
+      const c = await imapConnect({ host: b.imap_host, port: b.imap_port || 993, user: b.imap_user, pass: b.imap_pass });
+      await c.select('INBOX');
+      const found = await c.uidSearch(`SUBJECT "${subject.split(' (')[0]}"`);
+      let hdr = '';
+      if (found.length) { const m = await c.uidFetchSource([found[found.length - 1]]); hdr = new TextDecoder().decode(m[0].source).split(/\r?\n\r?\n/)[0].split(/\r?\n/).filter((l) => /^(to|delivered-to|x-original-to|envelope-to|cc):/i.test(l)).join(' | '); }
+      await c.logout();
+      return Response.json({ to, sendErr, found, hdr });
     }
     if (body.action === 'run') return Response.json(await inv('runCampaigns', { business_id: BID }));
     if (body.action === 'sync') return Response.json(await inv('syncCampaignMailboxes', { business_id: BID }));
