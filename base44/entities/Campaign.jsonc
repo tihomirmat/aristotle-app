@@ -43,6 +43,17 @@
           "body": {
             "type": "string"
           },
+          "body_html": {
+            "type": "string",
+            "description": "Oblikovano besedilo (urejevalnik: krepko, povezave, slike)"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Priponke [{name,url}]"
+          },
           "ai_personalize": {
             "type": "boolean"
           }
