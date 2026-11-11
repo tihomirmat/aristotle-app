@@ -28,6 +28,10 @@
     "bounce_reason": {
       "type": "string"
     },
+    "bounced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "current_step": {
       "type": "number",
       "default": 0
