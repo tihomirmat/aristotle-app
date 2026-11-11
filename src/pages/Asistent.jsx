@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useBusiness } from "@/lib/business-context";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -105,7 +106,7 @@ function BriefingTab({ business }) {
   );
 }
 
-function ChatTab({ business, user }) {
+function ChatTab({ business, user, inSheet = false }) {
   const queryClient = useQueryClient();
   const [input, setInput] = useState("");
   const [localMessages, setLocalMessages] = useState([]);
@@ -177,7 +178,7 @@ function ChatTab({ business, user }) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px]">
+    <div className={`flex flex-col ${inSheet ? "h-full min-h-0" : "h-[calc(100vh-280px)] min-h-[400px]"}`}>
       <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -293,29 +294,34 @@ function BookingsTab({ business }) {
   );
 }
 
+// Asistent: »Ta teden« je odprt takoj; pogovor z asistentom se odpre ob strani; termini imajo svojo stran (/termini).
 export default function Asistent() {
   const { business, user } = useBusiness();
   const calendarConnected = business?.google_calendar_connected;
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1>Asistent</h1>
-        <p className="text-muted-foreground mt-1 max-w-2xl">Pove vam, kaj je ta teden pomembno: komu odgovoriti, kaj imate v koledarju in kje čaka posel. Vprašate ga lahko karkoli o svojih strankah.</p>
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1>Asistent — ta teden</h1>
+          <p className="text-muted-foreground mt-1 max-w-2xl">Kaj je ta teden pomembno: komu odgovoriti, kaj imate v koledarju in kje čaka posel.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild><Link to="/termini"><Calendar className="w-4 h-4 mr-2" />Termini</Link></Button>
+          <Button className="btn-brand" onClick={() => setChatOpen(true)}><MessageSquare className="w-4 h-4 mr-2" />Vprašaj asistenta</Button>
+        </div>
       </div>
       {!calendarConnected && (
         <StatusBanner variant="info" message="Google Koledar ni povezan, zato asistent ne vidi vaših terminov." action={{ label: "Poveži koledar", href: "/nastavitve?tab=termini" }} />
       )}
-      <Tabs defaultValue="briefing">
-        <TabsList className="mb-6">
-          <TabsTrigger value="briefing" className="flex items-center gap-2"><Sunrise className="w-4 h-4" /> Ta teden</TabsTrigger>
-          <TabsTrigger value="chat" className="flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Vprašaj asistenta</TabsTrigger>
-          <TabsTrigger value="bookings" className="flex items-center gap-2"><Calendar className="w-4 h-4" /> Termini</TabsTrigger>
-        </TabsList>
-        <TabsContent value="briefing"><BriefingTab business={business} /></TabsContent>
-        <TabsContent value="chat"><ChatTab business={business} user={user} /></TabsContent>
-        <TabsContent value="bookings"><BookingsTab business={business} /></TabsContent>
-      </Tabs>
+      <BriefingTab business={business} />
+      <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+        <SheetContent className="w-full sm:max-w-xl flex flex-col">
+          <SheetHeader className="text-left"><SheetTitle className="font-display text-xl">Vprašaj asistenta</SheetTitle><SheetDescription>Vidi vaše stranke, sporočila, ponudbe in koledar.</SheetDescription></SheetHeader>
+          <div className="flex-1 min-h-0 mt-3"><ChatTab business={business} user={user} inSheet /></div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
