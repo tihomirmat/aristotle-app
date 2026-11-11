@@ -148,7 +148,7 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
   };
 
   return (
-    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+    <div className="rounded-2xl border border-amber-200 bg-card shadow-sm overflow-hidden">
       {/* Glava: kdo, od kod, zakaj */}
       <div className="px-5 py-3 border-b bg-muted/30 flex items-center gap-3 flex-wrap">
         <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${r.color}`}><r.icon className="w-3.5 h-3.5" />{r.label}</span>
@@ -157,7 +157,7 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
           {lead?.email && <span className="text-muted-foreground"> · {lead.email}</span>}
         </span>
         <span className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md ${S.cls}`}><S.icon className="w-3 h-3" />{S.label}</span>
-        <span className="text-xs text-muted-foreground ml-auto">pripravljeno {ago(draft.created_date)}</span>
+        <span className="ml-auto inline-flex items-center gap-2"><DraftBadge /><span className="text-xs text-muted-foreground">pripravljeno {ago(draft.created_date)}</span></span>
       </div>
 
       <div className="grid xl:grid-cols-[2fr_3fr] divide-y xl:divide-y-0 xl:divide-x">
@@ -185,7 +185,7 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
         {/* Desno: predlagan odgovor + odločitev */}
         <div className="p-5 space-y-3 bg-accent/20">
           <div className="flex items-center justify-between">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" />Predlagan odgovor</p>
+            <p className="text-xs uppercase tracking-wider text-amber-800 font-semibold flex items-center gap-1.5"><DraftIcon hint="Osnutek — še ni poslan" />Predlagan odgovor · še ni poslan</p>
           </div>
           {lowQuality && (
             <p className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-md px-3 py-2 flex items-start gap-2"><ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />AI ni povsem zadovoljen s tem odgovorom ({draft.quality_score ?? "?"}/10). Preberite ga pred pošiljanjem.</p>
