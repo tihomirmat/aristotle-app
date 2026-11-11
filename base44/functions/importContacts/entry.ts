@@ -15,7 +15,20 @@ const COLS = {
 
 // Excel/CSV → vrstice { email, name, company, phone, website }. Glavo prepozna sam; brez glave vzame stolpec z e-naslovi.
 function rowsFromSheet(buf) {
-  const wb = XLSX.read(new Uint8Array(buf), { type: 'array', raw: false, codepage: 65001 });
+  const u8 = new Uint8Array(buf);
+  const binary = (u8[0] === 0x50 && u8[1] === 0x4b) || (u8[0] === 0xd0 && u8[1] === 0xcf); // xlsx (zip) ali star xls
+  let wb;
+  if (binary) wb = XLSX.read(u8, { type: 'array', raw: false });
+  else {
+    // CSV/TXT: UTF-8 ali Windows-1250 (slovenski Excel), ločilo ; ali , ali tab
+    let s;
+    try { s = new TextDecoder('utf-8', { fatal: true }).decode(u8); } catch { s = new TextDecoder('windows-1250').decode(u8); }
+    s = s.replace(/^﻿/, '');
+    const first = s.split(/\r?\n/)[0] || '';
+    const cnt = (ch) => first.split(ch).length - 1;
+    const FS = cnt(';') > cnt(',') && cnt(';') >= cnt('\t') ? ';' : cnt('\t') > cnt(',') ? '\t' : ',';
+    wb = XLSX.read(s, { type: 'string', FS, raw: true });
+  }
   const ws = wb.Sheets[wb.SheetNames[0]];
   const grid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false }).map((r) => r.map((c) => String(c ?? '').trim()));
   if (!grid.length) return [];
