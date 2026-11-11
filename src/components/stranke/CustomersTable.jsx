@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ListChecks, MailCheck, Download, X, MailX, Bookmark, SlidersHorizontal, Search, List, LayoutGrid, Check } from "lucide-react";
 import IconHint from "@/components/ui/IconHint";
+import { DraftIcon } from "@/components/crm/DraftMark";
 import { cleanTag } from "@/components/stranke/TagsEditor";
 import { STAGES, STAGE, SOURCES, ago, eur, cnt, fmtDate } from "@/lib/crm";
 
@@ -24,13 +25,10 @@ export function StatusIcons({ lead, pending = 0, tasks = 0, onOpen }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {pending > 0 && (
-        <IconHint label={pending > 1 ? `${pending} pripravljeni odgovori čakajo na vaš pregled` : "Odgovor je pripravljen in čaka na vaš pregled"}>
-          <button type="button" aria-label="Odgovor je pripravljen" onClick={(e) => { e.stopPropagation(); onOpen?.(lead.id); }}
-            className="relative w-7 h-7 rounded-full bg-primary/10 text-primary inline-flex items-center justify-center hover:bg-primary hover:text-white transition-colors">
-            <MailCheck className="w-4 h-4" />
-            {pending > 1 && <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-primary text-white rounded-full min-w-[14px] h-[14px] px-0.5 inline-flex items-center justify-center">{pending}</span>}
-          </button>
-        </IconHint>
+        <span className="relative inline-flex">
+          <DraftIcon hint={pending > 1 ? `${pending} pripravljeni odgovori čakajo na vaš pregled — še niso poslani` : "Odgovor je pripravljen in čaka na vaš pregled — še ni poslan"} onClick={() => onOpen?.(lead.id)} />
+          {pending > 1 && <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-amber-500 text-white rounded-full min-w-[14px] h-[14px] px-0.5 inline-flex items-center justify-center pointer-events-none">{pending}</span>}
+        </span>
       )}
       {tasks > 0 && (
         <IconHint label={cnt(tasks, OPRAVILA)}>
