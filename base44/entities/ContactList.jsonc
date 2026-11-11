@@ -1,0 +1,99 @@
+{
+  "name": "ContactList",
+  "type": "object",
+  "description": "Seznam e-naslovov za kampanje (uvo\u017een iz Excela/CSV). Naslovi niso stranke, dokler ne odgovorijo.",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "owner_email": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "counts": {
+      "type": "object",
+      "description": "{ total, ok, risky, invalid, duplicate }"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "business_id",
+    "name"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
