@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Building2, ListChecks, MailCheck, Download, X, MailX } from "lucide-react";
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Building2, ListChecks, MailCheck, Download, X, MailX, Tag, Bookmark, BookmarkPlus } from "lucide-react";
+import { cleanTag } from "@/components/stranke/TagsEditor";
 import { STAGES, STAGE, SOURCES, ago, eur, cnt, W, fmtDate } from "@/lib/crm";
 
 // Namizna tabela strank za več sto zapisov: faze s števci, hitri filtri, razvrščanje, strani, množična dejanja.
@@ -15,9 +16,12 @@ const SORTS = {
   created: (a, b) => new Date(a.created_date) - new Date(b.created_date),
 };
 
-export default function CustomersTable({ leads, companiesById = {}, pendingByLead = {}, tasksByLead = {}, onOpen, onStage, onExport, initialStage = "all" }) {
+export default function CustomersTable({ leads, companiesById = {}, pendingByLead = {}, tasksByLead = {}, onOpen, onStage, onExport, onTag, views = [], onSaveViews, initialStage = "all" }) {
   const [stage, setStage] = useState(initialStage);
   const [quick, setQuick] = useState(null); // pending | quiet | tasks
+  const [tag, setTag] = useState("");
+  const [naming, setNaming] = useState(null); // ime novega shranjenega pogleda
+  const [bulkTag, setBulkTag] = useState("");
   const [sort, setSort] = useState({ key: "touch", dir: "desc" });
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(50);
@@ -33,14 +37,19 @@ export default function CustomersTable({ leads, companiesById = {}, pendingByLea
     ["quiet", "Brez stika 30+ dni", null, (l) => !["converted", "lost", "unsubscribed"].includes(l.status) && Date.now() - new Date(lastTouch(l)).getTime() > 30 * DAY],
   ].map(([k, label, Icon, fn]) => ({ k, label, Icon, fn, n: leads.filter(fn).length }));
 
+  const allTags = useMemo(() => { const m = {}; leads.forEach((l) => (l.tags || []).forEach((t) => { m[t] = (m[t] || 0) + 1; })); return Object.entries(m).sort((a, b) => b[1] - a[1]); }, [leads]);
+  const filtersOn = stage !== "all" || !!quick || !!tag;
+  const applyView = (v) => { setStage(v.stage || "all"); setQuick(v.quick || null); setTag(v.tag || ""); if (v.sort?.key) setSort(v.sort); };
+  const isView = (v) => (v.stage || "all") === stage && (v.quick || null) === quick && (v.tag || "") === tag;
+  const saveView = () => { const name = String(naming || "").trim().slice(0, 30); if (!name) return; onSaveViews?.([...views.filter((v) => v.name !== name), { name, stage, quick, tag, sort }].slice(-8)); setNaming(null); };
   const rows = useMemo(() => {
     const q = quickDefs.find((x) => x.k === quick);
-    const out = leads.filter((l) => (stage === "all" || (l.status || "new") === stage) && (!q || q.fn(l)));
+    const out = leads.filter((l) => (stage === "all" || (l.status || "new") === stage) && (!q || q.fn(l)) && (!tag || (l.tags || []).includes(tag)));
     const f = SORTS[sort.key] || SORTS.touch;
     out.sort((a, b) => f(a, b, { comp }) * (sort.dir === "asc" ? 1 : -1));
     return out;
-  }, [leads, stage, quick, sort, pendingByLead, tasksByLead, companiesById]);
-  useEffect(() => { setPage(0); }, [stage, quick, leads.length, size]);
+  }, [leads, stage, quick, tag, sort, pendingByLead, tasksByLead, companiesById]);
+  useEffect(() => { setPage(0); }, [stage, quick, tag, leads.length, size]);
 
   const pages = Math.max(1, Math.ceil(rows.length / size));
   const cur = Math.min(page, pages - 1);
@@ -78,8 +87,31 @@ export default function CustomersTable({ leads, companiesById = {}, pendingByLea
             {q.Icon && <q.Icon className="w-3.5 h-3.5" />}{q.label}<span className={`font-semibold ${quick === q.k ? "" : "text-primary"}`}>{q.n}</span>
           </button>
         ))}
+        {allTags.length > 0 && (
+          <label className={`text-xs pl-3 pr-1 py-0.5 rounded-full border inline-flex items-center gap-1.5 ${tag ? "bg-primary text-white border-primary" : "bg-card"}`}><Tag className="w-3.5 h-3.5" />
+            <select value={tag} onChange={(e) => setTag(e.target.value)} className="bg-transparent text-xs py-1 pr-1 cursor-pointer focus:outline-none">
+              <option value="" className="text-foreground">Vse oznake</option>{allTags.map(([t, n]) => <option key={t} value={t} className="text-foreground">{t} ({n})</option>)}
+            </select>
+          </label>
+        )}
+        {filtersOn && <button onClick={() => { setStage("all"); setQuick(null); setTag(""); }} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"><X className="w-3.5 h-3.5" />Počisti filtre</button>}
         <span className="ml-auto text-xs text-muted-foreground">{rows.length === leads.length ? cnt(rows.length, W.stranka) : `${rows.length} od ${leads.length}`}</span>
       </div>
+
+      {(views.length > 0 || (filtersOn && onSaveViews)) && (
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          {views.length > 0 && <span className="text-muted-foreground inline-flex items-center gap-1"><Bookmark className="w-3.5 h-3.5" />Moji pogledi:</span>}
+          {views.map((v) => (
+            <span key={v.name} className={`inline-flex items-center rounded-full border ${isView(v) ? "border-primary bg-accent/60 font-medium" : "bg-card hover:bg-muted"}`}>
+              <button onClick={() => applyView(v)} className="pl-3 pr-1.5 py-1">{v.name}</button>
+              <button onClick={() => onSaveViews?.(views.filter((x) => x.name !== v.name))} className="pr-2 text-muted-foreground hover:text-red-600" title="Izbriši pogled"><X className="w-3 h-3" /></button>
+            </span>
+          ))}
+          {filtersOn && onSaveViews && !views.some(isView) && (naming === null
+            ? <button onClick={() => setNaming("")} className="inline-flex items-center gap-1 text-primary font-medium hover:underline"><BookmarkPlus className="w-3.5 h-3.5" />Shrani ta pogled</button>
+            : <span className="inline-flex items-center gap-1.5"><input autoFocus value={naming} onChange={(e) => setNaming(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveView(); if (e.key === "Escape") setNaming(null); }} placeholder="ime pogleda, npr. Vroči posli" className="h-7 w-48 rounded-md border px-2 bg-background" /><Button size="sm" className="h-7 btn-brand" onClick={saveView} disabled={!String(naming).trim()}>Shrani</Button><button onClick={() => setNaming(null)} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button></span>)}
+        </div>
+      )}
 
       {selected.size > 0 && (
         <div className="flex items-center gap-3 flex-wrap rounded-xl border border-primary/40 bg-accent/60 px-4 py-2.5 text-sm">
@@ -89,6 +121,11 @@ export default function CustomersTable({ leads, companiesById = {}, pendingByLea
               <option value="">izberite …</option>{STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select>
           </label>
+          {onTag && <span className="inline-flex items-center gap-1.5">Dodaj oznako
+            <input value={bulkTag} onChange={(e) => setBulkTag(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && cleanTag(bulkTag)) { onTag(selectedLeads, cleanTag(bulkTag)); setBulkTag(""); setSelected(new Set()); } }} list="oznake-vse" placeholder="npr. VIP" className="h-8 w-32 rounded-md border bg-background px-2 text-sm" />
+            <datalist id="oznake-vse">{allTags.map(([t]) => <option key={t} value={t} />)}</datalist>
+            <Button size="sm" variant="outline" className="h-8" disabled={!cleanTag(bulkTag)} onClick={() => { onTag(selectedLeads, cleanTag(bulkTag)); setBulkTag(""); setSelected(new Set()); }}>Dodaj</Button>
+          </span>}
           <Button size="sm" variant="outline" className="h-8" onClick={() => onExport(selectedLeads)}><Download className="w-3.5 h-3.5 mr-1.5" />Izvozi izbrane</Button>
           <button className="ml-auto text-muted-foreground hover:text-foreground inline-flex items-center gap-1" onClick={() => setSelected(new Set())}><X className="w-4 h-4" />Počisti izbor</button>
         </div>
@@ -118,7 +155,7 @@ export default function CustomersTable({ leads, companiesById = {}, pendingByLea
                 return (
                   <tr key={l.id} onClick={() => onOpen(l.id)} className={`cursor-pointer hover:bg-muted/40 ${selected.has(l.id) ? "bg-accent/40" : ""}`}>
                     <td className="pl-4 pr-1 py-2" onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.has(l.id)} onChange={() => toggle(l.id)} /></td>
-                    <td className="px-3 py-2 max-w-[240px]"><p className="font-medium truncate">{l.name}</p><p className="text-xs text-muted-foreground truncate flex items-center gap-1">{l.email_bounced && <MailX className="w-3 h-3 text-red-600 shrink-0" title="E-pošta na ta naslov se je vrnila" />}{l.email || l.phone || "—"}</p></td>
+                    <td className="px-3 py-2 max-w-[240px]"><p className="font-medium truncate">{l.name}</p><p className="text-xs text-muted-foreground truncate flex items-center gap-1">{l.email_bounced && <MailX className="w-3 h-3 text-red-600 shrink-0" title="E-pošta na ta naslov se je vrnila" />}{l.email || l.phone || "—"}</p>{(l.tags || []).length > 0 && <p className="flex gap-1 mt-0.5 flex-wrap">{l.tags.slice(0, 3).map((t) => <span key={t} className="text-[10px] rounded-full bg-accent px-1.5 py-px">{t}</span>)}{l.tags.length > 3 && <span className="text-[10px] text-muted-foreground">+{l.tags.length - 3}</span>}</p>}</td>
                     <td className="px-3 py-2 text-muted-foreground hidden md:table-cell max-w-[180px]"><span className="truncate flex items-center gap-1.5">{comp(l) ? <><Building2 className="w-3.5 h-3.5 shrink-0" />{comp(l)}</> : "—"}</span></td>
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <span className="inline-flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />

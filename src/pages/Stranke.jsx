@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useBusiness } from "@/lib/business-context";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
@@ -25,6 +25,7 @@ export default function Stranke() {
   const { business } = useBusiness();
   const navigate = useNavigate();
   const invalidate = useCrmInvalidate();
+  const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
   // Pogled: tabela (privzeto pri več strankah) ali faze; izbira si zapomni.
   const [viewPref, setViewPref] = useState(() => { try { return localStorage.getItem("stranke-pogled") || ""; } catch { return ""; } });
@@ -82,7 +83,7 @@ export default function Stranke() {
   const filtered = leads.filter((l) => {
     const q = search.trim().toLowerCase();
     const comp = companiesById[l.company_id]?.name;
-    const okQ = !q || [l.name, l.email, l.phone, l.notes, comp].some((v) => String(v || "").toLowerCase().includes(q));
+    const okQ = !q || [l.name, l.email, l.phone, l.notes, comp, (l.tags || []).join(" ")].some((v) => String(v || "").toLowerCase().includes(q));
     const okS = sourceFilter === "all" || l.source === sourceFilter;
     return okQ && okS;
   }).sort((a, b) => new Date(b.last_inbound_at || b.created_date) - new Date(a.last_inbound_at || a.created_date));
@@ -96,6 +97,12 @@ export default function Stranke() {
     invalidate();
     if (todo.length > 1) toast.success(`Premaknjeno v fazo »${STAGE[status]?.label}«: ${todo.length}.`);
   };
+  const tagMany = async (list, tag) => {
+    const todo = list.filter((l) => !(l.tags || []).includes(tag));
+    for (let i = 0; i < todo.length; i += 10) await Promise.all(todo.slice(i, i + 10).map((l) => base44.entities.Lead.update(l.id, { tags: [...(l.tags || []), tag] })));
+    invalidate(); toast.success(`Oznaka »${tag}« dodana: ${todo.length}.`);
+  };
+  const saveViews = async (views) => { try { await base44.entities.Business.update(bid, { customer_views: views }); queryClient.invalidateQueries({ queryKey: ["business"] }); } catch (e) { toast.error(e.message); } };
   const exportCsv = (list) => {
     const data = Array.isArray(list) ? list : filtered;
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -216,7 +223,7 @@ export default function Stranke() {
               })}
             </div>
           ) : (
-            <CustomersTable leads={filtered} companiesById={companiesById} pendingByLead={pendingByLead} tasksByLead={tasksByLead} onOpen={open} onStage={stageMany} onExport={exportCsv} initialStage={tableStage} />
+            <CustomersTable leads={filtered} companiesById={companiesById} pendingByLead={pendingByLead} tasksByLead={tasksByLead} onOpen={open} onStage={stageMany} onExport={exportCsv} onTag={tagMany} views={business?.customer_views || []} onSaveViews={saveViews} initialStage={tableStage} />
           )}
         </>
       )}

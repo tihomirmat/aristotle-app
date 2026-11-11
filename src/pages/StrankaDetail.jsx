@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import TagsEditor from "@/components/stranke/TagsEditor";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -209,6 +210,10 @@ export default function StrankaDetail() {
             </div>
             <Field label="Vrednost €" value={lead.value} onSave={(v) => save({ value: v })} type="number" placeholder="Ocenjena vrednost posla" />
             <Field label="Naslov" value={lead.address} onSave={(v) => save({ address: v })} />
+            <div className="grid grid-cols-[96px_1fr] items-start gap-2 pt-1">
+              <span className="text-xs text-muted-foreground pt-1">Oznake</span>
+              <TagsEditor tags={lead.tags || []} onChange={(tags) => save({ tags })} />
+            </div>
             <label className="flex items-center gap-2 text-xs pt-2 cursor-pointer"><input type="checkbox" checked={lead.consent_email !== false} onChange={(e) => save({ consent_email: e.target.checked })} />Strinja se s prejemanjem e-pošte</label>
             <p className="text-[11px] text-muted-foreground pt-2">Dodano {fmtDate(lead.created_date)} · zadnji stik {lead.last_contacted_at ? ago(lead.last_contacted_at) : "še ni bilo"}</p>
           </div>
