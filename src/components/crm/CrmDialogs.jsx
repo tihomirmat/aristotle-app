@@ -100,19 +100,24 @@ export function TaskDialog({ open, onOpenChange, task, leadId, companyId, leads 
 
 // ─── Zabeleži klic / sestanek / opombo ───────────────────────────────────────
 const LOG_TYPES = [
-  { key: "call", label: "Klic", icon: Phone, ph: "O čem sta se pogovarjala? Kaj je naslednji korak?" },
+  { key: "call", label: "Klic", icon: Phone, ph: "O čem sta se pogovarjala? Kaj je naslednji korak?", dir: ["Jaz sem klical", "Stranka je klicala"] },
   { key: "meeting", label: "Sestanek", icon: Users, ph: "Kaj ste se dogovorili?" },
+  { key: "email_in", label: "Prejel sem e-pošto", icon: Mail, ph: "Kaj je stranka napisala? (npr. e-pošta na drug naslov)" },
+  { key: "email_out", label: "Poslal sem e-pošto", icon: Send, ph: "Kaj ste napisali? (e-pošta, poslana mimo aplikacije)" },
+  { key: "sms", label: "SMS / sporočilo", icon: Smartphone, ph: "Kaj ste si napisali?", dir: ["Jaz sem pisal", "Stranka je pisala"] },
   { key: "note", label: "Opomba", icon: StickyNote, ph: "Karkoli si želite zapomniti o stranki" },
-  { key: "sms", label: "SMS / sporočilo", icon: Smartphone, ph: "Kaj ste si napisali?" },
 ];
+const localNow = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
 export function LogActivityDialog({ open, onOpenChange, lead, companyId, defaultType = "call" }) {
   const { business } = useBusiness();
   const invalidate = useCrmInvalidate();
   const [type, setType] = useState(defaultType);
   const [content, setContent] = useState("");
   const [followUp, setFollowUp] = useState(false);
+  const [inbound, setInbound] = useState(false);
+  const [when, setWhen] = useState(localNow());
   const [saving, setSaving] = useState(false);
-  useEffect(() => { if (open) { setType(defaultType); setContent(""); setFollowUp(false); } }, [open, defaultType]);
+  useEffect(() => { if (open) { setType(defaultType); setContent(""); setFollowUp(false); setInbound(false); setWhen(localNow()); } }, [open, defaultType]);
   const T = LOG_TYPES.find((t) => t.key === type) || LOG_TYPES[0];
 
   const save = async () => {
@@ -121,7 +126,9 @@ export function LogActivityDialog({ open, onOpenChange, lead, companyId, default
     try {
       await logActivity(business, {
         lead_id: lead?.id || null, company_id: companyId || lead?.company_id || null, type,
-        direction: type === "note" ? "internal" : "outbound", subject: T.label, content: content.trim(),
+        direction: type === "note" ? "internal" : (type === "email_in" || (T.dir && inbound)) ? "inbound" : "outbound",
+        subject: T.dir ? T.dir[inbound ? 1 : 0] : T.label, content: content.trim(),
+        occurred_at: when ? new Date(when).toISOString() : new Date().toISOString(),
       });
       if (followUp) {
         await base44.entities.Task.create({ business_id: business.id, owner_email: business.owner_email || business.created_by, title: `Ponovni stik${lead ? ": " + lead.name : ""}`, type: "followup", priority: "normal", status: "open", source: "manual", lead_id: lead?.id || null, company_id: companyId || lead?.company_id || null, due_at: addDays(new Date().setHours(9, 0, 0, 0), 3).toISOString(), description: content.trim().slice(0, 300) });
@@ -135,10 +142,18 @@ export function LogActivityDialog({ open, onOpenChange, lead, companyId, default
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Zabeleži{lead ? ` — ${lead.name}` : ""}</DialogTitle><DialogDescription>Zapis se pokaže na časovnici stranke. AI ga upošteva pri naslednjem sporočilu.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Dodaj v časovnico{lead ? ` — ${lead.name}` : ""}</DialogTitle><DialogDescription>Zapišite klic, sestanek ali sporočilo, ki ni šlo skozi aplikacijo. AI ga upošteva pri naslednjem sporočilu.</DialogDescription></DialogHeader>
         <div className="space-y-3">
           <div className="flex flex-wrap gap-1.5">
             {LOG_TYPES.map((t) => <button key={t.key} type="button" onClick={() => setType(t.key)} className={`text-xs px-3 py-1.5 rounded-full border inline-flex items-center gap-1.5 ${type === t.key ? "bg-foreground text-background border-foreground" : "hover:bg-muted"}`}><t.icon className="w-3 h-3" />{t.label}</button>)}
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            {T.dir && (
+              <div className="inline-flex rounded-lg border p-0.5 text-xs">
+                {T.dir.map((l, i) => <button key={l} type="button" onClick={() => setInbound(i === 1)} className={`px-2.5 py-1 rounded-md ${inbound === (i === 1) ? "bg-muted font-medium" : "text-muted-foreground"}`}>{l}</button>)}
+              </div>
+            )}
+            <label className="ml-auto inline-flex items-center gap-2 text-xs text-muted-foreground">Kdaj<input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm text-foreground" /></label>
           </div>
           <Textarea autoFocus value={content} onChange={(e) => setContent(e.target.value)} className="h-32" placeholder={T.ph} />
           <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={followUp} onChange={(e) => setFollowUp(e.target.checked)} />Opomni me na ponovni stik čez 3 dni</label>
