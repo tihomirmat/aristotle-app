@@ -49,8 +49,10 @@ Deno.serve(async (req) => {
       }
       report[name] = r;
     }
+    console.log('sealMailboxPasswords', VERSION, action, 'roundtrip', roundtrip, JSON.stringify(report));
     return Response.json({ success: true, action, roundtrip, report, version: VERSION });
   } catch (error) {
+    console.log('sealMailboxPasswords napaka', error?.message || String(error));
     return Response.json({ error: error?.message || String(error), version: VERSION });
   }
 });
