@@ -148,13 +148,7 @@ export default function Racuni() {
       <input ref={fileInputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.webp,.gif" className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
 
       {/* Nastavitev: dokler ni vse urejeno, trije koraki; potem ena vrstica s stanjem */}
-      {allSet && !showSetup ? (
-        <div className="card-elevated px-5 py-3.5 flex items-center gap-x-6 gap-y-2 flex-wrap text-sm">
-          <span className="inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" />Račune iz pošte <strong>{business?.imap_user}</strong> in s <strong>{invoiceAddressOf(business)}</strong> shranimo sami</span>
-          <span className="inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" />Vsakega 1. v mesecu jih dobi <strong>{business?.accountant_email}</strong></span>
-          <button className="ml-auto text-primary font-medium" onClick={() => setShowSetup(true)}>Spremeni</button>
-        </div>
-      ) : (
+      {!(allSet && !showSetup) && (
         <div className="grid md:grid-cols-3 gap-3">
         <StepCard n={1} done={mailOn} icon={Mail} title="Računi iz e-pošte" state={mailOn ? `Vključeno. Račune, ki pridejo na ${business?.imap_user || "vaš predal"}, shranimo sami.` : "Ni povezano. Povežite predal in račune iz pošte bomo shranjevali sami."}>
           {mailOn
@@ -180,9 +174,7 @@ export default function Racuni() {
       </div>
       )}
 
-      {mailOn && <InvoiceInbox business={business} onSaved={refreshBusiness} />}
-
-      <div className="grid xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+      <div className="grid xl:grid-cols-[minmax(0,3fr)_minmax(300px,1fr)] gap-6 items-start">
         {/* Seznam računov */}
         <div
           className={`card-elevated p-5 transition-colors ${dragOver ? "ring-2 ring-primary bg-accent/30" : ""}`}
@@ -238,8 +230,16 @@ export default function Racuni() {
             )}
         </div>
 
-        {/* Pošiljanje računovodji */}
-        <div className="space-y-4">
+        {/* Desno (1/4): kako računi pridejo + pošiljanje računovodji */}
+        <div className="space-y-4 xl:sticky xl:top-20">
+          {allSet && !showSetup && (
+            <div className="card-elevated p-4 space-y-2 text-sm">
+              <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" /><span>Račune iz pošte <strong className="break-all">{business?.imap_user}</strong> shranimo sami.</span></p>
+              <p className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" /><span>Vsakega 1. v mesecu jih dobi <strong className="break-all">{business?.accountant_email}</strong>.</span></p>
+              <button className="text-primary font-medium text-sm" onClick={() => setShowSetup(true)}>Spremeni</button>
+            </div>
+          )}
+          {mailOn && <InvoiceInbox compact business={business} onSaved={refreshBusiness} />}
           <div className="card-elevated p-5">
             <h2 className="text-lg">Pošiljanje računovodji</h2>
             <p className="text-sm text-muted-foreground mt-1">{waitingPrev.length === 0 ? `Za ${monthLabel(prevKey)} ni računov, ki bi čakali na pošiljanje.` : `Za ${monthLabel(prevKey)} čaka na pošiljanje: ${cnt(waitingPrev.length, W.racun)}.`}</p>
