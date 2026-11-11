@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { SOURCES, ACTIVITY, ago, fmtDateTime } from "@/lib/crm";
 import { useCrmInvalidate } from "@/components/crm/CrmDialogs";
 import { learnInBackground } from "@/lib/learn";
+import { DraftBadge, DraftIcon } from "@/components/crm/DraftMark";
 
 // Zakaj je AI pripravil odgovor — v jeziku stranke.
 export const REASONS = {
@@ -183,7 +184,7 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
         </div>
 
         {/* Desno: predlagan odgovor + odločitev */}
-        <div className="p-5 space-y-3 bg-accent/20">
+        <div className="p-5 space-y-3 bg-amber-50/40">
           <div className="flex items-center justify-between">
             <p className="text-xs uppercase tracking-wider text-amber-800 font-semibold flex items-center gap-1.5"><DraftIcon hint="Osnutek — še ni poslan" />Predlagan odgovor · še ni poslan</p>
           </div>
