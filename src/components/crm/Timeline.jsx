@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Inbox, Bot, ChevronDown, Plus } from "lucide-react";
+import { Bot, ChevronDown, Plus, ArrowRight } from "lucide-react";
 import { ACTIVITY, fmtDateTime, ago } from "@/lib/crm";
+import { reasonFor } from "@/components/crm/ReplyReview";
+import { DraftIcon, DraftBadge, DRAFT_TONE } from "@/components/crm/DraftMark";
 
 // Časovnica stranke/podjetja: vsak dogodek je ena vrstica (kaj, kratek povzetek, kdaj); klik odpre celotno vsebino in od kod je prišel.
 const FILTERS = [
@@ -60,19 +62,39 @@ function Item({ a, leadName }) {
   );
 }
 
-export default function Timeline({ activities = [], pendingDrafts = [], leadsById, emptyText = "Še ni dogodkov.", onAdd, onPendingClick }) {
-  const [filter, setFilter] = useState("all");
-  const items = [...activities].filter((a) => inFilter(a, filter)).sort((a, b) => new Date(b.occurred_at || b.created_date) - new Date(a.occurred_at || a.created_date));
-  const pendingBox = (
+// Pripravljeno (osnutek), ki čaka na pregled: jantarna ikona listka s svinčnikom + črtkan rob — enako povsod v aplikaciji.
+function DraftItem({ d, leadName, onOpen }) {
+  const r = reasonFor(d.pillar);
+  const body = (
     <>
-      <Inbox className="w-5 h-5 text-primary" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">{pendingDrafts.length === 1 ? "Pripravljen odgovor čaka na vas" : `${pendingDrafts.length} pripravljeni odgovori čakajo na vas`}</p>
-        <p className="text-xs text-muted-foreground truncate">{pendingDrafts[0]?.subject}</p>
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-sm font-medium truncate">{d.subject || r.label}</span>
+        <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">· {r.label}</span>
+        {leadName && <span className="text-xs text-muted-foreground shrink-0">· {leadName}</span>}
+        <DraftBadge className="ml-auto" />
+        <span className="text-xs text-muted-foreground shrink-0">{ago(d.created_date)}</span>
       </div>
-      <span className="text-xs font-medium text-primary">Preglej →</span>
+      <p className={`text-xs mt-0.5 inline-flex items-center gap-1 font-medium ${DRAFT_TONE.text}`}>Še ni poslano — preberite in pošljite<ArrowRight className="w-3 h-3" /></p>
     </>
   );
+  return (
+    <div className="relative pl-12 pb-3">
+      <span className="absolute left-0 top-1"><DraftIcon size="md" /></span>
+      {onOpen
+        ? <button type="button" onClick={() => onOpen(d)} className={`w-full text-left rounded-xl px-3 py-2 hover:bg-amber-50 ${DRAFT_TONE.row}`}>{body}</button>
+        : <Link to="/stranke?tab=odgovori" className={`block rounded-xl px-3 py-2 hover:bg-amber-50 ${DRAFT_TONE.row}`}>{body}</Link>}
+    </div>
+  );
+}
+
+export default function Timeline({ activities = [], pendingDrafts = [], leadsById, emptyText = "Še ni dogodkov.", onAdd, onPendingClick }) {
+  const [filter, setFilter] = useState("all");
+  // Dogodki, ki samo napovedujejo pripravljen osnutek (»Čaka na vaš pregled«), se ne podvajajo: osnutek je že prikazan kot svoja vrstica.
+  const pendingIds = new Set(pendingDrafts.map((d) => d.id));
+  const hasPendingOffer = pendingDrafts.some((d) => d.pillar === "offer");
+  const isDraftEcho = (a) => (a.draft_id && pendingIds.has(a.draft_id)) || (hasPendingOffer && a.type === "offer" && /Čaka na vaš pregled/i.test(a.content || ""));
+  const items = [...activities].filter((a) => !isDraftEcho(a) && inFilter(a, filter)).sort((a, b) => new Date(b.occurred_at || b.created_date) - new Date(a.occurred_at || a.created_date));
+  const drafts = filter === "all" || filter === "messages" ? [...pendingDrafts].sort((a, b) => new Date(b.created_date) - new Date(a.created_date)) : [];
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-1.5 flex-wrap">
@@ -81,12 +103,10 @@ export default function Timeline({ activities = [], pendingDrafts = [], leadsByI
         ))}
         {onAdd && <button onClick={onAdd} className="ml-auto text-xs font-medium px-3 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-accent inline-flex items-center gap-1"><Plus className="w-3.5 h-3.5" />Dodaj v časovnico</button>}
       </div>
-      {pendingDrafts.length > 0 && (onPendingClick
-        ? <button onClick={onPendingClick} className="w-full text-left flex items-center gap-3 rounded-xl border border-primary/30 bg-accent/50 px-4 py-3 hover:bg-accent">{pendingBox}</button>
-        : <Link to="/stranke?tab=odgovori" className="flex items-center gap-3 rounded-xl border border-primary/30 bg-accent/50 px-4 py-3 hover:bg-accent">{pendingBox}</Link>)}
-      {items.length === 0 ? <p className="text-sm text-muted-foreground py-6 text-center">{emptyText}</p> : (
+      {items.length === 0 && drafts.length === 0 ? <p className="text-sm text-muted-foreground py-6 text-center">{emptyText}</p> : (
         <div className="relative">
           <span className="absolute left-[17px] top-2 bottom-2 w-px bg-border" />
+          {drafts.map((d) => <DraftItem key={"d" + d.id} d={d} leadName={leadsById?.[d.lead_id]?.name} onOpen={onPendingClick} />)}
           {items.map((a) => <Item key={a.id} a={a} leadName={leadsById?.[a.lead_id]?.name} />)}
         </div>
       )}
