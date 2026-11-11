@@ -11,6 +11,27 @@ const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const MAX_PER_RUN = 60;
 const APP_URL = (Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app').replace(/\/$/, '');
 
+// Prebere izbrane predale (mailboxId ali vse predale podjetja businessId ali vse predale z branjem). Vrne rezultate po podjetjih.
+// canAccess(business) → false prepreči branje tujega podjetja (klic iz aplikacije).
+export async function syncCampaignMailboxesFor(base44, { mailboxId, businessId, canAccess } = {}) {
+  const sr = base44.asServiceRole.entities;
+  let mailboxes;
+  if (mailboxId) mailboxes = await sr.SendingMailbox.filter({ id: mailboxId });
+  else if (businessId) mailboxes = await sr.SendingMailbox.filter({ business_id: businessId });
+  else mailboxes = await sr.SendingMailbox.filter({ imap_enabled: true });
+  mailboxes = mailboxes.filter((m) => m.imap_enabled && m.imap_host && m.imap_pass && !m.is_demo);
+  const byBiz = {};
+  for (const m of mailboxes) (byBiz[m.business_id] ||= []).push(m);
+  const results = [];
+  for (const [bid, mbs] of Object.entries(byBiz)) {
+    const business = (await sr.Business.filter({ id: bid }))[0];
+    if (!business) continue;
+    if (canAccess && !canAccess(business)) { results.push({ business_id: bid, error: 'Nimate dostopa do tega podjetja.' }); continue; }
+    try { results.push(await syncBusiness(base44, business, mbs)); } catch (e) { results.push({ business_id: bid, error: e?.message || String(e) }); }
+  }
+  return results;
+}
+
 async function readMailbox(mb) {
   const out = [];
   let maxUid = Number(mb.imap_last_uid) || 0;
