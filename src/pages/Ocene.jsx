@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useBusiness } from "@/lib/business-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -54,6 +54,7 @@ export default function Ocene() {
   const [busyFor, setBusyFor] = useState(null);
   const [reviewId, setReviewId] = useState(null); // prošnja, odprta v oknu za pregled in pošiljanje
   const [toCancel, setToCancel] = useState(null);
+  const abortAsk = useRef(false); // »Prekliči« med pripravo: pripravljena prošnja se takoj zavrže
 
   const { data: drafts = [] } = useQuery({ queryKey: ["ocene-drafts", bid], queryFn: () => base44.entities.DraftMessage.filter({ business_id: bid }), enabled: !!bid });
   const { data: customers = [] } = useQuery({ queryKey: ["converted-leads", bid], queryFn: () => base44.entities.Lead.filter({ business_id: bid, status: "converted" }), enabled: !!bid });
@@ -93,10 +94,11 @@ export default function Ocene() {
   const askFor = async (lead) => {
     if (!lead.email) { toast.error("Ta stranka nima e-naslova."); return; }
     if (!lead.consent_email) { toast.error("Ta stranka ni dala soglasja za e-pošto."); return; }
-    setBusyFor(lead.id);
+    setBusyFor(lead.id); abortAsk.current = false;
     try {
       const res = await generateDraft({ business_id: bid, lead_id: lead.id, pillar: "review_request", sequence_step: 1 });
       const d = res?.data ?? res; if (d?.error) throw new Error(d.error);
+      if (abortAsk.current) { if (d?.draft?.id && !d.duplicate) await base44.entities.DraftMessage.delete(d.draft.id).catch(() => {}); refresh(); toast.info("Prošnja je preklicana."); return; }
       await qc.refetchQueries({ queryKey: ["ocene-drafts", bid] }); qc.invalidateQueries({ queryKey: ["drafts-all", bid] });
       // Takoj odpri pripravljeno prošnjo: preberete, pošljete ali prekličete.
       if (d?.draft?.id) setReviewId(d.draft.id);
@@ -186,7 +188,10 @@ export default function Ocene() {
                     <div key={l.id} className="py-3 flex items-center gap-3">
                       <span className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold text-sm text-muted-foreground shrink-0">{(l.name || "?")[0].toUpperCase()}</span>
                       <div className="flex-1 min-w-0"><p className="font-medium truncate">{l.name}</p><p className="text-xs text-muted-foreground truncate">{l.email || "brez e-naslova"}</p></div>
-                      <Button className="btn-brand gap-2 shrink-0" disabled={!!busyFor || !l.email} onClick={() => askFor(l)}>{busyFor === l.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}Prosi za oceno</Button>
+                      {busyFor === l.id ? (
+                        <span className="flex items-center gap-2 shrink-0 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" />Pripravljam …
+                          <Button size="sm" variant="outline" onClick={() => { abortAsk.current = true; setBusyFor(null); }}><X className="w-3.5 h-3.5 mr-1" />Prekliči</Button></span>
+                      ) : <Button className="btn-brand gap-2 shrink-0" disabled={!!busyFor || !l.email} onClick={() => askFor(l)}><Star className="w-4 h-4" />Prosi za oceno</Button>}
                     </div>
                   ))}
                 </div>
