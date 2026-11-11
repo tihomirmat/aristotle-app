@@ -207,6 +207,7 @@ Deno.serve(async (req) => {
     }
 
     const now = Date.now();
+    const t0 = Date.now();
     const summary = { version: VERSION, campaigns: campaigns.length, enrolled: 0, drafts: 0, sent: 0, bounced_now: 0, completed: 0, stopped: 0, errors: [], mailbox_sync: null };
     if (!campaigns.length) return Response.json({ success: true, ...summary });
 
@@ -214,6 +215,7 @@ Deno.serve(async (req) => {
     if (campaigns.some((c) => (c.mailbox_ids || []).length)) {
       const r = await withTimeout(base44.asServiceRole.functions.invoke('syncCampaignMailboxes', { internal_secret: INTERNAL_SECRET, ...(body.business_id ? { business_id: body.business_id } : {}) }).catch((e) => ({ error: e?.message })), 100000);
       summary.mailbox_sync = r?.timeout ? 'timeout' : ((r?.data ?? r)?.error || 'ok');
+      summary.ms_sync = Date.now() - t0;
       campaigns = (await Promise.all(campaigns.map((c) => sr.Campaign.filter({ id: c.id }).then((x) => x[0])))).filter((c) => c && c.status === 'active');
     }
 
@@ -351,6 +353,8 @@ Deno.serve(async (req) => {
     }
 
     for (const m of Object.values(senderCache)) for (const s of Object.values(m)) await s.close();
+    summary.ms_total = Date.now() - t0;
+    console.log('runCampaigns', JSON.stringify(summary).slice(0, 1500));
     return Response.json({ success: true, ...summary });
   } catch (error) {
     return Response.json({ error: 'runCampaigns: ' + (error?.message || String(error)), version: VERSION });
