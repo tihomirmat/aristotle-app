@@ -3,6 +3,7 @@ import { Outlet, useLocation, Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import UserMenu from "./UserMenu";
 import TrialExpiredModal from "@/components/TrialExpiredModal";
+import TermsGate from "@/components/TermsGate";
 import { useBusiness } from "@/lib/business-context";
 import { Search } from "lucide-react";
 
@@ -26,6 +27,7 @@ export default function AppLayout() {
     <div className="min-h-screen bg-background font-inter">
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <main className={`transition-all duration-300 min-h-screen ${collapsed ? "ml-[72px]" : "ml-[248px]"}`}>
+        <TermsGate />
         <TrialExpiredModal business={business} />
         <div className="sticky top-0 z-40 flex items-center gap-4 px-6 md:px-8 h-16 bg-background/85 backdrop-blur-md border-b border-border/70">
           <p className="font-display font-semibold text-sm text-muted-foreground">{business?.name || ""}<span className="mx-2 text-border">/</span><span className="text-foreground">{titleFor(location.pathname)}</span></p>
