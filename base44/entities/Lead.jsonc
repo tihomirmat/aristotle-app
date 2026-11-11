@@ -26,6 +26,14 @@
       ],
       "default": "manual"
     },
+    "last_inbound_body": {
+      "type": "string",
+      "description": "Celotno besedilo zadnjega prejetega e-sporo\u010dila stranke (za prikaz ob predlogu odgovora)"
+    },
+    "last_inbound_from": {
+      "type": "string",
+      "description": "Po\u0161iljatelj zadnjega prejetega sporo\u010dila (ime <e-naslov>)"
+    },
     "status": {
       "type": "string",
       "enum": [
