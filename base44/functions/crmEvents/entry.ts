@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       }
       if (old && data.last_inbound_at && data.last_inbound_at !== old.last_inbound_at) {
         const firstNote = String(data.notes || '').split('\n')[0];
-        await log({ lead_id: data.id, company_id: data.company_id || null, type: 'email_in', direction: 'inbound', subject: data.email_subject || 'Odgovor stranke', content: short(firstNote), occurred_at: iso(data.last_inbound_at), is_automated: true });
+        await log({ lead_id: data.id, company_id: data.company_id || null, type: 'email_in', direction: 'inbound', subject: data.email_subject || 'Odgovor stranke', content: data.last_inbound_body ? short(data.last_inbound_body, 4000) : short(firstNote), occurred_at: iso(data.last_inbound_at), is_automated: true });
         const enr = await sr.CampaignEnrollment.filter({ business_id: business.id, lead_id: data.id, status: 'active' });
         await Promise.all(enr.map((e) => sr.CampaignEnrollment.update(e.id, { status: 'stopped_replied' })));
         const open = await sr.Task.filter({ business_id: business.id, lead_id: data.id, status: 'open' });
