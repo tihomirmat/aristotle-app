@@ -53,7 +53,9 @@ Deno.serve(async (req) => {
     if (body.action === 'peek') {
       const b = (await sr.Business.filter({ id: BID }))[0];
       const c = await imapConnect({ host: b.imap_host, port: b.imap_port || 993, user: b.imap_user, pass: b.imap_pass });
-      const sel = await c.select('INBOX');
+      const boxes = (await c.list()).map((x) => x.path);
+      const sel = await c.select(body.box || 'INBOX');
+      if (body.listOnly) { await c.logout(); return Response.json({ boxes, sel }); }
       const top = (sel.uidNext || 1) - 1;
       const uids = await c.uidSearch(`UID ${Math.max(1, top - 6)}:*`);
       const ms = await c.uidFetchSource(uids.slice(-6));
