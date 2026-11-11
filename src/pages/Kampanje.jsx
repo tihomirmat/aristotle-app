@@ -298,6 +298,42 @@ function Builder({ open, onOpenChange, campaign, leads, lists, contacts, mailbox
   );
 }
 
+// Desni stolpec: naslov za pošiljanje in seznami naslovov — povzetek v vrstici, urejanje v oknu.
+function SetupPanel({ business, mailboxes, lists, contacts, onChanged }) {
+  const [open, setOpen] = useState(null); // "mb" | "lists"
+  const ok = contacts.filter((c) => c.status === "ok").length;
+  return (
+    <aside className="card-elevated p-5 space-y-5 xl:sticky xl:top-4">
+      <p className="font-semibold flex items-center gap-2"><Settings2 className="w-4 h-4 text-primary" />Nastavitve kampanj</p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">Naslov za pošiljanje</p>{mailboxes.length > 0 && <Button size="sm" variant="ghost" className="h-7 text-primary" onClick={() => setOpen("mb")}>Uredi</Button>}</div>
+        {mailboxes.length === 0 ? (
+          <>
+            <p className="text-sm text-muted-foreground">Kampanje pošiljajte z ločenega naslova (npr. novice@vase-podjetje.si), da glavni naslov ostane varen.</p>
+            <Button className="btn-brand w-full" onClick={() => setOpen("mb")}><Mail className="w-4 h-4 mr-2" />Poveži naslov</Button>
+          </>
+        ) : mailboxes.map((m) => (
+          <p key={m.id} className="text-sm flex items-center gap-2 min-w-0">
+            {m.status === "error" ? <AlertCircle className="w-4 h-4 text-red-600 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+            <span className="truncate">{m.email}</span>
+            <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">{m.status === "error" ? "napaka" : `danes ${sentToday(m)}/${dailyLimit(m)}`}</span>
+          </p>
+        ))}
+      </div>
+      <div className="space-y-2 pt-4 border-t">
+        <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">Seznami naslovov</p><Button size="sm" variant="ghost" className="h-7 text-primary" onClick={() => setOpen("lists")}>{lists.length ? "Uredi" : "Uvozi"}</Button></div>
+        <p className="text-sm text-muted-foreground">{lists.length ? `${cnt(lists.length, ["seznam", "seznama", "seznami", "seznamov"])} · naslovov v redu: ${ok}` : "Še nimate seznama. Uvozite Excel ali CSV z e-naslovi."}</p>
+      </div>
+      <Sheet open={open === "mb"} onOpenChange={(o) => !o && setOpen(null)}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto"><SheetHeader className="text-left"><SheetTitle className="font-display text-xl">Naslov za pošiljanje</SheetTitle></SheetHeader><div className="mt-4"><SendingMailboxes business={business} mailboxes={mailboxes} onChanged={onChanged} /></div></SheetContent>
+      </Sheet>
+      <Sheet open={open === "lists"} onOpenChange={(o) => !o && setOpen(null)}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto"><SheetHeader className="text-left"><SheetTitle className="font-display text-xl">Seznami naslovov</SheetTitle></SheetHeader><div className="mt-4"><ContactLists business={business} lists={lists} contacts={contacts} onChanged={onChanged} /></div></SheetContent>
+      </Sheet>
+    </aside>
+  );
+}
+
 function BounceAlert({ c, onResume }) {
   const a = c.bounce_alert || {};
   const list = a.addresses || [];
@@ -384,16 +420,12 @@ export default function Kampanje() {
         <p className="text-muted-foreground mt-1 max-w-3xl">Kampanja pošlje <strong>sekvenco</strong> — nekaj vnaprej napisanih sporočil z razmikom nekaj dni — naslovom s seznama ali vašim strankam. Ko kdo odgovori, se zanj sekvenca ustavi, odgovor pa najdete pri Strankah.</p>
       </div>
 
-      {/* 1. Priprava: s katerega naslova in komu */}
-      <section className="grid xl:grid-cols-2 gap-4">
-        <SendingMailboxes business={business} mailboxes={mailboxes} onChanged={refreshSetup} />
-        <ContactLists business={business} lists={lists} contacts={contacts} onChanged={refreshSetup} />
-      </section>
-
-      {/* 2. Nova kampanja */}
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+      <div className="space-y-8 min-w-0">
+      {/* 1. Nova kampanja */}
       <section className="space-y-3">
         <h2 className="text-lg">Nova kampanja — kaj želite doseči?</h2>
-        <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-3">
           {Object.entries(CAMPAIGN_GOALS).map(([k, g]) => {
             const I = GOAL_ICON[k]; const tpl = TEMPLATES[k];
             const n = tpl.source === "list" ? listReach(lists.map((l) => l.id), contacts, leads) : leads.filter((l) => matchAudience(l, tpl.audience)).length;
@@ -412,13 +444,13 @@ export default function Kampanje() {
         <p className="text-xs text-muted-foreground">Sporočila so že napisana. Pred zagonom jih vidite in popravite — nič se ne pošlje, dokler ne kliknete »Zaženi«.</p>
       </section>
 
-      {/* 3. Vaše kampanje */}
+      {/* 2. Vaše kampanje */}
       <section className="space-y-3">
         <h2 className="text-lg">Vaše kampanje {campaigns.length > 0 && <span className="text-muted-foreground font-normal text-base">({campaigns.length})</span>}</h2>
         {campaigns.length === 0 ? (
           <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground"><Megaphone className="w-8 h-8 mx-auto opacity-40" /><p className="mt-3 text-sm">Še nimate nobene kampanje. Izberite cilj zgoraj in kliknite »Pripravi«.</p></div>
         ) : (
-          <div className="grid xl:grid-cols-2 gap-4">
+          <div className="grid 2xl:grid-cols-2 gap-4">
             {sorted.map((c) => {
               const s = stats[c.id] || {}; const St = CAMPAIGN_STATUS[c.status] || CAMPAIGN_STATUS.draft; const I = GOAL_ICON[c.goal] || Megaphone;
               const isList = c.source === "list";
@@ -485,6 +517,11 @@ export default function Kampanje() {
           </div>
         )}
       </section>
+
+      </div>
+      {/* Desno: nastavitve (enkrat nastavite, nato samo pregled) */}
+      <SetupPanel business={business} mailboxes={mailboxes} lists={lists} contacts={contacts} onChanged={refreshSetup} />
+      </div>
 
       <Builder open={builder.open} onOpenChange={(o) => setBuilder({ open: o, campaign: o ? builder.campaign : null })} campaign={builder.campaign} leads={leads} lists={lists} contacts={contacts} mailboxes={mailboxes} onLaunch={launch} onMailboxesChanged={refreshSetup} />
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
