@@ -504,7 +504,8 @@ export default function Kampanje() {
                   <div className="flex items-start gap-3">
                     <div className="w-11 h-11 rounded-xl bg-accent text-primary flex items-center justify-center shrink-0"><I className="w-5 h-5" /></div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap"><p className="font-semibold">{c.name}</p><span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${bounced ? "bg-red-100 text-red-700" : St.cls}`}>{bounced ? "Ustavljena: vrnjena pošta" : St.label}</span></div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">{CAMPAIGN_GOALS[c.goal]?.label || "Lastna kampanja"}</p>
+                      <div className="flex items-center gap-2 flex-wrap mt-0.5"><p className="font-semibold">{c.name}</p><span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${bounced ? "bg-red-100 text-red-700" : St.cls}`}>{bounced ? "Ustavljena: vrnjena pošta" : St.label}</span></div>
                       <p className="text-sm text-muted-foreground mt-0.5">{explain}</p>
                       <p className="text-xs text-muted-foreground mt-1 inline-flex items-center gap-1.5 flex-wrap">{isList ? <><ListChecks className="w-3.5 h-3.5" />Seznam</> : <><Users className="w-3.5 h-3.5" />Vaše stranke</>}{mbs.length > 0 && <><span>·</span><Mail className="w-3.5 h-3.5" />{mbs.map((m) => m.email).join(", ")}</>}</p>
                     </div>
