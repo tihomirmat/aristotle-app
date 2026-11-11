@@ -31,7 +31,7 @@ const INDUSTRY_OPTIONS = [
 const STEPS = ["Spletna stran", "Podjetje", "Storitve", "Pomočniki", "Pogoji"];
 const toList = (s) => String(s || "").split("\n").map((x) => x.trim()).filter(Boolean);
 
-// Uvod: miren, 4 kratki koraki, eno vprašanje naenkrat. Desno (na računalniku) sproti vidite, kaj bo AI vedel o vas.
+// Uvod: miren, 5 kratkih korakov (zadnji: obvezen sprejem splošnih pogojev), eno vprašanje naenkrat. Desno (na računalniku) sproti vidite, kaj bo AI vedel o vas.
 export default function Onboarding({ preview = false }) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
