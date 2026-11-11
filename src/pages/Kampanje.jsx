@@ -326,10 +326,10 @@ function SetupPanel({ business, mailboxes, lists, contacts, onChanged }) {
         <p className="text-sm text-muted-foreground">{lists.length ? `${cnt(lists.length, ["seznam", "seznama", "seznami", "seznamov"])} · naslovov v redu: ${ok}` : "Še nimate seznama. Uvozite Excel ali CSV z e-naslovi."}</p>
       </div>
       <Sheet open={open === "mb"} onOpenChange={(o) => !o && setOpen(null)}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto"><SheetHeader className="text-left"><SheetTitle className="font-display text-xl">Naslov za pošiljanje</SheetTitle></SheetHeader><div className="mt-4"><SendingMailboxes business={business} mailboxes={mailboxes} onChanged={onChanged} /></div></SheetContent>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto"><SheetHeader className="text-left"><SheetTitle className="font-display text-xl">Naslov za pošiljanje</SheetTitle></SheetHeader><div className="mt-4"><SendingMailboxes bare business={business} mailboxes={mailboxes} onChanged={onChanged} /></div></SheetContent>
       </Sheet>
       <Sheet open={open === "lists"} onOpenChange={(o) => !o && setOpen(null)}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto"><SheetHeader className="text-left"><SheetTitle className="font-display text-xl">Seznami naslovov</SheetTitle></SheetHeader><div className="mt-4"><ContactLists business={business} lists={lists} contacts={contacts} onChanged={onChanged} /></div></SheetContent>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto"><SheetHeader className="text-left"><SheetTitle className="font-display text-xl">Seznami naslovov</SheetTitle></SheetHeader><div className="mt-4"><ContactLists bare business={business} lists={lists} contacts={contacts} onChanged={onChanged} /></div></SheetContent>
       </Sheet>
     </aside>
   );
