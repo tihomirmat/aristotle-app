@@ -11,7 +11,8 @@ export const invoiceAddressOf = (b) => b?.invoice_address || (b?.imap_user && b.
 
 // Kako računi pridejo v aplikacijo: ena kompaktna vrstica (naslov za račune + Kopiraj).
 // Navodila, dobavitelji in drug naslov so skriti za gumbi — odprejo se samo, ko jih kdo rabi.
-export default function InvoiceInbox({ business, onSaved }) {
+// compact = stranski stolpec (1/4): vse navpično.
+export default function InvoiceInbox({ business, onSaved, compact = false }) {
   const address = invoiceAddressOf(business);
   const [copied, setCopied] = useState(false);
   const [senders, setSenders] = useState(business?.invoice_senders || "");
@@ -41,12 +42,14 @@ export default function InvoiceInbox({ business, onSaved }) {
   );
 
   return (
-    <div className="card-elevated px-5 py-3.5">
-      <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
-        <span className="text-sm font-medium inline-flex items-center gap-2"><Forward className="w-4 h-4 text-primary" />Naslov za račune:</span>
-        <code className="text-sm font-semibold bg-muted px-2.5 py-1 rounded-md break-all">{address}</code>
-        <Button size="sm" variant="outline" className="h-8" onClick={copy}>{copied ? <Check className="w-4 h-4 mr-1.5 text-emerald-600" /> : <Copy className="w-4 h-4 mr-1.5" />}{copied ? "Kopirano" : "Kopiraj"}</Button>
-        <div className="flex items-center gap-4 ml-auto flex-wrap">
+    <div className={compact ? "card-elevated p-4" : "card-elevated px-5 py-3.5"}>
+      <div className={compact ? "space-y-2" : "flex items-center gap-x-4 gap-y-2 flex-wrap"}>
+        <span className="text-sm font-medium inline-flex items-center gap-2"><Forward className="w-4 h-4 text-primary" />Naslov za račune{compact ? "" : ":"}</span>
+        <div className={compact ? "flex items-center gap-2" : "contents"}>
+          <code className={`text-sm font-semibold bg-muted px-2.5 py-1 rounded-md break-all ${compact ? "flex-1 min-w-0" : ""}`}>{address}</code>
+          <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={copy} title="Kopiraj naslov">{copied ? <Check className={`w-4 h-4 text-emerald-600 ${compact ? "" : "mr-1.5"}`} /> : <Copy className={`w-4 h-4 ${compact ? "" : "mr-1.5"}`} />}{compact ? "" : copied ? "Kopirano" : "Kopiraj"}</Button>
+        </div>
+        <div className={compact ? "flex flex-col items-start gap-1.5 pt-1" : "flex items-center gap-4 ml-auto flex-wrap"}>
           {linkBtn("help", HelpCircle, "Kako ga uporabim?")}
           {linkBtn("senders", ListChecks, savedCount ? `Dobavitelji (${savedCount})` : "Dobavitelji")}
           {linkBtn("addr", Pencil, "Drug naslov")}
