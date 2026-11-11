@@ -132,7 +132,16 @@ class MiniImap {
     catch (e) { if (e.status) e.auth = true; throw e; }
   }
 
-  async select(box = 'INBOX') { await this.cmd([`SELECT ${quote(box)}`]); }
+  // Vrne { uidNext, exists } (iz odgovora strežnika; lahko null).
+  async select(box = 'INBOX') {
+    const { untagged } = await this.cmd([`SELECT ${quote(box)}`]);
+    let uidNext = null; let exists = null;
+    for (const u of untagged) {
+      const n = u.text.match(/UIDNEXT (\d+)/i); if (n) uidNext = Number(n[1]);
+      const e = u.text.match(/^\* (\d+) EXISTS/i); if (e) exists = Number(e[1]);
+    }
+    return { uidNext, exists };
+  }
 
   // criteria npr. 'UID 120:*' ali `SINCE 3-Nov-2026`
   async uidSearch(criteria) {
