@@ -11,7 +11,7 @@ import { lower, classifyBounce, isAutoReply, isUnsubscribe, replyOnly, pauseIfTo
 // Klic: urnik/interno { internal_secret, business_id?, mailbox_id? } ali lastnik { business_id }.
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
-const VERSION = 'campaign-mail-2026-11-11';
+const VERSION = 'campaign-mail-2026-11-11b';
 const MAX_PER_RUN = 60;
 const FIRST_RUN_DAYS = 2;
 const APP_URL = (Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app').replace(/\/$/, '');
