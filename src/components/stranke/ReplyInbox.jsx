@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Users, Mail, MessageCircleReply, MessageSquare, Megaphone, Star } from "lucide-react";
 import ReplyReview, { reasonFor } from "@/components/crm/ReplyReview";
-import { ago, firstLine, cnt, SOURCES } from "@/lib/crm";
+import { ago, firstLine, SOURCES } from "@/lib/crm";
 
 // Skupine v »Čaka na vaš odgovor« — od kod je prišlo (lastnik 11. 11.: ne mešaj povpraševanj, kampanj in klepeta).
 const GROUPS = [
@@ -63,7 +63,7 @@ export default function ReplyInbox({ drafts = [], leads = [], activities = [] })
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] 2xl:grid-cols-[400px_1fr] gap-4 items-start">
         <div className="card-elevated overflow-hidden lg:sticky lg:top-20">
           <div className="px-4 py-3 border-b bg-muted/30">
-            <p className="text-sm font-semibold flex items-center gap-2">{G && <G.icon className="w-4 h-4 text-primary" />}{G?.label}: {cnt(items.length, ["čaka", "čakata", "čakajo", "čaka"]).replace(/^(\d+) (.*)$/, "$2 $1")}</p>
+            <p className="text-sm font-semibold flex items-center gap-2">{G && <G.icon className="w-4 h-4 text-primary" />}{G?.label} ({items.length})</p>
             <p className="text-xs text-muted-foreground mt-0.5">{G?.hint}</p>
           </div>
           <div className="divide-y max-h-[calc(100vh-260px)] overflow-y-auto">
