@@ -52,7 +52,7 @@ const ENT = { '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '
 export function htmlToText(html) {
   return String(html || '')
     .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6])>/gi, '\n\n').replace(/<\/(li|tr)>/gi, '\n')
     .replace(/<li[^>]*>/gi, '• ')
     .replace(/<a [^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, (m, href, txt) => (txt.replace(/<[^>]+>/g, '') === href ? href : `${txt.replace(/<[^>]+>/g, '')} (${href})`))
     .replace(/<img [^>]*>/gi, '')
