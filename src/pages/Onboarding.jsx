@@ -16,6 +16,8 @@ import OffersPicker from "@/components/OffersPicker";
 import { LEGACY_LABEL } from "@/lib/industries";
 import { FEATURES, CORE_FEATURE } from "@/lib/features";
 import { Check } from "lucide-react";
+import TermsReview from "@/components/TermsReview";
+import { TERMS_VERSION } from "@/pages/Pravno";
 
 const INDUSTRY_OPTIONS = [
   { value: "other", label: "Storitve / drugo" },
@@ -40,7 +42,7 @@ export default function Onboarding({ preview = false }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [form, setForm] = useState({
     name: "", industry_template: "other", industry: "", offer_options: [], phone: "", address: "", website: "", hours: "",
-    services: "", main_services: "", enabled_features: [], current_offer: "", google_review_link: "", brand_voice: "", knowledge: [], gdpr_confirmed: false,
+    services: "", main_services: "", enabled_features: [], current_offer: "", google_review_link: "", brand_voice: "", knowledge: [], gdpr_confirmed: false, terms_accepted: false,
   });
   const update = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -71,12 +73,12 @@ export default function Onboarding({ preview = false }) {
   };
 
   const handleFinish = async () => {
-    if (!form.gdpr_confirmed || !form.name.trim()) return;
+    if (!form.gdpr_confirmed || !form.terms_accepted || !form.name.trim()) return;
     if (preview) { toast.success("Predogled uvoda — nič ni shranjeno."); window.location.href = "/"; return; }
     setSaving(true);
     try {
       const user = await base44.auth.me();
-      const res = await completeOnboarding({ form });
+      const res = await completeOnboarding({ form: { ...form, terms_version: TERMS_VERSION } });
       const data = res?.data ?? res;
       if (data?.error) throw new Error(data.error);
       await queryClient.invalidateQueries({ queryKey: ["business", user.email] });
@@ -203,17 +205,15 @@ export default function Onboarding({ preview = false }) {
           {step === 5 && (
             <div className="space-y-7 max-w-xl">
               <div>
-                <h1 className="text-3xl">Pripravljeni ste</h1>
-                <p className="text-muted-foreground mt-2">Po kliku vas odpeljemo na zadnji korak: povezavo e-poštnega predala (e-naslov in geslo), da AI najde povpraševanja. To lahko naredite tudi pozneje.</p>
+                <h1 className="text-3xl">Preden začnete</h1>
+                <p className="text-muted-foreground mt-2">Preberite, kako aplikacija deluje in kaj se zgodi z vašimi podatki. Brez drobnega tiska — vse je zapisano spodaj. Nato vas odpeljemo na povezavo e-poštnega predala (to lahko naredite tudi pozneje).</p>
               </div>
-              <div className="rounded-xl bg-muted/50 p-4 flex gap-3 text-sm">
-                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
-                <p>AI ne pošlje ničesar brez vas. Vsak odgovor najprej pregledate. Prvih 14 dni je brezplačnih, brez kartice.</p>
-              </div>
+              <TermsReview id="terms" accepted={form.terms_accepted} onAccept={(v) => update("terms_accepted", v)} />
               <label htmlFor="gdpr" className="flex items-start gap-3 rounded-xl border p-4 cursor-pointer hover:bg-muted/30">
                 <Checkbox id="gdpr" checked={form.gdpr_confirmed} onCheckedChange={(v) => update("gdpr_confirmed", !!v)} className="mt-0.5" />
-                <span className="text-sm leading-relaxed">Strankam pišem le, če imam njihovo soglasje ali so mi pisale same (GDPR, ZEPT-1). Sprejemam <a href="/pogoji" target="_blank" rel="noreferrer" className="underline">pogoje uporabe</a> in <a href="/zasebnost" target="_blank" rel="noreferrer" className="underline">politiko zasebnosti</a>.</span>
+                <span className="text-sm leading-relaxed">Strankam pišem le, če imam za to pravno podlago (soglasje, obstoječe poslovno razmerje ali so mi pisale same) — GDPR in ZEKom-2.</span>
               </label>
+              <p className="text-xs text-muted-foreground flex gap-2"><ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />Prvih 14 dni je brezplačnih, brez kartice. Odgovori na povpraševanja privzeto čakajo na vaš pregled.</p>
             </div>
           )}
 
@@ -223,8 +223,8 @@ export default function Onboarding({ preview = false }) {
               {step < 5 ? (
                 <Button className="btn-brand px-6" onClick={() => setStep((s) => s + 1)} disabled={!canNext}>Naprej<ChevronRight className="w-4 h-4 ml-1" /></Button>
               ) : (
-                <Button className="btn-brand px-6" onClick={handleFinish} disabled={saving || !form.gdpr_confirmed || !form.name.trim()}>
-                  {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}Odpri aplikacijo<ChevronRight className="w-4 h-4 ml-1" />
+                <Button className="btn-brand px-6" onClick={handleFinish} disabled={saving || !form.gdpr_confirmed || !form.terms_accepted || !form.name.trim()}>
+                  {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}Sprejemam in začnem<ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               )}
             </div>
