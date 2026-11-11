@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { simpleParser } from 'npm:mailparser@3.7.1';
 import { imapConnect, imapDate } from '../../shared/imap.js';
-import { lower, classifyBounce, isAutoReply, isUnsubscribe, replyOnly, shouldPause, allRecords } from '../../shared/campaignMail.js';
+import { lower, classifyBounce, isAutoReply, isUnsubscribe, replyOnly, pauseIfTooManyBounces, allRecords } from '../../shared/campaignMail.js';
 
 // Bere predale za e-poštne kampanje (SendingMailbox):
 //  - ODBITA sporočila (hard bounce) → naslov označi kot neveljaven, ustavi pošiljanje tej osebi;
@@ -49,19 +49,6 @@ async function readMailbox(mb) {
     }
   } finally { await c.logout().catch(() => {}); }
   return { mails: out, maxUid };
-}
-
-async function notifyOwner(base44, business, camp, alert) {
-  const to = business.owner_email || business.created_by;
-  if (!to) return;
-  const list = alert.addresses.slice(0, 10).map((a) => `• ${a.email} — ${a.reason}`).join('<br>');
-  const body = `<p>Pozdravljeni,</p>
-<p>kampanjo <b>»${camp.name}«</b> smo <b>začasno ustavili</b>, ker se je vrnilo ${alert.count} sporočil (od ${alert.sent} prejemnikov, ${(alert.rate * 100).toFixed(1)} %). Naslovi verjetno ne obstajajo več:</p>
-<p>${list}</p>
-<p><b>Zakaj je to pomembno:</b> ponudniki e-pošte (Gmail, Outlook, Siol …) spremljajo, koliko vaših sporočil se vrne. Če jih je več kot nekaj odstotkov, začnejo vašo pošto pošiljati med neželeno pošto ali jo zavračati — tudi običajna sporočila z istega naslova in domene. Popravljanje ugleda lahko traja tedne.</p>
-<p><b>Kaj priporočamo:</b> preden nadaljujete, preverite seznam v spletni storitvi za preverjanje e-naslovov (npr. Bouncer, MillionVerifier, ZeroBounce ali NeverBounce) in uvozite očiščen seznam. Odbiti naslovi so že izločeni in jim ne bomo več pisali.</p>
-<p>Kampanjo lahko nadaljujete v aplikaciji: <a href="${APP_URL}/kampanje">E-poštne kampanje</a>.</p>`;
-  await base44.asServiceRole.integrations.Core.SendEmail({ to, subject: `Kampanja »${camp.name}« je ustavljena: preveč vrnjenih sporočil`, body, from_name: 'AI Aristotle' }).catch((e) => console.error('notify failed', e?.message));
 }
 
 async function syncBusiness(base44, business, mailboxes) {
@@ -176,20 +163,11 @@ async function syncBusiness(base44, business, mailboxes) {
   // Preveč odbitih → ustavi kampanjo in obvesti lastnika.
   for (const [cid, list] of Object.entries(newBounceByCamp)) {
     const camp = campById[cid];
-    if (!camp || camp.status !== 'active') continue;
-    const ce = enrollments.filter((e) => e.campaign_id === cid);
-    const contacted = ce.filter((e) => e.last_sent_at || Number(e.current_step) > 0).length;
-    const bounced = ce.filter((e) => e.status === 'stopped_bounced');
-    const since = camp.resumed_at ? new Date(camp.resumed_at).getTime() : 0;
-    const bouncesSinceResume = bounced.filter((e) => e.bounced_at && new Date(e.bounced_at).getTime() > since).length;
-    if (!shouldPause({ bouncesSinceResume, bouncedTotal: bounced.length, contacted, newThisRun: list.length })) continue;
-    const alert = {
-      at: new Date().toISOString(), count: bounced.length, since_resume: bouncesSinceResume, sent: contacted, rate: contacted ? bounced.length / contacted : 0,
-      addresses: bounced.slice(0, 30).map((e) => ({ email: emailOf(e), reason: e.bounce_reason || '' })),
-    };
-    await sr.Campaign.update(cid, { status: 'paused', paused_reason: 'bounces', paused_at: alert.at, bounce_alert: alert });
-    res.paused.push(camp.name);
-    await notifyOwner(base44, business, camp, alert);
+    const paused = await pauseIfTooManyBounces({
+      sr, sendEmail: (o) => base44.asServiceRole.integrations.Core.SendEmail(o), business, camp,
+      enrollments: enrollments.filter((e) => e.campaign_id === cid), emailOf, newCount: list.length, appUrl: APP_URL,
+    });
+    if (paused) res.paused.push(camp.name);
   }
   return res;
 }
