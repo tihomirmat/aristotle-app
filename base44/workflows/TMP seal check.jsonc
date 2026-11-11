@@ -1,0 +1,43 @@
+{
+  "name": "TMP seal check",
+  "description": "Za\u010dasno: preverjanje \u0161ifriranja gesel (samo \u0161tetje).",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 1,
+      "interval_unit": "days",
+      "interval_anchor": "2026-11-01T03:00:00",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "tmp_seal_check",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "sealMailboxPasswords",
+            "args": {
+              "action": "check"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
