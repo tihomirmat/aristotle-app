@@ -1,0 +1,41 @@
+{
+  "name": "Kampanje - predali (vsakih 10 min)",
+  "description": "Vsakih 10 minut prebere predale za e-po\u0161tne kampanje: vrnjena sporo\u010dila (naslov ne obstaja) ustavijo po\u0161iljanje in po potrebi kampanjo, odgovori postanejo stranke, odjave se upo\u0161tevajo.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 10,
+      "interval_unit": "minutes",
+      "interval_anchor": "2026-11-11T00:05:00",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "kampanje_predali_vsakih_10_min",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "syncCampaignMailboxes",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
