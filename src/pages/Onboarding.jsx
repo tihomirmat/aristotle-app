@@ -28,7 +28,7 @@ const INDUSTRY_OPTIONS = [
   { value: "restaurant", label: "Gostinstvo" },
   { value: "auto", label: "Avtoservis" },
 ];
-const STEPS = ["Spletna stran", "Podjetje", "Storitve", "Pomočniki", "Začetek"];
+const STEPS = ["Spletna stran", "Podjetje", "Storitve", "Pomočniki", "Pogoji"];
 const toList = (s) => String(s || "").split("\n").map((x) => x.trim()).filter(Boolean);
 
 // Uvod: miren, 4 kratki koraki, eno vprašanje naenkrat. Desno (na računalniku) sproti vidite, kaj bo AI vedel o vas.
