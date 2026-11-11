@@ -140,7 +140,17 @@ Deno.serve(async (req) => {
     }
 
     const MARKETING = ['reactivation', 'review_request', 'referral_ask', 'campaign'].includes(draft.pillar);
-    const threadReply = !MARKETING && lead.source === 'email' && !!lead.email_message_id;
+    const threadReply = !MARKETING && ['email', 'campaign'].includes(lead.source) && !!lead.email_message_id;
+    // Ločen predal za kampanje: sporočilo kampanje gre s predala kampanje; odgovor osebi, ki je odgovorila na kampanjo, z istega predala.
+    const mailboxId = draft.mailbox_id || (!MARKETING ? lead.reply_mailbox_id : null);
+    const campaignMailbox = mailboxId ? (await base44.asServiceRole.entities.SendingMailbox.filter({ id: mailboxId }).catch(() => []))[0] : null;
+    if (campaignMailbox && campaignMailbox.business_id === business.id && campaignMailbox.smtp_host && campaignMailbox.smtp_pass) {
+      Object.assign(business, {
+        email_provider: 'smtp', smtp_host: campaignMailbox.smtp_host, smtp_port: campaignMailbox.smtp_port, smtp_user: campaignMailbox.email, smtp_pass: campaignMailbox.smtp_pass,
+        smtp_encryption: campaignMailbox.smtp_encryption, smtp_from_email: campaignMailbox.email, smtp_from_name: campaignMailbox.from_name || business.smtp_from_name,
+        imap_enabled: !!campaignMailbox.imap_enabled, imap_host: campaignMailbox.imap_host, imap_port: campaignMailbox.imap_port, imap_user: campaignMailbox.email, imap_pass: campaignMailbox.imap_pass,
+      });
+    }
     const signature = business.email_signature ? `\n\n${business.email_signature}` : `\n\nLep pozdrav,\n${business.name}`;
     // AI pogosto sam doda »Lep pozdrav, Ime« — odreži ga, ker spodaj vedno dodamo podpis podjetja (sicer je podpis dvojen).
     {
@@ -234,6 +244,13 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date().toISOString();
+    if (campaignMailbox && sentVia === 'smtp') {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Ljubljana' }).format(new Date());
+      await base44.asServiceRole.entities.SendingMailbox.update(campaignMailbox.id, {
+        sent_date: today, sent_today: (campaignMailbox.sent_date === today ? Number(campaignMailbox.sent_today) || 0 : 0) + 1,
+        total_sent: (Number(campaignMailbox.total_sent) || 0) + 1, ...(campaignMailbox.first_send_at ? {} : { first_send_at: now }),
+      }).catch(() => null);
+    }
     if (business.subscription_status === 'trialing') {
       await base44.asServiceRole.entities.Business.update(business.id, { trial_sends_remaining: Math.max(0, (business.trial_sends_remaining ?? 20) - 1) });
     }
