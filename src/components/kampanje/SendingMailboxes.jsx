@@ -4,11 +4,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Mail, Loader2, Plus, Trash2, AlertTriangle, CheckCircle2, AlertCircle, ChevronDown, Gauge } from "lucide-react";
+import { Mail, Loader2, Plus, Trash2, AlertTriangle, CheckCircle2, AlertCircle, ChevronDown, Gauge, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import { connectMailbox } from "@/functions/connectMailbox";
 import { fnError } from "@/lib/fn-error";
 import { cnt, W, fmtDateTime } from "@/lib/crm";
+
+const RichEditor = React.lazy(() => import("@/components/kampanje/RichEditor"));
+const toHtml = (t) => String(t || "").trim().split(/\n{2,}/).map((b) => `<p>${b.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>")}</p>`).join("");
+
+// Podpis za sporočila z naslova (HTML: besedilo, povezave, logotip).
+export function SignatureDialog({ mb, business, open, onOpenChange, onSaved }) {
+  const [html, setHtml] = useState("");
+  const [saving, setSaving] = useState(false);
+  React.useEffect(() => { if (open) setHtml(mb?.signature_html || toHtml(business?.email_signature || `Lep pozdrav,\n${mb?.from_name || business?.name || ""}`)); }, [open, mb?.id]);
+  const save = async () => {
+    setSaving(true);
+    try { await base44.entities.SendingMailbox.update(mb.id, { signature_html: html }); toast.success("Podpis shranjen."); onSaved?.(); onOpenChange(false); }
+    catch (e) { toast.error(e.message); } finally { setSaving(false); }
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>Podpis za {mb?.email}</DialogTitle><DialogDescription>Doda se na konec vsakega sporočila s tega naslova. Dodate lahko povezavo in logotip (gumb s sliko).</DialogDescription></DialogHeader>
+        <React.Suspense fallback={<div className="h-40 rounded-lg border animate-pulse" />}><RichEditor value={html} onChange={setHtml} minHeight={140} /></React.Suspense>
+        <DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Prekliči</Button><Button className="btn-brand" onClick={save} disabled={saving || !html}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Shrani podpis</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // Enako kot shared/campaignMail.js
 const WARMUP_DAYS = 14;
@@ -114,6 +138,7 @@ function LimitDialog({ mb, open, onOpenChange, onSaved }) {
 export default function SendingMailboxes({ business, mailboxes, onChanged }) {
   const [adding, setAdding] = useState(false);
   const [limitFor, setLimitFor] = useState(null);
+  const [sigFor, setSigFor] = useState(null);
   const [removing, setRemoving] = useState(null);
   const remove = async (mb) => {
     if (!window.confirm(`Odstranim predal ${mb.email}? Kampanje z njega ne bodo več pošiljale.`)) return;
@@ -145,6 +170,7 @@ export default function SendingMailboxes({ business, mailboxes, onChanged }) {
                       : <>Danes poslano {st} od {lim} · {Number(mb.daily_limit_manual) > 0 ? "meja ročno nastavljena" : mb.first_send_at ? (autoLimit(mb) === 20 ? "uvajanje (prva 2 tedna)" : "polna meja") : "še ni pošiljal"}{mb.last_checked_at ? ` · predal preverjen ${fmtDateTime(mb.last_checked_at)}` : ""}</>}
                   </p>
                 </div>
+                <Button size="sm" variant="outline" onClick={() => setSigFor(mb)}><PenLine className="w-4 h-4 mr-1.5" />{mb.signature_html ? "Podpis" : "Dodaj podpis"}</Button>
                 <Button size="sm" variant="outline" onClick={() => setLimitFor(mb)}><Gauge className="w-4 h-4 mr-1.5" />{lim} na dan</Button>
                 <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-600" onClick={() => remove(mb)} disabled={removing === mb.id}>{removing === mb.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</Button>
               </div>
@@ -156,6 +182,7 @@ export default function SendingMailboxes({ business, mailboxes, onChanged }) {
         </div>
       )}
       {limitFor && <LimitDialog mb={limitFor} open={!!limitFor} onOpenChange={(o) => !o && setLimitFor(null)} onSaved={onChanged} />}
+      {sigFor && <SignatureDialog mb={sigFor} business={business} open={!!sigFor} onOpenChange={(o) => !o && setSigFor(null)} onSaved={onChanged} />}
     </div>
   );
 }
