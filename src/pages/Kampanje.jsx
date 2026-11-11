@@ -238,7 +238,7 @@ function Builder({ open, onOpenChange, campaign, leads, lists, contacts, mailbox
 
           <div className="flex gap-2 sticky bottom-0 bg-background py-3 border-t">
             <Button variant="outline" onClick={() => save(false)} disabled={saving}>Shrani kot osnutek</Button>
-            <Button className="btn-brand flex-1" onClick={() => save(true)} disabled={saving || !reach || (isList && !(c.mailbox_ids || []).length)}>{saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}{campaign?.status === "active" ? "Shrani" : `Zaženi za ${cnt(reach, isList ? W.naslov : ["stranko", "stranki", "stranke", "strank"])}`}</Button>
+            <Button className="btn-brand flex-1" onClick={() => save(true)} disabled={saving || !reach || (isList && !(c.mailbox_ids || []).length)}>{saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}{campaign?.status === "active" ? "Shrani" : `Zaženi za ${cnt(reach, isList ? ["naslov", "naslova", "naslove", "naslovov"] : ["stranko", "stranki", "stranke", "strank"])}`}</Button>
           </div>
         </div>
       </SheetContent>
@@ -270,14 +270,14 @@ export default function Kampanje() {
   const [builder, setBuilder] = useState({ open: false, campaign: null });
   const [toDelete, setToDelete] = useState(null);
   const [toResume, setToResume] = useState(null);
-  const q = (key, fn) => useQuery({ queryKey: [key, bid], queryFn: fn, enabled: !!bid });
-  const { data: campaigns = [], isLoading } = q("campaigns", () => base44.entities.Campaign.filter({ business_id: bid }));
-  const { data: enrollments = [], refetch: refetchEnr } = q("enrollments", () => base44.entities.CampaignEnrollment.filter({ business_id: bid }, "-created_date", 5000));
-  const { data: drafts = [] } = q("drafts-all", () => base44.entities.DraftMessage.filter({ business_id: bid, pillar: "campaign" }));
-  const { data: leads = [] } = q("leads", () => base44.entities.Lead.filter({ business_id: bid }));
-  const { data: mailboxes = [], refetch: refetchMb } = q("sending-mailboxes", () => base44.entities.SendingMailbox.filter({ business_id: bid }));
-  const { data: lists = [], refetch: refetchLists } = q("contact-lists", () => base44.entities.ContactList.filter({ business_id: bid }, "-created_date"));
-  const { data: contacts = [], refetch: refetchContacts } = q("list-contacts", () => base44.entities.ListContact.filter({ business_id: bid }, "-created_date", 5000));
+  const useQ = (key, fn) => useQuery({ queryKey: [key, bid], queryFn: fn, enabled: !!bid });
+  const { data: campaigns = [], isLoading } = useQ("campaigns", () => base44.entities.Campaign.filter({ business_id: bid }));
+  const { data: enrollments = [], refetch: refetchEnr } = useQ("enrollments", () => base44.entities.CampaignEnrollment.filter({ business_id: bid }, "-created_date", 5000));
+  const { data: drafts = [] } = useQ("drafts-all", () => base44.entities.DraftMessage.filter({ business_id: bid, pillar: "campaign" }));
+  const { data: leads = [] } = useQ("leads", () => base44.entities.Lead.filter({ business_id: bid }));
+  const { data: mailboxes = [], refetch: refetchMb } = useQ("sending-mailboxes", () => base44.entities.SendingMailbox.filter({ business_id: bid }));
+  const { data: lists = [], refetch: refetchLists } = useQ("contact-lists", () => base44.entities.ContactList.filter({ business_id: bid }, "-created_date"));
+  const { data: contacts = [], refetch: refetchContacts } = useQ("list-contacts", () => base44.entities.ListContact.filter({ business_id: bid }, "-created_date", 5000));
   const refreshSetup = () => { refetchMb(); refetchLists(); refetchContacts(); refetchEnr(); invalidate(); };
 
   const stats = useMemo(() => {
