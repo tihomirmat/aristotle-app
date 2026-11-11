@@ -6,7 +6,8 @@ import { lower, checkSyntax, domainAcceptsMail, allRecords } from '../../shared/
 //   → osnovno preverjanje (zapis, podvojeni, začasni naslovi, ali domena sprejema pošto) in shranjevanje.
 // action delete { business_id, list_id } → izbriše seznam in njegove naslove (aktivne kampanje jih nehajo uporabljati).
 
-const VERSION = 'import-contacts-2026-11-11';
+const VERSION = 'import-contacts-2026-11-11b';
+const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const MAX_ROWS = 5000;
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
   || (!!user.email && (b.created_by === user.email || b.owner_email === user.email)));
@@ -21,12 +22,13 @@ async function pool(items, n, fn) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me().catch(() => null);
-    if (!user) return Response.json({ error: 'Unauthorized', version: VERSION }, { status: 401 });
     const body = await req.json().catch(() => ({}));
+    const internal = !!INTERNAL_SECRET && body?.internal_secret === INTERNAL_SECRET;
+    const user = internal ? null : await base44.auth.me().catch(() => null);
+    if (!user && !internal) return Response.json({ error: 'Unauthorized', version: VERSION }, { status: 401 });
     const sr = base44.asServiceRole.entities;
     const business = body.business_id ? (await sr.Business.filter({ id: body.business_id }))[0] : null;
-    if (!business || !ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.' });
+    if (!business || (!internal && !ownsBusiness(user, business))) return Response.json({ error: 'Nimate dostopa do tega podjetja.' });
     const owner = business.owner_email || business.created_by;
 
     if (body.action === 'delete') {
