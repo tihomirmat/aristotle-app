@@ -9,39 +9,43 @@
     --font-inter: 'Inter', sans-serif;
     --font-display: 'Montserrat', 'Inter', sans-serif;
     /* Spletnost: oranžna #f84214, globoka modra #091f93 / #340698, jantar #ffb50e */
-    --background: 220 33% 97%;
-    --foreground: 230 45% 10%;
+    /* Umirjena tema (lastnik 11. 11.: »da človek lahko gleda cel dan«): mehko sivo-modra podlaga, temno siv tekst namesto črnega, prigušena oranžna. */
+    --background: 216 33% 97.5%;
+    --foreground: 220 18% 26%;
     --card: 0 0% 100%;
-    --card-foreground: 230 45% 10%;
+    --card-foreground: 220 18% 26%;
     --popover: 0 0% 100%;
-    --popover-foreground: 230 45% 10%;
-    --primary: 13 94% 52%;
+    --popover-foreground: 220 18% 26%;
+    --primary: 14 70% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 222 30% 94%;
-    --secondary-foreground: 230 45% 10%;
-    --muted: 222 25% 94%;
-    --muted-foreground: 225 12% 44%;
-    --accent: 13 94% 95%;
-    --accent-foreground: 13 85% 40%;
-    --destructive: 0 84% 60%;
+    --secondary: 216 30% 95%;
+    --secondary-foreground: 220 18% 30%;
+    --muted: 216 28% 95.5%;
+    --muted-foreground: 218 11% 50%;
+    --accent: 16 85% 96.5%;
+    --accent-foreground: 14 55% 44%;
+    --destructive: 0 65% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border: 222 22% 89%;
-    --input: 222 22% 87%;
-    --ring: 13 94% 52%;
+    --border: 216 20% 91%;
+    --input: 216 20% 88%;
+    --ring: 14 70% 60%;
+    /* mehka modra za drugotne poudarke */
+    --soft-blue: 222 60% 96%;
+    --soft-blue-foreground: 226 45% 42%;
     --chart-1: 13 94% 52%;
     --chart-2: 229 88% 31%;
     --chart-3: 41 100% 53%;
     --chart-4: 258 92% 31%;
     --chart-5: 216 80% 48%;
     --radius: 0.875rem;
-    --sidebar-background: 232 72% 9%;
-    --sidebar-foreground: 228 30% 78%;
-    --sidebar-primary: 13 94% 55%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 14% 38%;
+    --sidebar-primary: 14 70% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 232 50% 16%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 232 40% 16%;
-    --sidebar-ring: 13 94% 55%;
+    --sidebar-accent: 16 85% 96.5%;
+    --sidebar-accent-foreground: 14 55% 42%;
+    --sidebar-border: 216 20% 91%;
+    --sidebar-ring: 14 70% 58%;
     --success: 152 60% 40%;
     --success-foreground: 0 0% 100%;
     --warning: 41 100% 48%;
@@ -106,27 +110,18 @@
 /* ─── Spletnost / AI Aristotle vizualni sistem ─────────────────────────── */
 @layer base {
   h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
-  h1 { @apply text-2xl md:text-[1.75rem] font-bold; }
+  h1 { @apply text-2xl md:text-[1.75rem] font-semibold; }
+  h1, h2, h3 { color: hsl(220 22% 22%); }
   body { font-feature-settings: "ss01", "cv11"; }
 }
 
 @layer components {
-  /* Vesoljski gradient za stransko vrstico in hero */
+  /* Stranska vrstica: svetla, z rahlim toplim odtenkom (prej temen »vesoljski« gradient) */
   .bg-space {
-    background:
-      radial-gradient(60% 50% at 100% 0%, hsl(258 92% 31% / 0.55) 0%, transparent 60%),
-      radial-gradient(50% 40% at 0% 100%, hsl(229 88% 31% / 0.55) 0%, transparent 60%),
-      hsl(var(--sidebar-background));
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(24 60% 98.5%) 100%);
+    border-right: 1px solid hsl(var(--sidebar-border));
   }
-  .bg-space-stars {
-    background-image:
-      radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.55) 50%, transparent 51%),
-      radial-gradient(1px 1px at 70% 8%, rgba(255,255,255,.4) 50%, transparent 51%),
-      radial-gradient(1.5px 1.5px at 85% 42%, rgba(255,255,255,.5) 50%, transparent 51%),
-      radial-gradient(1px 1px at 35% 62%, rgba(255,255,255,.35) 50%, transparent 51%),
-      radial-gradient(1px 1px at 55% 88%, rgba(255,255,255,.45) 50%, transparent 51%),
-      radial-gradient(1.5px 1.5px at 20% 92%, rgba(255,255,255,.3) 50%, transparent 51%);
-  }
+  .bg-space-stars { background-image: none; }
   .card-elevated {
     @apply bg-card border border-border/70 rounded-2xl shadow-[0_1px_2px_rgba(16,24,40,.04),0_8px_24px_-12px_rgba(16,24,40,.12)];
   }
@@ -135,5 +130,11 @@
     background: linear-gradient(90deg, hsl(13 94% 52%), hsl(41 100% 53%));
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .btn-brand { @apply bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_6px_16px_-6px_hsl(13_94%_52%/.6)]; }
+  /* Glavni gumb: mehko obarvan (prosojna oranžna + temnejši oranžn tekst), brez sence — jasen, a ne kričeč */
+  .btn-brand { background-color: hsl(var(--primary) / .14); color: hsl(var(--accent-foreground)); border: 1px solid hsl(var(--primary) / .32); box-shadow: none; }
+  .btn-brand:hover { background-color: hsl(var(--primary) / .22); }
+  .btn-brand:disabled { opacity: .55; }
+  /* Prej črni izbrani čipi (bg-foreground) in polne oranžne značke → mehko obarvani */
+  .bg-foreground.text-background { background-color: hsl(var(--primary) / .13); color: hsl(var(--accent-foreground)); border-color: hsl(var(--primary) / .3); }
+  .bg-primary.text-white, .bg-primary.text-primary-foreground { background-color: hsl(var(--primary) / .16); color: hsl(var(--accent-foreground)); }
 }
