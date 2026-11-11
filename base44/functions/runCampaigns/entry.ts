@@ -12,7 +12,7 @@ import { syncCampaignMailboxesFor } from '../../shared/campaignSync.js';
 //    Najprej nadaljevanja sekvence (follow-up), nato novi naslovi. Vsaka oseba dobiva vsa sporočila z istega predala.
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
-const VERSION = 'run-campaigns-2026-11-11-html';
+const VERSION = 'run-campaigns-2026-11-11-html2';
 const MAX_AI_PER_RUN = 15;
 const MAX_LIST_SENDS_PER_RUN = 40;
 const DAY = 86400000;
