@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Sunrise, MessageSquare, Calendar, Send, Loader2, Bot, RefreshCw, AlertTriangle } from "lucide-react";
+import { Sunrise, MessageSquare, Calendar, Send, Loader2, Bot, RefreshCw, AlertTriangle, Mic, Square, Volume2, VolumeX } from "lucide-react";
+import { useVoice } from "@/lib/useVoice";
 import StatusBanner from "@/components/ui/StatusBanner";
 import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
@@ -110,6 +111,9 @@ function ChatTab({ business, user }) {
   const [localMessages, setLocalMessages] = useState([]);
   const [thinking, setThinking] = useState(false);
   const bottomRef = useRef(null);
+  const v = useVoice(business?.id);
+  const [speakReplies, setSpeakReplies] = useState(() => { try { return localStorage.getItem("asistent-glas") === "1"; } catch { return false; } });
+  const toggleSpeak = () => { const n = !speakReplies; setSpeakReplies(n); try { localStorage.setItem("asistent-glas", n ? "1" : "0"); } catch { /* */ } if (!n) v.silence(); };
 
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -124,9 +128,22 @@ function ChatTab({ business, user }) {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-    const userMsg = { role: "user", content: input, ts: new Date().toISOString() };
+  // Mikrofon: klik = poslušam, ponoven klik = prepis v slovenščino in takojšnje pošiljanje.
+  const toggleMic = async () => {
+    try {
+      if (!v.recording) { v.silence(); await v.start(); return; }
+      const text = await v.stop();
+      if (!text) { toast.info("Nisem razumel. Poskusite znova in govorite malo dlje."); return; }
+      await sendMessage(text);
+    } catch (e) {
+      toast.error(/Permission|NotAllowed/i.test(String(e?.name || e?.message)) ? "Brskalnik ni dovolil mikrofona. Dovolite ga v naslovni vrstici in poskusite znova." : fnError(e));
+    }
+  };
+
+  const sendMessage = async (spoken) => {
+    const content = typeof spoken === "string" ? spoken : input;
+    if (!content.trim()) return;
+    const userMsg = { role: "user", content, ts: new Date().toISOString() };
     const updatedMessages = [...messages, userMsg];
     setLocalMessages(updatedMessages);
     setInput("");
@@ -156,6 +173,7 @@ function ChatTab({ business, user }) {
     setLocalMessages(finalMessages);
     queryClient.invalidateQueries({ queryKey: ["assistant-chat", business?.id, today] });
     setThinking(false);
+    if (speakReplies && v.enabled && result) v.say(result).catch((e) => toast.error(fnError(e)));
   };
 
   return (
@@ -189,11 +207,22 @@ function ChatTab({ business, user }) {
         )}
         <div ref={bottomRef} />
       </div>
-      <div className="flex gap-2 pt-3 border-t">
-        <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Vnesite sporočilo..." onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()} disabled={thinking} />
-        <Button onClick={sendMessage} disabled={!input.trim() || thinking}>
+      <div className="flex gap-2 pt-3 border-t items-center">
+        {v.enabled && v.supported && (
+          <Button type="button" onClick={toggleMic} disabled={thinking || v.busy} className={v.recording ? "bg-red-600 hover:bg-red-700 text-white animate-pulse" : "btn-brand"} title={v.recording ? "Kliknite, ko končate" : "Vprašajte z glasom"}>
+            {v.busy ? <Loader2 className="w-4 h-4 animate-spin" /> : v.recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            <span className="ml-2 hidden sm:inline">{v.busy ? "Prepisujem …" : v.recording ? "Končaj" : "Govori"}</span>
+          </Button>
+        )}
+        <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder={v.recording ? "Poslušam … kliknite »Končaj«, ko končate." : "Vnesite sporočilo ali kliknite »Govori«"} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()} disabled={thinking || v.recording} />
+        <Button variant="outline" onClick={sendMessage} disabled={!input.trim() || thinking} title="Pošlji">
           <Send className="w-4 h-4" />
         </Button>
+        {v.enabled && (
+          <Button type="button" variant="ghost" onClick={toggleSpeak} title={speakReplies ? "Odgovori se berejo na glas — kliknite za izklop" : "Kliknite, da asistent odgovarja tudi z glasom"} className={speakReplies ? "text-primary" : "text-muted-foreground"}>
+            {v.speaking ? <Loader2 className="w-4 h-4 animate-spin" /> : speakReplies ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </Button>
+        )}
       </div>
     </div>
   );
