@@ -27,8 +27,10 @@
       "enum": [
         "captured",
         "packaged",
-        "sent"
+        "sent",
+        "excluded"
       ],
+      "description": "excluded = lastnik ne \u017eeli, da gre ra\u010dun ra\u010dunovodji (ne po\u0161lje se niti samodejno)",
       "default": "captured"
     },
     "owner_email": {
