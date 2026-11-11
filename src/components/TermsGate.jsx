@@ -40,7 +40,7 @@ export default function TermsGate() {
         <AlertDialogHeader>
           <AlertDialogTitle>{renewal ? "Splošni pogoji so posodobljeni" : "Splošni pogoji uporabe"}</AlertDialogTitle>
           <AlertDialogDescription>
-            {renewal ? "Pogoje smo spremenili. Preberite jih in potrdite, da lahko nadaljujete." : "Pred nadaljnjo uporabo preberite, kako aplikacija deluje in kaj se zgodi z vašimi podatki."}
+            {renewal ? "Pogoje smo spremenili. Preberite jih in potrdite, da lahko nadaljujete." : "Na kratko, kako ravnamo z vašimi podatki. Potrdite in nadaljujte."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <TermsReview id="terms-gate" accepted={accepted} onAccept={setAccepted} />
