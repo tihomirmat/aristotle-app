@@ -165,7 +165,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
         {!collapsed && business?.subscription_status === "trialing" && (
           <Link to="/nastavitve?tab=billing" className="block rounded-xl bg-accent/60 border border-primary/15 p-3 hover:bg-accent transition-colors">
             <p className="text-[11px] uppercase tracking-wider text-sidebar-foreground/60">Preizkus</p>
-            <p className="text-sm text-white font-medium mt-0.5">
+            <p className="text-sm text-foreground font-medium mt-0.5">
               {business?.trial_ends_at ? `Še ${Math.max(0, Math.ceil((new Date(business.trial_ends_at) - new Date()) / 86400000))} dni` : "Aktiven"}
             </p>
           </Link>
