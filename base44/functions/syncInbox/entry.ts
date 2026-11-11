@@ -132,9 +132,10 @@ async function syncOne(base44, business) {
     if (!batch.length) continue;
     const { results, usage } = await classify(batch, business);
     tokensIn += usage?.input_tokens || 0; tokensOut += usage?.output_tokens || 0;
-    for (const r of results) {
-      const m = batch[r?.i];
-      if (!m) continue;
+    for (let k = 0; k < batch.length; k++) {
+      const m = batch[k];
+      const r = results.find((x) => x?.i === k) || { i: k };
+      if (m.forcedInvoice) { r.is_invoice = true; r.is_inquiry = false; }
       if (r.is_invoice && !r.is_inquiry) {
         if (business.invoice_enabled === false || !m.attachments?.length || seenInvoices.has(m.messageId)) continue;
         for (const a of m.attachments) {
@@ -143,7 +144,7 @@ async function syncOne(base44, business) {
             const d = /^\d{4}-\d{2}-\d{2}$/.test(String(r.invoice_date || '')) ? r.invoice_date : new Date(m.date).toISOString().slice(0, 10);
             const amount = typeof r.amount === 'number' ? r.amount : parseFloat(String(r.amount || '').replace(/\./g, '').replace(',', '.'));
             await base44.asServiceRole.entities.Invoice.create({
-              business_id: business.id, source: 'email', source_email_from: m.fromEmail, subject: m.subject, received_date: new Date(m.date).toISOString(),
+              business_id: business.id, source: m.viaInvoiceAddress ? 'forward' : 'email', source_email_from: m.fromEmail, subject: m.subject, received_date: new Date(m.date).toISOString(),
               file_url: up?.file_url || null, file_name: a.filename, status: 'captured', supplier_name: String(r.supplier || m.fromName || m.fromEmail).slice(0, 200),
               ...(Number.isFinite(amount) && amount > 0 ? { amount } : {}), invoice_date: d, period: d.slice(0, 7), message_id: m.messageId,
               created_by: business.created_by, owner_email: owner,
