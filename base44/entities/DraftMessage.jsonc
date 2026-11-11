@@ -12,6 +12,10 @@
     "campaign_step": {
       "type": "number"
     },
+    "body_html": {
+      "type": "string",
+      "description": "Oblikovano besedilo (\u010de obstaja, se po\u0161lje namesto body)"
+    },
     "mailbox_id": {
       "type": "string",
       "description": "Po\u0161lji s tega predala (SendingMailbox) namesto z glavnega"
