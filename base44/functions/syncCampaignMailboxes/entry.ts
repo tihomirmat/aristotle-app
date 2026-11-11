@@ -11,7 +11,7 @@ import { lower, classifyBounce, isAutoReply, isUnsubscribe, replyOnly, pauseIfTo
 // Klic: urnik/interno { internal_secret, business_id?, mailbox_id? } ali lastnik { business_id }.
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
-const VERSION = 'campaign-mail-2026-11-11c';
+const VERSION = 'campaign-mail-2026-11-11d';
 const MAX_PER_RUN = 60;
 const APP_URL = (Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app').replace(/\/$/, '');
 
@@ -108,7 +108,7 @@ async function syncBusiness(base44, business, mailboxes) {
             if (e.status === 'stopped_bounced') continue;
             if (!e.last_sent_at && !(Number(e.current_step) > 0)) continue; // tej osebi iz te kampanje še nismo pisali
             await sr.CampaignEnrollment.update(e.id, { status: 'stopped_bounced', bounce_reason: b.reason.slice(0, 300), bounced_at: now });
-            e.status = 'stopped_bounced'; e.bounced_at = now;
+            e.status = 'stopped_bounced'; e.bounced_at = now; e.bounce_reason = b.reason.slice(0, 300);
             (newBounceByCamp[e.campaign_id] ||= []).push({ email: em, reason: b.reason.slice(0, 200) });
           }
           // »Zavrnjeno kot neželeno« ne pomeni, da naslov ne obstaja (težava je ugled pošiljatelja) — naslova ne izločimo za vedno.
