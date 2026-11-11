@@ -7,7 +7,7 @@ export default function IconHint({ label, children, side = "top" }) {
     <TooltipProvider delayDuration={120}>
       <Tooltip>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent side={side} className="bg-slate-900 text-white max-w-[260px]">{label}</TooltipContent>
+        <TooltipContent side={side} className="bg-slate-700 text-white max-w-[260px]">{label}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
