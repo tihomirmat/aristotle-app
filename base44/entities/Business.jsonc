@@ -540,6 +540,17 @@
     "invoice_inbound_token": {
       "type": "string"
     },
+    "invoice_senders": {
+      "type": "string",
+      "description": "E-naslovi ali domene dobaviteljev, s katerih prihajajo ra\u010duni (eno na vrstico). Njihova sporo\u010dila s prilogo so vedno ra\u010duni."
+    },
+    "invoice_address": {
+      "type": "string",
+      "description": "Naslov za ra\u010dune (privzeto <predal>+racuni@<domena>): ra\u010duni, poslani ali posredovani nanj ali v kopiji, se shranijo med Ra\u010dune."
+    },
+    "invoice_folder_last_uid": {
+      "type": "number"
+    },
     "accountant_email": {
       "type": "string"
     },
