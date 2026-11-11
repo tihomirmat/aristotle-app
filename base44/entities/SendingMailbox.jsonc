@@ -15,6 +15,10 @@
     "from_name": {
       "type": "string"
     },
+    "signature_html": {
+      "type": "string",
+      "description": "Podpis za sporo\u010dila s tega naslova (HTML iz urejevalnika; lahko z logotipom). Prazno = podpis podjetja."
+    },
     "smtp_host": {
       "type": "string"
     },
