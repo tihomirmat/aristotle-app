@@ -132,7 +132,8 @@ function Builder({ open, onOpenChange, campaign, leads, lists, contacts, mailbox
   const withHtml = (steps) => (steps || []).map((s) => ({ ...s, body_html: s.body_html || toHtml(s.body) }));
   const init = (tpl, g) => {
     const source = tpl.source || "leads";
-    return { ...structuredClone(tpl), steps: withHtml(tpl.steps), goal: g, source, list_ids: source === "list" ? lists.map((l) => l.id) : [], mailbox_ids: okMailboxes.map((m) => m.id), auto_send: false };
+    // Seznam = privzeto vsi naslovi za kampanje; lastne stranke = privzeto glavni naslov.
+    return { ...structuredClone(tpl), steps: withHtml(tpl.steps), goal: g, source, list_ids: source === "list" ? lists.map((l) => l.id) : [], mailbox_ids: source === "list" ? okMailboxes.map((m) => m.id) : [], auto_send: false };
   };
   React.useEffect(() => {
     if (!open) return;
