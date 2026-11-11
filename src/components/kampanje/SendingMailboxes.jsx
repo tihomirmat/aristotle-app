@@ -135,7 +135,7 @@ function LimitDialog({ mb, open, onOpenChange, onSaved }) {
 }
 
 // »Predali za pošiljanje«: privzeto en ločen naslov za kampanje, mogoče jih je dodati več.
-export default function SendingMailboxes({ business, mailboxes, onChanged }) {
+export default function SendingMailboxes({ business, mailboxes, onChanged, bare = false }) {
   const [adding, setAdding] = useState(false);
   const [limitFor, setLimitFor] = useState(null);
   const [sigFor, setSigFor] = useState(null);
@@ -150,9 +150,9 @@ export default function SendingMailboxes({ business, mailboxes, onChanged }) {
     } catch (e) { toast.error(fnError(e)); } finally { setRemoving(null); }
   };
   return (
-    <div className="card-elevated p-5 space-y-4 h-full">
+    <div className={bare ? "space-y-4" : "card-elevated p-5 space-y-4 h-full"}>
       <div>
-        <h3 className="text-base font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-primary" />Naslov, s katerega pošiljate</h3>
+        {!bare && <h3 className="text-base font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-primary" />Naslov, s katerega pošiljate</h3>}
         <p className="text-sm text-muted-foreground mt-1">Kampanje pošiljajte z ločenega naslova (npr. novice@vase-podjetje.si). Če kdo sporočilo označi kot neželeno, vaš glavni naslov ostane varen.</p>
       </div>
       {mailboxes.length === 0 ? <ConnectForm business={business} first onDone={() => { onChanged(); }} /> : (
