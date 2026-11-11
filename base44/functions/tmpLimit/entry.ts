@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   const sr = base44.asServiceRole.entities;
   const BID = 'tmp-limit-test';
   const out = {};
-  try {
+  if (!body.clean) try {
     const recs = Array.from({ length: 260 }, (_, i) => ({ business_id: BID, list_id: 'tmp', email: `t${i}@example.com`, status: 'ok', owner_email: 'tmp@example.com' }));
     for (let i = 0; i < recs.length; i += 130) await sr.ListContact.bulkCreate(recs.slice(i, i + 130));
     out.none = (await sr.ListContact.filter({ business_id: BID })).length;
@@ -20,8 +20,8 @@ Deno.serve(async (req) => {
   try {
     let left = await sr.ListContact.filter({ business_id: BID }, '-created_date', 5000);
     let guard = 0;
-    while (left.length && guard++ < 10) {
-      for (let i = 0; i < left.length; i += 20) await Promise.all(left.slice(i, i + 20).map((r) => sr.ListContact.delete(r.id).catch(() => null)));
+    while (left.length && guard++ < 6) {
+      for (const r of left) { await sr.ListContact.delete(r.id).catch(() => null); }
       left = await sr.ListContact.filter({ business_id: BID }, '-created_date', 5000);
     }
     out.leftAfterCleanup = left.length;
