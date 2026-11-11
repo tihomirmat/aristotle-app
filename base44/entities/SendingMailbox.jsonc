@@ -1,0 +1,162 @@
+{
+  "name": "SendingMailbox",
+  "type": "object",
+  "description": "Lo\u010den e-po\u0161tni predal za po\u0161iljanje kampanj (zaradi za\u0161\u010dite glavnega naslova pred ne\u017eeleno po\u0161to).",
+  "properties": {
+    "business_id": {
+      "type": "string"
+    },
+    "owner_email": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "from_name": {
+      "type": "string"
+    },
+    "smtp_host": {
+      "type": "string"
+    },
+    "smtp_port": {
+      "type": "number"
+    },
+    "smtp_encryption": {
+      "type": "string"
+    },
+    "smtp_pass": {
+      "type": "string"
+    },
+    "imap_host": {
+      "type": "string"
+    },
+    "imap_port": {
+      "type": "number"
+    },
+    "imap_pass": {
+      "type": "string"
+    },
+    "imap_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "imap_last_uid": {
+      "type": "number"
+    },
+    "last_checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "error"
+      ],
+      "default": "ok"
+    },
+    "last_error": {
+      "type": "string"
+    },
+    "daily_limit_manual": {
+      "type": "number",
+      "description": "Ro\u010dno nastavljena meja na dan; prazno = samodejno (20 prva 2 tedna, nato 50)"
+    },
+    "first_send_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sent_date": {
+      "type": "string",
+      "description": "YYYY-MM-DD (Ljubljana) za sent_today"
+    },
+    "sent_today": {
+      "type": "number",
+      "default": 0
+    },
+    "total_sent": {
+      "type": "number",
+      "default": 0
+    },
+    "bounces_total": {
+      "type": "number",
+      "default": 0
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "business_id",
+    "email"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "owner_email": "{{user.email}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
