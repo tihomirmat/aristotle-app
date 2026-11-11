@@ -23,14 +23,13 @@ const Ul = ({ items }) => (
 
 // Kratek povzetek — prikazan v uvodu in ob ponovnem sprejemu. Ne nadomešča celotnih pogojev.
 export const KRATKO = [
-  "Prvih 14 dni je brezplačnih, brez kartice. Med preizkusom velja omejena poraba in največ 20 poslanih sporočil.",
-  "Aplikacija bere vaš e-poštni predal (vsakih 10 minut), da najde povpraševanja, odgovore in račune. Vsebino sporočil obdela AI.",
-  "Vsebina, ki jo obdela AI, gre ponudniku Anthropic (ZDA). Aplikacija in baza tečeta na platformi Base44 (strežniki privzeto v ZDA).",
+  "Vaši podatki so vaši: ne prodajamo jih, ne delimo jih z drugimi podjetji in AI modeli se na njih ne učijo. Izvoz ali izbris kadar koli.",
+  "Hranimo to, kar vidite v aplikaciji, v bazi na strežnikih Base44 (ZDA). Vidi jih le vaše podjetje; skrbnik aplikacije ima tehnični dostop za podporo in vzdrževanje.",
+  "Gesla e-poštnih predalov so v bazi šifrirana (AES-256). Uporabi jih samo naš strežnik.",
+  "Aplikacija bere vaš predal (vsakih 10 minut), da najde povpraševanja, odgovore in račune; ničesar ne briše. Vsebino obdela AI ponudnika Anthropic (ZDA).",
   "Privzeto nič ne gre ven brez vašega klika. Samodejno pošiljanje vklopite sami; e-poštne kampanje s seznama po zagonu pošiljajo same.",
   "AI se lahko zmoti — tudi pri cenah v ponudbah. Za vse, kar pošljete strankam, odgovarjate vi.",
-  "Gesla e-poštnih predalov so v bazi shranjena šifrirano (AES-256). Ker mora aplikacija s predalom delati sama, jih naš strežnik ob uporabi odšifrira.",
-  "Skrbnik aplikacije (ponudnik) ima tehnični dostop do vaših podatkov — uporablja ga samo za podporo, vzdrževanje in odpravo napak.",
-  "Naročnino lahko prekinete kadar koli. Podatke lahko izvozite in zahtevate izbris.",
+  "Prvih 14 dni je brezplačnih, brez kartice. Naročnino prekinete kadar koli.",
 ];
 
 export function PogojiVsebina() {
