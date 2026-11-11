@@ -20,6 +20,7 @@ import Kampanje from '@/pages/Kampanje';
 import Klepet from '@/pages/Klepet';
 import Pomocniki from '@/pages/Pomocniki';
 import Asistent from '@/pages/Asistent';
+import Termini from '@/pages/Termini';
 import Ocene from '@/pages/Ocene';
 import Nastavitve from '@/pages/Nastavitve';
 import AdminBusinesses from '@/pages/admin/Businesses';
@@ -89,6 +90,7 @@ const AppRoutes = () => {
         <Route path="/pomocniki" element={<Pomocniki />} />
         <Route path="/klepet" element={<Klepet />} />
         <Route path="/asistent" element={<Asistent />} />
+        <Route path="/termini" element={<Termini />} />
         <Route path="/ocene" element={<Ocene />} />
         <Route path="/nastavitve" element={<Nastavitve />} />
         <Route path="/pridobivanje" element={<Navigate to="/nastavitve?tab=viri" replace />} />
