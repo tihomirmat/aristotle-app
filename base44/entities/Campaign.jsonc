@@ -68,6 +68,44 @@
       "type": "object",
       "description": "{ enrolled, sent, replied, booked, converted }"
     },
+    "source": {
+      "type": "string",
+      "enum": [
+        "leads",
+        "list"
+      ],
+      "default": "leads",
+      "description": "leads = va\u0161e stranke, list = uvo\u017een seznam naslovov"
+    },
+    "list_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mailbox_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Predali za po\u0161iljanje (SendingMailbox); prazno = glavni predal podjetja"
+    },
+    "paused_reason": {
+      "type": "string",
+      "description": "bounces | mailbox_error | ''"
+    },
+    "paused_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resumed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "bounce_alert": {
+      "type": "object",
+      "description": "{ at, count, sent, rate, addresses:[{email, reason}] }"
+    },
     "last_run_at": {
       "type": "string",
       "format": "date-time"
