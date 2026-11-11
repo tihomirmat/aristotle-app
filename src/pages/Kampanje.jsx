@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Megaphone, Plus, Loader2, Play, Pause, Pencil, Trash2, Users, Send, MessageCircleReply, Sparkles, Clock, X, RotateCcw, HeartHandshake, Newspaper, Target, Star, ArrowRight, AlertTriangle, MailX, ListChecks, Mail, Paperclip, PenLine, Settings2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +22,14 @@ import ContactLists, { VerifyHelp } from "@/components/kampanje/ContactLists";
 const GOAL_ICON = { reactivation: RotateCcw, nurture: HeartHandshake, newsletter: Newspaper, acquisition: Target, review: Star };
 
 // Predloge kampanj: prazni nagovor/podpis doda AI oziroma sistem.
+// Komu je cilj namenjen — kratka razlaga števila na kartici cilja.
+const AUDIENCE_TEXT = {
+  reactivation: "Stranke brez stika več kot 120 dni",
+  nurture: "Povpraševanja brez odločitve (3+ dni)",
+  newsletter: "Vaše stranke (faza Stranka)",
+  acquisition: "Naslovi s seznama, ki niso vaše stranke",
+  review: "Vaše stranke (faza Stranka)",
+};
 const TEMPLATES = {
   reactivation: {
     name: "Vrnite stare stranke",
@@ -300,12 +309,12 @@ function Builder({ open, onOpenChange, campaign, leads, lists, contacts, mailbox
 }
 
 // Desni stolpec: naslov za pošiljanje in seznami naslovov — povzetek v vrstici, urejanje v oknu.
-function SetupPanel({ business, mailboxes, lists, contacts, onChanged }) {
+function SetupPanel({ business, mailboxes, lists, contacts, onChanged, inSheet = false }) {
   const [open, setOpen] = useState(null); // "mb" | "lists"
   const ok = contacts.filter((c) => c.status === "ok").length;
   return (
-    <aside className="card-elevated p-5 space-y-5 xl:sticky xl:top-4">
-      <p className="font-semibold flex items-center gap-2"><Settings2 className="w-4 h-4 text-primary" />Nastavitve kampanj</p>
+    <aside className={inSheet ? "space-y-5" : "card-elevated p-5 space-y-5 xl:sticky xl:top-4"}>
+      {!inSheet && <p className="font-semibold flex items-center gap-2"><Settings2 className="w-4 h-4 text-primary" />Nastavitve kampanj</p>}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">Naslov za pošiljanje</p>{mailboxes.length > 0 && <Button size="sm" variant="ghost" className="h-7 text-primary" onClick={() => setOpen("mb")}>Uredi</Button>}</div>
         {mailboxes.length === 0 ? (
@@ -357,6 +366,8 @@ export default function Kampanje() {
   const invalidate = useCrmInvalidate();
   const bid = business?.id;
   const [builder, setBuilder] = useState({ open: false, campaign: null });
+  const [picker, setPicker] = useState(false);
+  const [settings, setSettings] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [toResume, setToResume] = useState(null);
   const useQ = (key, fn) => useQuery({ queryKey: [key, bid], queryFn: fn, enabled: !!bid });
@@ -414,44 +425,69 @@ export default function Kampanje() {
   const sorted = [...campaigns].sort((a, b) => (a.status === "active" ? -1 : 1) - (b.status === "active" ? -1 : 1) || new Date(b.created_date) - new Date(a.created_date));
   const mbById = Object.fromEntries(mailboxes.map((m) => [m.id, m]));
 
+  const hasCampaigns = campaigns.length > 0;
+  const pick = (k) => { setPicker(false); setBuilder({ open: true, campaign: { goal: k } }); };
+  const setupWarn = mailboxes.length === 0 || mailboxes.some((m) => m.status === "error");
+  const goalGrid = (compact) => (
+    <div className={`grid gap-3 ${compact ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5"}`}>
+      {Object.entries(CAMPAIGN_GOALS).map(([k, g]) => {
+        const I = GOAL_ICON[k]; const tpl = TEMPLATES[k];
+        const isList = tpl.source === "list";
+        const n = isList ? listReach(lists.map((l) => l.id), contacts, leads) : leads.filter((l) => matchAudience(l, tpl.audience)).length;
+        const msgs = tpl.steps.length;
+        const reach = isList
+          ? (n > 0 ? `Naslovov na vaših seznamih: ${n}` : "Najprej uvozite seznam naslovov")
+          : (n > 0 ? `Zdaj bi jo prejel${n === 1 ? "a" : "o"}: ${cnt(n, ["stranka", "stranki", "stranke", "strank"])}` : "Zdaj ni strank, ki bi ustrezale");
+        return (
+          <button key={k} onClick={() => pick(k)} className="text-left card-elevated p-4 flex flex-col hover:border-primary/50 hover:shadow-md transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-accent text-primary flex items-center justify-center shrink-0"><I className="w-5 h-5" /></div>
+              <p className="font-semibold leading-tight">{g.label}</p>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2 flex-1">{g.hint}</p>
+            <p className="text-xs mt-3"><span className={n > 0 ? "text-foreground font-medium" : "text-muted-foreground"}>{reach}</span></p>
+            <p className="text-xs text-muted-foreground mt-0.5">{AUDIENCE_TEXT[k]} · {msgs} {pl(msgs, ["sporočilo", "sporočili", "sporočila", "sporočil"])} že napisan{msgs === 2 ? "i" : msgs >= 3 && msgs <= 4 ? "a" : msgs >= 5 ? "ih" : "o"}</p>
+            <span className="mt-3 text-sm font-medium text-primary inline-flex items-center gap-1">Pripravi<ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1>E-poštne kampanje</h1>
-        <p className="text-muted-foreground mt-1 max-w-3xl">Kampanja pošlje <strong>sekvenco</strong> — nekaj vnaprej napisanih sporočil z razmikom nekaj dni — naslovom s seznama ali vašim strankam. Ko kdo odgovori, se zanj sekvenca ustavi, odgovor pa najdete pri Strankah.</p>
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1>E-poštne kampanje</h1>
+          <p className="text-muted-foreground mt-1 max-w-3xl">Nekaj vnaprej napisanih sporočil, ki odidejo z razmikom nekaj dni. Ko kdo odgovori, se zanj ustavijo, odgovor pa najdete pri Strankah.</p>
+        </div>
+        {hasCampaigns && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setSettings(true)} className="relative"><Settings2 className="w-4 h-4 mr-2" />Nastavitve{setupWarn && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500" aria-label="Nastavitve potrebujejo pozornost" />}</Button>
+            <Button className="btn-brand" onClick={() => setPicker(true)}><Plus className="w-4 h-4 mr-2" />Ustvari kampanjo</Button>
+          </div>
+        )}
       </div>
 
-      <div className="grid xl:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
-      <div className="space-y-8 min-w-0">
-      {/* 1. Nova kampanja */}
-      <section className="space-y-3">
-        <h2 className="text-lg">Nova kampanja — kaj želite doseči?</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-3">
-          {Object.entries(CAMPAIGN_GOALS).map(([k, g]) => {
-            const I = GOAL_ICON[k]; const tpl = TEMPLATES[k];
-            const n = tpl.source === "list" ? listReach(lists.map((l) => l.id), contacts, leads) : leads.filter((l) => matchAudience(l, tpl.audience)).length;
-            const msgs = tpl.steps.length;
-            return (
-              <div key={k} className="card-elevated p-4 flex flex-col">
-                <div className="w-10 h-10 rounded-xl bg-accent text-primary flex items-center justify-center"><I className="w-5 h-5" /></div>
-                <p className="font-semibold mt-3">{g.label}</p>
-                <p className="text-sm text-muted-foreground mt-1 flex-1">{g.hint}</p>
-                <p className="text-xs text-muted-foreground mt-3">{msgs} {pl(msgs, ["pripravljeno sporočilo", "pripravljeni sporočili", "pripravljena sporočila", "pripravljenih sporočil"])} · <span className={n > 0 ? "text-primary font-medium" : ""}>{tpl.source === "list" ? `${cnt(n, W.naslov)} na seznamih` : `primerno za ${cnt(n, ["stranko", "stranki", "stranke", "strank"])}`}</span></p>
-                <Button variant="outline" className="mt-3 w-full" onClick={() => setBuilder({ open: true, campaign: { goal: k } })}>Pripravi<ArrowRight className="w-4 h-4 ml-1.5" /></Button>
-              </div>
-            );
-          })}
+      {!hasCampaigns ? (
+        <div className="grid xl:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+          <section className="space-y-4 min-w-0">
+            <ol className="grid sm:grid-cols-3 gap-3">
+              {[["Povežite naslov", "S katerega se pošilja (desno).", mailboxes.length > 0], ["Izberite cilj", "Spodaj — sporočila so že napisana.", false], ["Preglejte in zaženite", "Nič ne odide, dokler ne kliknete »Zaženi«.", false]].map(([t, d, done], i) => (
+                <li key={t} className="rounded-xl border bg-card p-3 flex gap-3">
+                  <span className={`w-7 h-7 rounded-full text-sm font-semibold flex items-center justify-center shrink-0 ${done ? "bg-emerald-100 text-emerald-700" : "bg-accent text-primary"}`}>{done ? <CheckCircle2 className="w-4 h-4" /> : i + 1}</span>
+                  <span><span className="font-medium text-sm block">{t}</span><span className="text-xs text-muted-foreground">{d}</span></span>
+                </li>
+              ))}
+            </ol>
+            <h2 className="text-lg pt-2">Kaj želite doseči?</h2>
+            {goalGrid(false)}
+          </section>
+          <SetupPanel business={business} mailboxes={mailboxes} lists={lists} contacts={contacts} onChanged={refreshSetup} />
         </div>
-        <p className="text-xs text-muted-foreground">Sporočila so že napisana. Pred zagonom jih vidite in popravite — nič se ne pošlje, dokler ne kliknete »Zaženi«.</p>
-      </section>
-
-      {/* 2. Vaše kampanje */}
+      ) : (
       <section className="space-y-3">
-        <h2 className="text-lg">Vaše kampanje {campaigns.length > 0 && <span className="text-muted-foreground font-normal text-base">({campaigns.length})</span>}</h2>
-        {campaigns.length === 0 ? (
-          <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground"><Megaphone className="w-8 h-8 mx-auto opacity-40" /><p className="mt-3 text-sm">Še nimate nobene kampanje. Izberite cilj zgoraj in kliknite »Pripravi«.</p></div>
-        ) : (
-          <div className="grid 2xl:grid-cols-2 gap-4">
+          <div className="grid xl:grid-cols-2 gap-4">
             {sorted.map((c) => {
               const s = stats[c.id] || {}; const St = CAMPAIGN_STATUS[c.status] || CAMPAIGN_STATUS.draft; const I = GOAL_ICON[c.goal] || Megaphone;
               const isList = c.source === "list";
@@ -475,7 +511,7 @@ export default function Kampanje() {
                   </div>
 
                   {bounced && <BounceAlert c={c} onResume={() => setToResume(c)} />}
-                  {mbError && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 flex gap-2"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />Pošiljanje z naslova ne deluje ({mbs[0].last_error || "napaka"}). Popravite geslo zgoraj pri »Naslov, s katerega pošiljate«.</p>}
+                  {mbError && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 flex gap-2"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /><span>Pošiljanje z naslova ne deluje ({mbs[0].last_error || "napaka"}). <button className="underline font-medium" onClick={() => setSettings(true)}>Popravite geslo v Nastavitvah</button>.</span></p>}
 
                   <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground">Sekvenca</p>
@@ -516,13 +552,20 @@ export default function Kampanje() {
               );
             })}
           </div>
-        )}
       </section>
+      )}
 
-      </div>
-      {/* Desno: nastavitve (enkrat nastavite, nato samo pregled) */}
-      <SetupPanel business={business} mailboxes={mailboxes} lists={lists} contacts={contacts} onChanged={refreshSetup} />
-      </div>
+      <Dialog open={picker} onOpenChange={setPicker}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="font-display text-xl">Nova kampanja — kaj želite doseči?</DialogTitle><DialogDescription>Izberite cilj. Sporočila so že napisana; pred zagonom jih pregledate in popravite.</DialogDescription></DialogHeader>
+          {goalGrid(true)}
+        </DialogContent>
+      </Dialog>
+      <Sheet open={settings} onOpenChange={setSettings}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto"><SheetHeader className="text-left"><SheetTitle className="font-display text-xl">Nastavitve kampanj</SheetTitle><SheetDescription>Naslovi, s katerih pošiljate, in seznami naslovov.</SheetDescription></SheetHeader>
+          <div className="mt-5"><SetupPanel inSheet business={business} mailboxes={mailboxes} lists={lists} contacts={contacts} onChanged={refreshSetup} /></div>
+        </SheetContent>
+      </Sheet>
 
       <Builder open={builder.open} onOpenChange={(o) => setBuilder({ open: o, campaign: o ? builder.campaign : null })} campaign={builder.campaign} leads={leads} lists={lists} contacts={contacts} mailboxes={mailboxes} onLaunch={launch} onMailboxesChanged={refreshSetup} />
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
