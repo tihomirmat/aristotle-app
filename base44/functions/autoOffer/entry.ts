@@ -79,14 +79,15 @@ Vrni ZGOLJ JSON: {"wants_offer": true, "missing": ["…"], "service": "…"}`;
     const draftId = d?.draft?.id;
     if (!draftId) throw new Error('Spremnega sporočila ni bilo mogoče pripraviti.');
     // ime priloge s šumniki (platforma jih iz imena shranjene datoteke odstrani)
-    const fileName = `Ponudba ${String(offer.client_name || lead.name || '').replace(/[\\/:*?"<>|]+/g, ' ').trim() || business.name}.pdf`.replace(/\s+/g, ' ');
+    const fileName = `Ponudba ${String(offer.client_name || lead.name || '').replace(/[\\/:*?"<>|]+/g, ' ').trim().replace(/\.+$/, '') || business.name}.pdf`.replace(/\s+/g, ' ');
+    const noPrices = !String(business.offers_price_rules || '').trim();
     await sr.DraftMessage.update(draftId, {
       pillar: 'offer', attachments: [{ name: fileName, url: offer.output_pdf_url }], offer_generation_id: offer.generation_id,
-      ai_reasoning: `Ponudba po vašem ceniku in dizajnu${offer.amount ? `, skupaj ${eurFmt(offer.amount)}` : ''}.`,
+      ai_reasoning: noPrices ? 'Cenik še ni vpisan, zato so cene v ponudbi »po dogovoru«. Vpišite ga v Ponudbe → Nova ponudba → Cenik in pravila.' : `Ponudba po vašem ceniku in dizajnu${offer.amount ? `, skupaj ${eurFmt(offer.amount)}` : ''}.`,
     });
     let sent = false;
     const fresh = (await sr.DraftMessage.filter({ id: draftId }))[0];
-    if (mode === 'send' && !isTrialActive(business) && business.subscription_status !== 'trialing' && fresh?.status === 'pending' && (fresh.quality_score ?? 7) >= 7) {
+    if (mode === 'send' && !noPrices && !isTrialActive(business) && business.subscription_status !== 'trialing' && fresh?.status === 'pending' && (fresh.quality_score ?? 7) >= 7) {
       await sr.DraftMessage.update(draftId, { status: 'approved', reviewer_notes: `${fresh.reviewer_notes ? fresh.reviewer_notes + ' ' : ''}Samodejno poslano (samodejne ponudbe).` });
       sent = true;
     }
