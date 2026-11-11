@@ -78,6 +78,20 @@ Deno.serve(async (req) => {
     const business = body.business_id ? (await base44.asServiceRole.entities.Business.filter({ id: body.business_id }))[0] : null;
     if (!business || !ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.' });
 
+    // Mesečni koledar (stran Termini): dogodki iz Google Koledarja v obdobju {from, to}.
+    if (body.action === 'calendar') {
+      if (!business.google_calendar_connected) return Response.json({ success: true, connected: false, events: [] });
+      const from = new Date(body.from || Date.now()); const to = new Date(body.to || Date.now() + 31 * 864e5);
+      if (isNaN(from) || isNaN(to) || to - from > 62 * 864e5) return Response.json({ error: 'Neveljavno obdobje.' });
+      const ev = await listEvents(base44, business, from.toISOString(), to.toISOString()).catch((e) => ({ error: e?.message }));
+      if (ev.error) return Response.json({ success: false, connected: !ev.needsReconnect, error: ev.error, events: [] });
+      const events = (ev.events || []).filter((e) => e.status !== 'cancelled').map((e) => ({
+        id: e.id, title: e.summary || '(brez naslova)', start: e.start?.dateTime || e.start?.date, end: e.end?.dateTime || e.end?.date,
+        all_day: !e.start?.dateTime, location: e.location || '', link: e.htmlLink || '',
+      }));
+      return Response.json({ success: true, connected: true, events, version: 'assistant-2026-11-11-cal' });
+    }
+
     const context = await gather(base44, business);
     const persona = `Si osebni asistent lastnika slovenskega mikro podjetja »${business.name}«. Govoriš slovensko, vikaš, si jedrnat in konkreten. Uporabljaš SAMO podatke spodaj; ničesar ne izmišljuješ. Kadar omenjaš stranko, jo navedi z imenom. Ko predlagaš dejanje, povej, kje v aplikaciji ga naredi (Za odobritev, Opravila, Stranke, Kampanje, Ponudbe, Nastavitve).`;
 
