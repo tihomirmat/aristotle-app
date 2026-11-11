@@ -13,6 +13,8 @@ Deno.serve(async (req) => {
     if (!form?.name?.trim()) return Response.json({ error: 'Ime podjetja je obvezno' }, { status: 400 });
     if (!form.gdpr_confirmed) return Response.json({ error: 'GDPR soglašje je obvezno' }, { status: 400 });
 
+    if (!form.terms_accepted || !form.terms_version) return Response.json({ error: 'Za začetek morate sprejeti splošne pogoje.' });
+
     const [byOwner, byCreator] = await Promise.all([
       base44.asServiceRole.entities.Business.filter({ owner_email: user.email, is_demo: false }),
       base44.asServiceRole.entities.Business.filter({ created_by: user.email, is_demo: false }),
@@ -62,6 +64,9 @@ Deno.serve(async (req) => {
       pillar_offers: true,
       review_requests_enabled: true,
       review_request_delay_hours: 24,
+      terms_version: String(form.terms_version).slice(0, 20),
+      terms_accepted_at: new Date().toISOString(),
+      terms_accepted_by: user.email,
       created_by: user.email,
       owner_email: user.email,
     });
