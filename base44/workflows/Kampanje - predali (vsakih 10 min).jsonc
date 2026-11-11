@@ -1,6 +1,5 @@
 {
   "name": "Kampanje - predali (vsakih 10 min)",
-  "description": "Vsakih 10 minut prebere predale za e-po\u0161tne kampanje: vrnjena sporo\u010dila (naslov ne obstaja) ustavijo po\u0161iljanje in po potrebi kampanjo, odgovori postanejo stranke, odjave se upo\u0161tevajo.",
   "trigger": {
     "condition": null,
     "config": {
@@ -12,7 +11,7 @@
       "timezone": "UTC",
       "interval_value": 10,
       "interval_unit": "minutes",
-      "interval_anchor": "2026-11-11T00:05:00",
+      "interval_anchor": "2026-11-11T00:05:00Z",
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null
@@ -37,5 +36,6 @@
         }
       }
     ]
-  }
+  },
+  "description": "Vsakih 10 minut prebere predale za e-po\u0161tne kampanje: vrnjena sporo\u010dila (naslov ne obstaja) ustavijo po\u0161iljanje in po potrebi kampanjo, odgovori postanejo stranke, odjave se upo\u0161tevajo."
 }
