@@ -22,9 +22,14 @@
         "import",
         "chatbot",
         "manual",
-        "email"
+        "email",
+        "campaign"
       ],
       "default": "manual"
+    },
+    "reply_mailbox_id": {
+      "type": "string",
+      "description": "Stranka je odgovorila na kampanjo s tega predala (SendingMailbox) \u2014 odgovor gre z istega naslova"
     },
     "last_inbound_body": {
       "type": "string",
