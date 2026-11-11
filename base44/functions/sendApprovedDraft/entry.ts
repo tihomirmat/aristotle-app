@@ -2,6 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import nodemailer from 'npm:nodemailer@6.9.9';
 import { imapConnect, findSentBox } from '../../shared/imap.js'; // kopija v Poslano (imapflow v Deno obvisi)
 import { htmlToText, emailifyHtml, hasHtml } from '../../shared/campaignMail.js'; // oblikovano besedilo + podpis predala (2026-11-11b)
+import { openMailbox } from '../../shared/secretBox.js';
+
+const VERSION = 'send-approved-2026-11-12-enc';
 
 const EMAIL_APP_URL = (Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app').replace(/\/$/, '');
 const EMAIL_FOOTER_COMPANY = Deno.env.get('EMAIL_FOOTER_COMPANY') || 'AI Aristotle';
@@ -70,7 +73,7 @@ Deno.serve(async (req) => {
     let user = null;
     if (!internal) {
       user = await base44.auth.me().catch(() => null);
-      if (!user && !isWorkflowPayload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      if (!user && !isWorkflowPayload) return Response.json({ error: 'Unauthorized', version: VERSION }, { status: 401 });
     }
 
     const drafts = await base44.asServiceRole.entities.DraftMessage.filter({ id: draftId });
@@ -85,7 +88,7 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.Business.filter({ id: draft.business_id }),
     ]);
     const lead = leads[0];
-    const business = businesses[0];
+    const business = await openMailbox(businesses[0]); // gesla odšifrirana samo v pomnilniku
     if (!lead) return Response.json({ error: 'Lead not found' }, { status: 404 });
     if (!business) return Response.json({ error: 'Business not found' }, { status: 404 });
 
@@ -144,7 +147,7 @@ Deno.serve(async (req) => {
     const threadReply = !MARKETING && ['email', 'campaign'].includes(lead.source) && !!lead.email_message_id;
     // Ločen predal za kampanje: sporočilo kampanje gre s predala kampanje; odgovor osebi, ki je odgovorila na kampanjo, z istega predala.
     const mailboxId = draft.mailbox_id || (!MARKETING ? lead.reply_mailbox_id : null);
-    const campaignMailbox = mailboxId ? (await base44.asServiceRole.entities.SendingMailbox.filter({ id: mailboxId }).catch(() => []))[0] : null;
+    const campaignMailbox = mailboxId ? await openMailbox((await base44.asServiceRole.entities.SendingMailbox.filter({ id: mailboxId }).catch(() => []))[0]) : null;
     if (campaignMailbox && campaignMailbox.business_id === business.id && campaignMailbox.smtp_host && campaignMailbox.smtp_pass) {
       Object.assign(business, {
         email_provider: 'smtp', smtp_host: campaignMailbox.smtp_host, smtp_port: campaignMailbox.smtp_port, smtp_user: campaignMailbox.email, smtp_pass: campaignMailbox.smtp_pass,
