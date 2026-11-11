@@ -42,8 +42,53 @@ export function mergeFields(text, c = {}) {
     .replace(/\{ime\}/gi, fn)
     .replace(/\{podjetje\}/gi, String(c.company || '').trim())
     .replace(/\{spletna[_ ]stran\}/gi, String(c.website || '').trim());
-  if (fn) t = t.replace(/^Spoštovani,/m, `Pozdravljeni, ${fn},`);
+  if (fn) t = t.replace(/(^|<p[^>]*>)Spoštovani,/m, `$1Pozdravljeni, ${fn},`);
   return t.replace(/ +([,.!?])/g, '$1').replace(/, ,/g, ',');
+}
+
+// ---------- oblikovano besedilo (urejevalnik v aplikaciji) ----------
+const ENT = { '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };
+// HTML → navadno besedilo (za text/plain del e-pošte in za AI).
+export function htmlToText(html) {
+  return String(html || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<a [^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, (m, href, txt) => (txt.replace(/<[^>]+>/g, '') === href ? href : `${txt.replace(/<[^>]+>/g, '')} (${href})`))
+    .replace(/<img [^>]*>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&(nbsp|amp|lt|gt|quot|#39);/g, (m) => ENT[m] || m)
+    .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+// Izhod urejevalnika (Quill) → HTML, ki ga e-poštni programi prikažejo pravilno (razredi → slogi v vrstici).
+export function emailifyHtml(html) {
+  return String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/ on\w+="[^"]*"/gi, '')
+    .replace(/class="ql-align-(center|right|justify)"/g, 'style="text-align:$1"')
+    .replace(/class="ql-size-large"/g, 'style="font-size:18px"').replace(/class="ql-size-huge"/g, 'style="font-size:24px"').replace(/class="ql-size-small"/g, 'style="font-size:12px"')
+    .replace(/class="ql-[^"]*"/g, '')
+    .replace(/<p>/g, '<p style="margin:0 0 12px">')
+    .replace(/<img /g, '<img style="max-width:100%;height:auto" ')
+    .replace(/<p style="margin:0 0 12px"><br><\/p>/g, '<p style="margin:0 0 12px">&nbsp;</p>');
+}
+export const hasHtml = (s) => /<(p|br|strong|em|a|img|ul|ol|div|span|h\d)\b/i.test(String(s || ''));
+
+// Priponke [{name,url}] → nodemailer attachments (največ 3, skupaj do 10 MB).
+export async function fetchAttachments(list, fetchFn = fetch) {
+  const out = [];
+  let total = 0;
+  for (const a of (Array.isArray(list) ? list : []).filter((x) => x && x.url).slice(0, 3)) {
+    try {
+      const r = await fetchFn(a.url);
+      if (!r.ok) continue;
+      const buf = new Uint8Array(await r.arrayBuffer());
+      total += buf.length;
+      if (total > 10_000_000) break;
+      out.push({ filename: String(a.name || 'priponka'), content: buf, contentType: r.headers.get('content-type') || 'application/octet-stream' });
+    } catch { /* preskoči */ }
+  }
+  return out;
 }
 
 // ---------- preverjanje naslovov ob uvozu ----------
