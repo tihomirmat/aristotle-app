@@ -96,7 +96,7 @@ export default function StrankaDetail() {
       {/* Glava */}
       <div className="card-elevated p-5">
         <div className="flex items-start gap-4 flex-wrap">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-[hsl(41,100%,53%)] text-white font-display font-bold text-lg flex items-center justify-center shrink-0">{initials(lead.name)}</div>
+          <div className="w-14 h-14 rounded-2xl bg-accent text-accent-foreground font-display font-semibold text-lg flex items-center justify-center shrink-0">{initials(lead.name)}</div>
           <div className="flex-1 min-w-[220px]">
             <h1 className="text-2xl leading-tight">{lead.name}</h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-muted-foreground">
