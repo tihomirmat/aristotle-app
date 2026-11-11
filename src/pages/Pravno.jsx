@@ -23,7 +23,7 @@ const Ul = ({ items }) => (
 
 // Kratek povzetek — prikazan v uvodu in ob ponovnem sprejemu. Ne nadomešča celotnih pogojev.
 export const KRATKO = [
-  "Prvih 14 dni je brezplačnih, brez kartice. Med preizkusom AI ničesar ne pošlje sam in velja omejena poraba.",
+  "Prvih 14 dni je brezplačnih, brez kartice. Med preizkusom velja omejena poraba in največ 20 poslanih sporočil.",
   "Aplikacija bere vaš e-poštni predal (vsakih 10 minut), da najde povpraševanja, odgovore in račune. Vsebino sporočil obdela AI.",
   "Vsebina, ki jo obdela AI, gre ponudniku Anthropic (ZDA). Aplikacija in baza tečeta na platformi Base44 (strežniki privzeto v ZDA).",
   "Privzeto nič ne gre ven brez vašega klika. Samodejno pošiljanje vklopite sami; e-poštne kampanje s seznama po zagonu pošiljajo same.",
@@ -43,8 +43,9 @@ export function PogojiVsebina() {
       <H>2. Preizkusno obdobje</H>
       <Ul items={[
         "Preizkus traja 14 dni od zaključka uvoda in je brezplačen. Kartice ne potrebujete.",
-        "Med preizkusom velja omejena poraba AI (manjši, hitrejši model in omejen znesek porabe), največ 20 poslanih sporočil in največ 5 brezplačnih ponudb.",
-        "Med preizkusom AI nobenega sporočila ne pošlje sam, tudi če je samodejno pošiljanje vklopljeno — vse čaka na vaš pregled.",
+        "Med preizkusom velja omejena poraba AI (manjši, hitrejši model in omejen znesek porabe) in največ 20 poslanih sporočil skupaj.",
+        "Med preizkusom AI odgovorov, ponudb in prošenj za oceno ne pošlje sam, tudi če je samodejno pošiljanje vklopljeno — vse čaka na vaš pregled. E-poštna kampanja na seznam naslovov, ki jo sami zaženete, pošilja sama (v okviru 20 sporočil).",
+        "Za ponudbe velja omejeno število brezplačnih ponudb, ki je prikazano v aplikaciji.",
         "Po poteku preizkusa je za nadaljnjo uporabo potrebna naročnina. Vaši podatki ob poteku preizkusa ostanejo shranjeni (glej točko 13).",
       ]} />
 
