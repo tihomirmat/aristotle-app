@@ -1,6 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { imapConnect } from '../../shared/imap.js';
 import nodemailer from 'npm:nodemailer@6.9.9';
+import { sealMailboxFields } from '../../shared/secretBox.js';
+
+const VERSION = 'connect-mailbox-2026-11-12-enc';
 
 // Poveže poštni predal podjetja z enim e-naslovom in geslom.
 // Strežnike poišče sam (mail.<domena>, imap./smtp.<domena>, <domena>), preveri IMAP (branje) in SMTP (pošiljanje),
@@ -102,7 +105,8 @@ Deno.serve(async (req) => {
         imap_enabled: !!imap, imap_host: imap?.host || '', imap_port: imap?.port || 993, imap_pass: imap ? password : '',
         status: 'ok', last_error: imap ? '' : 'Odbitih sporočil in odgovorov s tega naslova ne moremo brati (branje pošte ni uspelo).',
       };
-      const mb = existing ? await sr.SendingMailbox.update(existing.id, data) : await sr.SendingMailbox.create({ ...data, created_by: owner, sent_today: 0, total_sent: 0, bounces_total: 0 });
+      const sealed = await sealMailboxFields(data); // gesla v bazi samo šifrirana
+      const mb = existing ? await sr.SendingMailbox.update(existing.id, sealed) : await sr.SendingMailbox.create({ ...sealed, created_by: owner, sent_today: 0, total_sent: 0, bounces_total: 0 });
       const id = existing?.id || mb.id;
       if (imap) base44.asServiceRole.functions.invoke('syncCampaignMailboxes', { mailbox_id: id, internal_secret: INTERNAL_SECRET }).catch(() => {});
       const same = [business.smtp_user, business.imap_user].map((x) => String(x || '').toLowerCase()).includes(email);
@@ -121,7 +125,7 @@ Deno.serve(async (req) => {
     if (imap) Object.assign(updates, { imap_enabled: true, imap_host: imap.host, imap_port: imap.port, imap_secure: imap.port === 993, imap_pass: password, imap_last_error: '' });
     if (!business.smtp_from_name) updates.smtp_from_name = business.name;
 
-    await base44.asServiceRole.entities.Business.update(business.id, updates);
+    await base44.asServiceRole.entities.Business.update(business.id, await sealMailboxFields(updates)); // gesla v bazi samo šifrirana
 
     if (imap) base44.asServiceRole.functions.invoke('syncInbox', { business_id: business.id, internal_secret: INTERNAL_SECRET }).catch(() => {});
 
