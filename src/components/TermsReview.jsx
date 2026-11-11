@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Hand, Lock, KeyRound, CalendarCheck } from "lucide-react";
+import { Database, Lock, KeyRound, Inbox } from "lucide-react";
 import { PogojiVsebina, ZasebnostVsebina } from "@/pages/Pravno";
 
 // Sprejem pogojev: kratko in prijazno — najprej to, kar človeka zanima, celotno besedilo v oknu na klik.
 // Uporablja uvod (korak »Pogoji«) in TermsGate. Ena kljukica nastavi oba podatka (pogoji + pravna podlaga za pisanje strankam).
 const POINTS = [
-  { icon: Hand, title: "Vi odločate", text: "Odgovori čakajo na vaš pregled. Samodejno pošiljanje vklopite sami, če ga želite." },
-  { icon: Lock, title: "Podatki so vaši", text: "Ne prodajamo jih in AI modeli se na njih ne učijo. Izvoz ali izbris kadar koli." },
-  { icon: KeyRound, title: "Gesla so šifrirana", text: "Geslo predala je v bazi zaklenjeno; uporabi ga samo naš strežnik." },
-  { icon: CalendarCheck, title: "Brez vezave", text: "14 dni brezplačno, brez kartice. Prekinete kadar koli." },
+  { icon: Lock, title: "Podatki so vaši", text: "Ne prodajamo jih, ne delimo jih z drugimi podjetji in AI modeli se na njih ne učijo. Izvoz ali izbris kadar koli." },
+  { icon: Database, title: "Kaj hranimo", text: "Samo stranke, sporočila, ponudbe in račune, ki jih vidite v aplikaciji. Vidi jih le vaše podjetje (in skrbnik, kadar pomaga pri težavi)." },
+  { icon: Inbox, title: "Vaša pošta ostane vaša", text: "Iz predala ničesar ne brišemo in ne premikamo. Odgovori čakajo na vaš pregled." },
+  { icon: KeyRound, title: "Gesla so šifrirana", text: "Geslo predala je v bazi zaklenjeno; uporabi ga samo naš strežnik, nikoli brskalnik." },
 ];
 
 export default function TermsReview({ accepted, onAccept, id = "terms" }) {
@@ -30,7 +30,7 @@ export default function TermsReview({ accepted, onAccept, id = "terms" }) {
         ))}
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Besedila piše AI ponudnika Anthropic, aplikacija teče na strežnikih Base44 (ZDA). Vse podrobnosti so v {link("pogoji", "splošnih pogojih")} in {link("zasebnost", "politiki zasebnosti")}.
+        Podatki so shranjeni v bazi na strežnikih Base44 (ZDA); besedila pripravlja AI ponudnika Anthropic. Po prenehanju jih izbrišemo najkasneje v 12 mesecih, na zahtevo v 30 dneh. Vse podrobnosti so v {link("pogoji", "splošnih pogojih")} in {link("zasebnost", "politiki zasebnosti")}.
       </p>
 
       <label htmlFor={id} className="flex items-start gap-3 rounded-xl border p-4 cursor-pointer hover:bg-muted/30">
