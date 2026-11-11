@@ -177,7 +177,7 @@ export default function ContactLists({ business, lists, contacts, onChanged }) {
           <h3 className="text-base font-semibold flex items-center gap-2"><ListChecks className="w-4 h-4 text-primary" />Seznami naslovov</h3>
           <p className="text-sm text-muted-foreground mt-1">Komu pišete. Naslovi s seznama niso med vašimi strankami — ko kdo odgovori, ga dodamo med Stranke.</p>
         </div>
-        <Button variant={lists.length ? "outline" : "default"} className={lists.length ? "" : "btn-brand"} onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-1.5" />Uvozi seznam</Button>
+        <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-1.5" />Uvozi seznam</Button>
       </div>
       {lists.length === 0 ? (
         <p className="text-sm text-muted-foreground rounded-xl border border-dashed p-4 text-center">Še nimate seznama. Uvozite Excel ali CSV z e-naslovi.</p>
@@ -189,7 +189,7 @@ export default function ContactLists({ business, lists, contacts, onChanged }) {
               <div key={l.id} className="rounded-xl border p-3 flex items-center gap-3 flex-wrap">
                 <div className="flex-1 min-w-[200px]">
                   <p className="text-sm font-medium">{l.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{cnt(cs.length, W.naslov)} · <span className="text-emerald-700">{n("ok")} v redu</span>{n("invalid") + n("risky") > 0 && <> · <span className="text-red-600">{n("invalid") + n("risky")} izločenih</span></>}{n("bounced") > 0 && <> · <span className="text-red-600">{n("bounced")} vrnjenih</span></>}{n("replied") > 0 && <> · {n("replied")} odgovorilo</>}{n("unsubscribed") > 0 && <> · {n("unsubscribed")} odjavljenih</>}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{cnt(cs.length, W.naslov)} · <span className="text-emerald-700">v redu: {n("ok")}</span>{n("invalid") + n("risky") > 0 && <> · <span className="text-red-600">izločeni: {n("invalid") + n("risky")}</span></>}{n("bounced") > 0 && <> · <span className="text-red-600">vrnjeni: {n("bounced")}</span></>}{n("replied") > 0 && <> · odgovorili: {n("replied")}</>}{n("unsubscribed") > 0 && <> · odjavljeni: {n("unsubscribed")}</>}</p>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => setView(l)}>Poglej naslove</Button>
                 <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-600" onClick={() => remove(l)} disabled={deleting === l.id}>{deleting === l.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</Button>
