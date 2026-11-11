@@ -369,6 +369,7 @@ export default function Kampanje() {
   const [builder, setBuilder] = useState({ open: false, campaign: null });
   const [picker, setPicker] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [selCampaign, setSelCampaign] = useState(null); // izbrana kampanja v levem seznamu
   const [toDelete, setToDelete] = useState(null);
   const [toResume, setToResume] = useState(null);
   const useQ = (key, fn) => useQuery({ queryKey: [key, bid], queryFn: fn, enabled: !!bid });
@@ -425,6 +426,7 @@ export default function Kampanje() {
   const delayText = (s, i) => (i === 0 ? (Number(s.delay_days) > 0 ? `čez ${s.delay_days} ${Number(s.delay_days) === 1 ? "dan" : "dni"}` : "takoj") : `če ne odgovori, čez ${s.delay_days} ${Number(s.delay_days) === 1 ? "dan" : "dni"}`);
   const sorted = [...campaigns].sort((a, b) => (a.status === "active" ? -1 : 1) - (b.status === "active" ? -1 : 1) || new Date(b.created_date) - new Date(a.created_date));
   const mbById = Object.fromEntries(mailboxes.map((m) => [m.id, m]));
+  const selId = sorted.some((c) => c.id === selCampaign) ? selCampaign : sorted[0]?.id;
 
   const hasCampaigns = campaigns.length > 0;
   const pick = (k) => { setPicker(false); setBuilder({ open: true, campaign: { goal: k } }); };
@@ -487,9 +489,54 @@ export default function Kampanje() {
           <SetupPanel business={business} mailboxes={mailboxes} lists={lists} contacts={contacts} onChanged={refreshSetup} />
         </div>
       ) : (
-      <section className="space-y-3">
-          <div className="grid xl:grid-cols-2 gap-4">
-            {sorted.map((c) => {
+      <div className="grid lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)] gap-5 items-start">
+        {/* Levo: kompakten seznam kampanj (klik odpre desno) + še neuporabljeni cilji (sivo) */}
+        <aside className="space-y-4 lg:sticky lg:top-4">
+          <div className="rounded-xl border bg-card overflow-hidden">
+            <p className="px-4 py-2.5 border-b text-xs font-medium text-muted-foreground">Vaše kampanje ({sorted.length})</p>
+            <div className="divide-y">
+              {sorted.map((c) => {
+                const s = stats[c.id] || {}; const St = CAMPAIGN_STATUS[c.status] || CAMPAIGN_STATUS.draft; const I = GOAL_ICON[c.goal] || Megaphone;
+                const bounced = c.status === "paused" && c.paused_reason === "bounces";
+                const on = c.id === selId;
+                return (
+                  <button key={c.id} onClick={() => setSelCampaign(c.id)} aria-current={on ? "true" : undefined}
+                    className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors ${on ? "bg-accent/60 border-l-[3px] border-primary pl-[13px]" : "hover:bg-muted/40"}`}>
+                    <span className="w-8 h-8 rounded-lg bg-accent text-primary flex items-center justify-center shrink-0 mt-0.5"><I className="w-4 h-4" /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[10px] font-semibold uppercase tracking-wide text-primary/80 truncate">{CAMPAIGN_GOALS[c.goal]?.label || "Lastna kampanja"}</span>
+                      <span className="block text-sm font-medium truncate">{c.name}</span>
+                      <span className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                        <span className={`px-1.5 py-px rounded-full font-medium ${bounced ? "bg-red-100 text-red-700" : St.cls}`}>{bounced ? "Ustavljena" : St.label}</span>
+                        <span>poslano {s.sent || 0} · odgovori {s.replied || 0}</span>
+                      </span>
+                    </span>
+                    {s.pending > 0 && <DraftIcon hint={`Pripravljeno, čaka na vašo potrditev: ${cnt(s.pending, W.sporocilo)}`} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {Object.keys(CAMPAIGN_GOALS).some((k) => !campaigns.some((c) => c.goal === k)) && (
+            <div className="space-y-1">
+              <p className="px-1 text-xs font-medium text-muted-foreground">Druge kampanje, ki jih lahko pripravite</p>
+              {Object.entries(CAMPAIGN_GOALS).filter(([k]) => !campaigns.some((c) => c.goal === k)).map(([k, g]) => {
+                const I = GOAL_ICON[k];
+                return (
+                  <button key={k} onClick={() => pick(k)} title={g.hint} className="w-full text-left rounded-lg px-3 py-2 flex items-center gap-3 text-muted-foreground/80 hover:text-foreground hover:bg-card border border-transparent hover:border-border transition-colors">
+                    <span className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0"><I className="w-3.5 h-3.5" /></span>
+                    <span className="text-sm flex-1 truncate">{g.label}</span>
+                    <Plus className="w-3.5 h-3.5 opacity-60" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </aside>
+
+      <section className="min-w-0">
+          <div>
+            {sorted.filter((c) => c.id === selId).map((c) => {
               const s = stats[c.id] || {}; const St = CAMPAIGN_STATUS[c.status] || CAMPAIGN_STATUS.draft; const I = GOAL_ICON[c.goal] || Megaphone;
               const isList = c.source === "list";
               const bounced = c.status === "paused" && c.paused_reason === "bounces";
@@ -555,6 +602,7 @@ export default function Kampanje() {
             })}
           </div>
       </section>
+      </div>
       )}
 
       <Dialog open={picker} onOpenChange={setPicker}>
