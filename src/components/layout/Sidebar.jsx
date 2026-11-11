@@ -90,7 +90,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       return (
         <button
           onClick={() => setLockedDialog({ label: item.label, desc: item.lockDesc })}
-          className={`${base} w-full text-left text-sidebar-foreground/45 hover:text-sidebar-foreground/70 hover:bg-white/5`}
+          className={`${base} w-full text-left text-sidebar-foreground/45 hover:text-sidebar-foreground/70 hover:bg-slate-100`}
           title={collapsed ? item.label : undefined}
         >
           <item.icon className="w-[18px] h-[18px] shrink-0" />
@@ -101,12 +101,12 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     }
     return (
       <Link to={item.path} title={collapsed ? item.label : undefined}
-        className={`${base} ${isActive ? "bg-white/10 text-white" : "text-sidebar-foreground hover:bg-white/5 hover:text-white"}`}>
+        className={`${base} ${isActive ? "bg-accent text-accent-foreground font-medium" : "text-sidebar-foreground hover:bg-slate-100 hover:text-foreground"}`}>
         {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-sidebar-primary" />}
-        <item.icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? "text-sidebar-primary" : "group-hover:text-white"}`} />
+        <item.icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? "text-sidebar-primary" : "group-hover:text-foreground"}`} />
         {!collapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
         {!collapsed && item.badge && (
-          <span className="bg-sidebar-primary text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+          <span className="bg-primary/15 text-accent-foreground text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
             {item.badge > 99 ? "99+" : item.badge}
           </span>
         )}
@@ -119,12 +119,12 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     <aside className={`fixed top-0 left-0 h-screen bg-space bg-space-stars text-sidebar-foreground flex flex-col transition-all duration-300 z-50 ${collapsed ? "w-[72px]" : "w-[248px]"}`}>
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 h-16 shrink-0">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[hsl(13,94%,55%)] to-[hsl(41,100%,53%)] flex items-center justify-center shrink-0 shadow-[0_6px_16px_-6px_hsl(13_94%_52%/.8)]">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[hsl(13,94%,55%)] to-[hsl(41,100%,53%)] flex items-center justify-center shrink-0 opacity-90">
           <Rocket className="w-[18px] h-[18px] text-white" />
         </div>
         {!collapsed && (
           <div className="leading-tight">
-            <p className="font-display font-bold text-[15px] text-white tracking-tight">AI Aristotle</p>
+            <p className="font-display font-bold text-[15px] text-foreground tracking-tight">AI Aristotle</p>
             <p className="text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/60">by Spletnost</p>
           </div>
         )}
@@ -135,10 +135,10 @@ export default function Sidebar({ collapsed, setCollapsed }) {
         {groups.map((g) => ({ ...g, items: g.items.filter((item) => !item.feature || featureOn(business, item.feature)) })).map((g) => (
           <div key={g.title} className="space-y-0.5">
             {!collapsed && <p className="text-[10px] uppercase tracking-[0.16em] text-sidebar-foreground/40 px-3 pb-1.5">{g.title}</p>}
-            {collapsed && <div className="border-t border-white/10 mx-2 mb-2" />}
+            {collapsed && <div className="border-t border-border mx-2 mb-2" />}
             {g.items.map((item) => <NavItem key={item.path} item={item} />)}
             {g.title === "Pomočniki" && !collapsed && FEATURES.some((f) => !featureOn(business, f.key)) && (
-              <Link to="/nastavitve?tab=pomocniki" className="flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-sidebar-foreground/50 hover:text-white hover:bg-white/5">
+              <Link to="/nastavitve?tab=pomocniki" className="flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-sidebar-foreground/50 hover:text-foreground hover:bg-slate-100">
                 <span className="w-[18px] text-center">+</span>Dodaj pomočnika
               </Link>
             )}
@@ -147,14 +147,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
 
         <div className="space-y-0.5">
           {!collapsed && <p className="text-[10px] uppercase tracking-[0.16em] text-sidebar-foreground/40 px-3 pb-1.5">Vaš račun</p>}
-          {collapsed && <div className="border-t border-white/10 mx-2 mb-2" />}
+          {collapsed && <div className="border-t border-border mx-2 mb-2" />}
           <NavItem item={{ path: "/nastavitve", label: "Nastavitve", icon: Settings }} />
         </div>
 
         {isAdmin && (
           <div className="space-y-0.5">
             {!collapsed && <p className="text-[10px] uppercase tracking-[0.16em] text-sidebar-foreground/40 px-3 pb-1.5">Skrbnik</p>}
-            {collapsed && <div className="border-t border-white/10 mx-2 mb-2" />}
+            {collapsed && <div className="border-t border-border mx-2 mb-2" />}
             {adminItems.map((item) => <NavItem key={item.path} item={item} />)}
           </div>
         )}
@@ -163,14 +163,14 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       {/* Naročnina + collapse */}
       <div className="px-3 pb-3 space-y-2 shrink-0">
         {!collapsed && business?.subscription_status === "trialing" && (
-          <Link to="/nastavitve?tab=billing" className="block rounded-xl bg-white/5 border border-white/10 p-3 hover:bg-white/10 transition-colors">
+          <Link to="/nastavitve?tab=billing" className="block rounded-xl bg-accent/60 border border-primary/15 p-3 hover:bg-accent transition-colors">
             <p className="text-[11px] uppercase tracking-wider text-sidebar-foreground/60">Preizkus</p>
             <p className="text-sm text-white font-medium mt-0.5">
               {business?.trial_ends_at ? `Še ${Math.max(0, Math.ceil((new Date(business.trial_ends_at) - new Date()) / 86400000))} dni` : "Aktiven"}
             </p>
           </Link>
         )}
-        <button onClick={() => setCollapsed(!collapsed)} className="w-full flex items-center justify-center p-2 rounded-xl hover:bg-white/5 transition-colors text-sidebar-foreground/70">
+        <button onClick={() => setCollapsed(!collapsed)} className="w-full flex items-center justify-center p-2 rounded-xl hover:bg-slate-100 transition-colors text-sidebar-foreground/70">
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
       </div>
