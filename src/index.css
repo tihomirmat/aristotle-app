@@ -131,10 +131,12 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   /* Glavni gumb: mehko obarvan (prosojna oranžna + temnejši oranžn tekst), brez sence — jasen, a ne kričeč */
-  .btn-brand { background-color: hsl(var(--primary) / .14); color: hsl(var(--accent-foreground)); border: 1px solid hsl(var(--primary) / .32); box-shadow: none; }
-  .btn-brand:hover { background-color: hsl(var(--primary) / .22); }
-  .btn-brand:disabled { opacity: .55; }
+  /* podvojen razred = višja prednost pred Tailwind razredi gumba (bg-primary, text-primary-foreground, hover) */
+  .btn-brand.btn-brand { background-color: hsl(var(--primary) / .14); color: hsl(var(--accent-foreground)); border: 1px solid hsl(var(--primary) / .32); box-shadow: none; }
+  .btn-brand.btn-brand:hover { background-color: hsl(var(--primary) / .22); }
+  .btn-brand.btn-brand:disabled { opacity: .55; }
   /* Prej črni izbrani čipi (bg-foreground) in polne oranžne značke → mehko obarvani */
   .bg-foreground.text-background { background-color: hsl(var(--primary) / .13); color: hsl(var(--accent-foreground)); border-color: hsl(var(--primary) / .3); }
   .bg-primary.text-white, .bg-primary.text-primary-foreground { background-color: hsl(var(--primary) / .16); color: hsl(var(--accent-foreground)); }
+  .bg-primary.text-primary-foreground:hover { background-color: hsl(var(--primary) / .24); }
 }
