@@ -80,7 +80,7 @@ export default function Onboarding({ preview = false }) {
       const data = res?.data ?? res;
       if (data?.error) throw new Error(data.error);
       await queryClient.invalidateQueries({ queryKey: ["business", user.email] });
-      window.location.href = "/";
+      window.location.href = "/nastavitve?tab=integracije&uvod=1"; // zadnji korak: povezava e-poštnega predala
     } catch (err) {
       toast.error("Napaka pri zaključku: " + (fnError(err) || "Poskusite znova."));
     } finally { setSaving(false); }
@@ -204,7 +204,7 @@ export default function Onboarding({ preview = false }) {
             <div className="space-y-7 max-w-xl">
               <div>
                 <h1 className="text-3xl">Pripravljeni ste</h1>
-                <p className="text-muted-foreground mt-2">Naslednji korak v aplikaciji bo povezava vašega e-poštnega predala, da AI najde povpraševanja.</p>
+                <p className="text-muted-foreground mt-2">Po kliku vas odpeljemo na zadnji korak: povezavo e-poštnega predala (e-naslov in geslo), da AI najde povpraševanja. To lahko naredite tudi pozneje.</p>
               </div>
               <div className="rounded-xl bg-muted/50 p-4 flex gap-3 text-sm">
                 <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />

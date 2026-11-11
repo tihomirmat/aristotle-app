@@ -329,6 +329,12 @@ export default function Nastavitve() {
 
         {/* INTEGRACIJE */}
         <TabsContent value="integracije">
+          {searchParams.get("uvod") === "1" && !business?.imap_enabled && (
+            <div className="mb-5 rounded-2xl border border-primary/40 bg-accent/60 px-5 py-4 flex items-center gap-4 flex-wrap">
+              <div className="flex-1 min-w-[260px]"><p className="font-semibold">Dobrodošli. Še zadnji korak: povežite e-poštni predal.</p><p className="text-sm text-muted-foreground mt-0.5">Vpišite e-naslov podjetja in geslo v kartico »Vaš e-poštni predal« spodaj. AI bo potem sam našel povpraševanja v vaši pošti.</p></div>
+              <Button variant="outline" onClick={() => navigate("/")}>Pozneje, pojdi na pregled</Button>
+            </div>
+          )}
           <div className="mb-5"><ConnectionsOverview business={business} /></div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
             <div className="space-y-5">
