@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import CustomerImportModal from "@/components/stranke/CustomerImportModal";
 import ReplyInbox from "@/components/stranke/ReplyInbox";
+import CustomersTable from "@/components/stranke/CustomersTable";
 import SourcesChart from "@/components/stranke/SourcesChart";
 import { CompaniesPanel } from "@/pages/Podjetja";
 import { Building2 as BuildingIcon, Upload as UploadIcon } from "lucide-react";
@@ -25,7 +26,9 @@ export default function Stranke() {
   const navigate = useNavigate();
   const invalidate = useCrmInvalidate();
   const [params, setParams] = useSearchParams();
-  const [view, setView] = useState("pipeline");
+  // Pogled: tabela (privzeto pri več strankah) ali faze; izbira si zapomni.
+  const [viewPref, setViewPref] = useState(() => { try { return localStorage.getItem("stranke-pogled") || ""; } catch { return ""; } });
+  const [tableStage, setTableStage] = useState("all");
   const [search, setSearch] = useState(params.get("q") || "");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
@@ -36,10 +39,12 @@ export default function Stranke() {
   const [newLead, setNewLead] = useState(emptyLead);
   const bid = business?.id;
 
-  const { data: leads = [], isLoading } = useQuery({ queryKey: ["leads", bid], queryFn: () => base44.entities.Lead.filter({ business_id: bid }), enabled: !!bid });
+  const { data: leads = [], isLoading } = useQuery({ queryKey: ["leads", bid], queryFn: () => base44.entities.Lead.filter({ business_id: bid }, "-created_date", 5000), enabled: !!bid });
+  const view = viewPref || (leads.length > 30 ? "list" : "pipeline");
+  const setView = (v) => { setViewPref(v); try { localStorage.setItem("stranke-pogled", v); } catch { /* */ } };
   const { data: drafts = [] } = useQuery({ queryKey: ["drafts-all", bid], queryFn: () => base44.entities.DraftMessage.filter({ business_id: bid }), enabled: !!bid });
   const { data: companies = [] } = useQuery({ queryKey: ["companies", bid], queryFn: () => base44.entities.Company.filter({ business_id: bid }), enabled: !!bid });
-  const { data: activities = [] } = useQuery({ queryKey: ["activities", bid], queryFn: () => base44.entities.Activity.filter({ business_id: bid }), enabled: !!bid });
+  const { data: activities = [] } = useQuery({ queryKey: ["activities", bid], queryFn: () => base44.entities.Activity.filter({ business_id: bid }, "-created_date", 1000), enabled: !!bid });
   const pendingCount = drafts.filter((d) => ["pending", "flagged_for_review"].includes(d.status)).length;
   const tabParam = params.get("tab");
   const tab = ["viri", "odgovori", "stranke", "podjetja"].includes(tabParam) ? tabParam : (pendingCount > 0 ? "odgovori" : "stranke");
@@ -85,9 +90,16 @@ export default function Stranke() {
   const sourceCounts = Object.keys(SOURCES).map((k) => [k, leads.filter((l) => l.source === k).length]).filter(([, n]) => n > 0);
   const open = (id) => navigate(`/stranke/${id}`);
 
-  const exportCsv = () => {
+  const stageMany = async (list, status) => {
+    const todo = list.filter((l) => (l.status || "new") !== status);
+    for (let i = 0; i < todo.length; i += 10) await Promise.all(todo.slice(i, i + 10).map((l) => base44.entities.Lead.update(l.id, { status })));
+    invalidate();
+    if (todo.length > 1) toast.success(`Premaknjeno v fazo »${STAGE[status]?.label}«: ${todo.length}.`);
+  };
+  const exportCsv = (list) => {
+    const data = Array.isArray(list) ? list : filtered;
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const rows = [["Ime", "Podjetje", "E-pošta", "Telefon", "Faza", "Vir", "Vrednost", "Zadnja aktivnost", "Opombe"], ...filtered.map((l) => [l.name, companiesById[l.company_id]?.name, l.email, l.phone, STAGE[l.status]?.label || l.status, SOURCES[l.source]?.label || l.source, l.value, l.last_inbound_at || l.created_date, l.notes])];
+    const rows = [["Ime", "Podjetje", "E-pošta", "Telefon", "Faza", "Vir", "Vrednost", "Zadnja aktivnost", "Opombe"], ...data.map((l) => [l.name, companiesById[l.company_id]?.name, l.email, l.phone, STAGE[l.status]?.label || l.status, SOURCES[l.source]?.label || l.source, l.value, l.last_inbound_at || l.created_date, l.notes])];
     const blob = new Blob(["﻿" + rows.map((r) => r.map(esc).join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `stranke-${format(new Date(), "yyyy-MM-dd")}.csv`; a.click();
   };
@@ -131,7 +143,7 @@ export default function Stranke() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowImport(true)}><UploadIcon className="w-4 h-4 mr-2" />Uvozi</Button>
-          <Button variant="outline" onClick={exportCsv} disabled={!filtered.length}><Download className="w-4 h-4 mr-2" />Izvozi</Button>
+          <Button variant="outline" onClick={() => exportCsv()} disabled={!filtered.length}><Download className="w-4 h-4 mr-2" />Izvozi</Button>
           {tab === "podjetja"
             ? <Button className="btn-brand" onClick={() => setShowAddCompany(true)}><BuildingIcon className="w-4 h-4 mr-2" />Dodaj podjetje</Button>
             : <Button className="btn-brand" onClick={() => setShowAdd(true)}><UserPlus className="w-4 h-4 mr-2" />Dodaj stranko</Button>}
@@ -176,8 +188,8 @@ export default function Stranke() {
               })}
             </div>
             <div className="ml-auto flex rounded-xl border p-0.5 bg-card">
+              <button onClick={() => setView("list")} className={`px-2.5 py-1.5 rounded-lg text-xs inline-flex items-center gap-1.5 ${view === "list" ? "bg-muted font-medium" : "text-muted-foreground"}`}><List className="w-3.5 h-3.5" />Tabela</button>
               <button onClick={() => setView("pipeline")} className={`px-2.5 py-1.5 rounded-lg text-xs inline-flex items-center gap-1.5 ${view === "pipeline" ? "bg-muted font-medium" : "text-muted-foreground"}`}><LayoutGrid className="w-3.5 h-3.5" />Faze</button>
-              <button onClick={() => setView("list")} className={`px-2.5 py-1.5 rounded-lg text-xs inline-flex items-center gap-1.5 ${view === "list" ? "bg-muted font-medium" : "text-muted-foreground"}`}><List className="w-3.5 h-3.5" />Seznam</button>
             </div>
           </div>
 
@@ -197,41 +209,14 @@ export default function Stranke() {
                       </div>
                       <span className="text-xs text-muted-foreground font-medium">{items.length}</span>
                     </div>
-                    <div className="space-y-2">{items.map((l) => <LeadCard key={l.id} lead={l} />)}</div>
+                    <div className="space-y-2">{items.slice(0, 12).map((l) => <LeadCard key={l.id} lead={l} />)}</div>
+                    {items.length > 12 && <button onClick={() => { setTableStage(st.key); setView("list"); }} className="w-full mt-2 text-xs text-primary font-medium rounded-lg border border-dashed py-2 hover:bg-accent/50">Pokaži vseh {items.length} v tabeli</button>}
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="card-elevated overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 border-b text-muted-foreground">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-medium">Stranka</th>
-                    <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Podjetje</th>
-                    <th className="text-left px-4 py-3 font-medium">Faza</th>
-                    <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">Vir</th>
-                    <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Vrednost</th>
-                    <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">Zadnja aktivnost</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filtered.map((l) => {
-                    const S = SOURCES[l.source] || SOURCES.manual; const st = STAGE[l.status] || STAGE.new;
-                    return (
-                      <tr key={l.id} onClick={() => open(l.id)} className="hover:bg-muted/30 cursor-pointer">
-                        <td className="px-4 py-3"><p className="font-medium">{l.name}</p><p className="text-xs text-muted-foreground">{l.email || l.phone || "—"}</p></td>
-                        <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{companiesById[l.company_id]?.name || "—"}</td>
-                        <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 text-xs font-medium"><span className={`w-2 h-2 rounded-full ${st.dot}`} />{st.label}</span></td>
-                        <td className="px-4 py-3 hidden lg:table-cell"><span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md ${S.cls}`}><S.icon className="w-3 h-3" />{S.label}</span></td>
-                        <td className="px-4 py-3 text-right hidden lg:table-cell">{l.value ? eur(l.value) : "—"}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">{ago(l.last_inbound_at || l.created_date)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <CustomersTable leads={filtered} companiesById={companiesById} pendingByLead={pendingByLead} tasksByLead={tasksByLead} onOpen={open} onStage={stageMany} onExport={exportCsv} initialStage={tableStage} />
           )}
         </>
       )}
