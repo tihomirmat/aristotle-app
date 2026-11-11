@@ -38,7 +38,7 @@ async function readMailbox(mb) {
           const from = p.from?.value?.[0] || {};
           const extraText = (p.attachments || [])
             .filter((a) => /delivery-status|rfc822|text\//i.test(a.contentType || ''))
-            .map((a) => { try { return Buffer.from(a.content).toString('utf8').slice(0, 20000); } catch { return ''; } }).join('\n');
+            .map((a) => { try { return new TextDecoder().decode(a.content).slice(0, 20000); } catch { return ''; } }).join('\n');
           out.push({
             uid: msg.uid, messageId: p.messageId || `${mb.id}-${msg.uid}`, fromEmail: lower(from.address), fromName: from.name || '',
             subject: p.subject || '', text: (p.text || (p.html ? String(p.html).replace(/<[^>]+>/g, ' ') : '')).trim(), headers: p.headers, extraText,
@@ -156,7 +156,6 @@ async function syncBusiness(base44, business, mailboxes) {
           business_id: business.id, name: (contact?.name || m.fromName || m.fromEmail.split('@')[0]).trim(), email: m.fromEmail, phone: contact?.phone || '',
           source: 'campaign', status: 'replied', consent_email: true, notes: note, email_subject: m.subject, email_message_id: m.messageId,
           last_inbound_at: now, last_inbound_body: body, last_inbound_from: fromLine, reply_mailbox_id: mb.id, created_by: owner, owner_email: owner,
-          ...(contact?.company ? { service_requested: '' } : {}),
         });
         leadByEmail.set(m.fromEmail, lead);
         if (contact?.company) {
