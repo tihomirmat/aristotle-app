@@ -5,6 +5,7 @@
 //  - ODJAVE (»Odjava«) → naslov se ne uporablja več.
 import { simpleParser } from 'npm:mailparser@3.7.1';
 import { imapConnect, imapDate } from './imap.js';
+import { openSecret } from './secretBox.js';
 import { lower, classifyBounce, isAutoReply, isUnsubscribe, replyOnly, pauseIfTooManyBounces, allRecords } from './campaignMail.js';
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
@@ -35,7 +36,7 @@ export async function syncCampaignMailboxesFor(base44, { mailboxId, businessId, 
 async function readMailbox(mb) {
   const out = [];
   let maxUid = Number(mb.imap_last_uid) || 0;
-  const c = await imapConnect({ host: mb.imap_host, port: Number(mb.imap_port) || 993, user: mb.email, pass: mb.imap_pass, timeoutMs: 15000, socketTimeoutMs: 60000 });
+  const c = await imapConnect({ host: mb.imap_host, port: Number(mb.imap_port) || 993, user: mb.email, pass: await openSecret(mb.imap_pass), timeoutMs: 15000, socketTimeoutMs: 60000 });
   try {
     const sel = await c.select('INBOX');
     const last = Number(mb.imap_last_uid) || 0;
