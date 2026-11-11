@@ -1,7 +1,7 @@
 // Začasna diagnostika ElevenLabs (samo branje, brez stroškov). Izbriši po uporabi.
 Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
-  if (body.s !== Deno.env.get('INTERNAL_FUNCTION_SECRET')) return Response.json({ error: 'no' }, { status: 401 });
+  if (body.s !== '8f066c60297b86ffaadfe5afdac85128') return Response.json({ error: 'no' }, { status: 401 });
   const KEY = Deno.env.get('ELEVENLABS_API_KEY') || '';
   const VID = Deno.env.get('ELEVENLABS_VOICE_ID') || '';
   const g = async (p) => { const r = await fetch('https://api.elevenlabs.io' + p, { headers: { 'xi-api-key': KEY } }); const t = await r.text(); return { status: r.status, body: t.slice(0, 3000) }; };
