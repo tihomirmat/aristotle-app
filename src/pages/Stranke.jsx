@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import CustomerImportModal from "@/components/stranke/CustomerImportModal";
 import ReplyInbox from "@/components/stranke/ReplyInbox";
-import CustomersTable from "@/components/stranke/CustomersTable";
+import CustomersTable, { CustomersToolbar, StatusIcons, SourceIcon, quickFilters } from "@/components/stranke/CustomersTable";
 import SourcesChart from "@/components/stranke/SourcesChart";
 import { CompaniesPanel } from "@/pages/Podjetja";
 import { Building2 as BuildingIcon, Upload as UploadIcon } from "lucide-react";
@@ -32,6 +32,8 @@ export default function Stranke() {
   const [tableStage, setTableStage] = useState("all");
   const [search, setSearch] = useState(params.get("q") || "");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [quick, setQuick] = useState(null);
+  const [tagFilter, setTagFilter] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showAddCompany, setShowAddCompany] = useState(false);
@@ -80,15 +82,18 @@ export default function Stranke() {
     onError: (e) => toast.error(e.message),
   });
 
+  const quickBase = useMemo(() => quickFilters(pendingByLead, tasksByLead), [pendingByLead, tasksByLead]);
+  const quickDefs = quickBase.map((q) => ({ ...q, n: leads.filter(q.fn).length }));
+  // Iskanje + filtri (brez faze) = osnova za števce faz in pogled Faze; faza se uporabi samo v tabeli.
   const filtered = leads.filter((l) => {
     const q = search.trim().toLowerCase();
     const comp = companiesById[l.company_id]?.name;
     const okQ = !q || [l.name, l.email, l.phone, l.notes, comp, (l.tags || []).join(" ")].some((v) => String(v || "").toLowerCase().includes(q));
     const okS = sourceFilter === "all" || l.source === sourceFilter;
-    return okQ && okS;
+    const qf = quickBase.find((x) => x.k === quick);
+    return okQ && okS && (!qf || qf.fn(l)) && (!tagFilter || (l.tags || []).includes(tagFilter));
   }).sort((a, b) => new Date(b.last_inbound_at || b.created_date) - new Date(a.last_inbound_at || a.created_date));
-
-  const sourceCounts = Object.keys(SOURCES).map((k) => [k, leads.filter((l) => l.source === k).length]).filter(([, n]) => n > 0);
+  const tableRows = tableStage === "all" ? filtered : filtered.filter((l) => (l.status || "new") === tableStage);
   const open = (id) => navigate(`/stranke/${id}`);
 
   const stageMany = async (list, status) => {
@@ -112,30 +117,23 @@ export default function Stranke() {
   };
 
   const LeadCard = ({ lead }) => {
-    const S = SOURCES[lead.source] || SOURCES.manual;
-    const pending = pendingByLead[lead.id] || 0;
-    const nTasks = tasksByLead[lead.id] || 0;
     const comp = companiesById[lead.company_id];
     return (
-      <button draggable onDragStart={() => setDragId(lead.id)} onDragEnd={() => setDragId(null)} onClick={() => open(lead.id)}
-        className={`w-full text-left bg-card border rounded-xl p-3 shadow-sm hover:shadow-md hover:border-primary/40 transition-all ${dragId === lead.id ? "opacity-50" : ""}`}>
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="font-semibold text-sm leading-tight truncate">{lead.name}</p>
-            {comp && <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5"><Building2 className="w-3 h-3" />{comp.name}</p>}
+      <div role="button" tabIndex={0} draggable onDragStart={() => setDragId(lead.id)} onDragEnd={() => setDragId(null)} onClick={() => open(lead.id)} onKeyDown={(e) => { if (e.key === "Enter") open(lead.id); }}
+        className={`w-full text-left bg-card border rounded-lg p-3 hover:shadow-sm hover:border-primary/40 transition-all cursor-pointer ${dragId === lead.id ? "opacity-50" : ""}`}>
+        <div className="flex items-start gap-1.5">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-sm leading-tight truncate">{lead.name}</p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{comp?.name || lead.email || lead.phone || "—"}</p>
           </div>
-          <span className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md ${S.cls}`}><S.icon className="w-3 h-3" />{S.label}</span>
+          <SourceIcon source={lead.source} />
         </div>
         {(lead.service_requested || lead.notes) && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{lead.service_requested || firstLine(lead.notes)}</p>}
-        <div className="flex items-center justify-between mt-2.5 gap-2">
-          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" />{ago(lead.last_inbound_at || lead.created_date)}</span>
-          <span className="flex items-center gap-1.5">
-            {lead.value ? <span className="text-[11px] font-medium">{eur(lead.value)}</span> : null}
-            {nTasks > 0 && <span title="Odprta opravila" className="text-[10px] font-medium text-slate-700 bg-slate-100 rounded-full px-1.5 py-0.5 inline-flex items-center gap-0.5"><ListChecks className="w-3 h-3" />{nTasks}</span>}
-            {pending > 0 && <span className="text-[10px] font-semibold text-white bg-primary rounded-full px-1.5 py-0.5">odgovor pripravljen</span>}
-          </span>
+        <div className="flex items-center justify-between mt-2 gap-2 min-h-7">
+          <span className="text-xs text-muted-foreground">{ago(lead.last_inbound_at || lead.created_date)}{lead.value ? <span className="text-foreground font-medium"> · {eur(lead.value)}</span> : null}</span>
+          <StatusIcons lead={lead} pending={pendingByLead[lead.id] || 0} tasks={tasksByLead[lead.id] || 0} onOpen={open} />
         </div>
-      </button>
+      </div>
     );
   };
 
@@ -143,14 +141,11 @@ export default function Stranke() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1>Stranke</h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl">Vsi, ki so vam pisali ali ste jih dodali sami. Kliknite stranko za celotno zgodovino in odgovor.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowImport(true)}><UploadIcon className="w-4 h-4 mr-2" />Uvozi</Button>
-          <Button variant="outline" onClick={() => exportCsv()} disabled={!filtered.length}><Download className="w-4 h-4 mr-2" />Izvozi</Button>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1>Stranke</h1>
+        <div className="flex gap-1.5 items-center">
+          <Button variant="ghost" className="text-muted-foreground" onClick={() => setShowImport(true)}><UploadIcon className="w-4 h-4 mr-2" />Uvozi</Button>
+          <Button variant="ghost" className="text-muted-foreground" onClick={() => exportCsv()} disabled={!filtered.length}><Download className="w-4 h-4 mr-2" />Izvozi</Button>
           {tab === "podjetja"
             ? <Button className="btn-brand" onClick={() => setShowAddCompany(true)}><BuildingIcon className="w-4 h-4 mr-2" />Dodaj podjetje</Button>
             : <Button className="btn-brand" onClick={() => setShowAdd(true)}><UserPlus className="w-4 h-4 mr-2" />Dodaj stranko</Button>}
@@ -182,23 +177,9 @@ export default function Stranke() {
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-[220px] max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Išči po imenu, podjetju, e-pošti, telefonu" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-            </div>
-            <div className="flex gap-1.5 flex-wrap">
-              <button onClick={() => setSourceFilter("all")} className={`text-xs px-3 py-1.5 rounded-full border ${sourceFilter === "all" ? "bg-foreground text-background border-foreground" : "hover:bg-muted"}`}>Vsi viri</button>
-              {sourceCounts.map(([k, n]) => {
-                const S = SOURCES[k];
-                return <button key={k} onClick={() => setSourceFilter(k)} className={`text-xs px-3 py-1.5 rounded-full border inline-flex items-center gap-1.5 ${sourceFilter === k ? "bg-foreground text-background border-foreground" : "hover:bg-muted"}`}><S.icon className="w-3 h-3" />{S.label} {n}</button>;
-              })}
-            </div>
-            <div className="ml-auto flex rounded-xl border p-0.5 bg-card">
-              <button onClick={() => setView("list")} className={`px-2.5 py-1.5 rounded-lg text-xs inline-flex items-center gap-1.5 ${view === "list" ? "bg-muted font-medium" : "text-muted-foreground"}`}><List className="w-3.5 h-3.5" />Tabela</button>
-              <button onClick={() => setView("pipeline")} className={`px-2.5 py-1.5 rounded-lg text-xs inline-flex items-center gap-1.5 ${view === "pipeline" ? "bg-muted font-medium" : "text-muted-foreground"}`}><LayoutGrid className="w-3.5 h-3.5" />Faze</button>
-            </div>
-          </div>
+          <CustomersToolbar leads={filtered} search={search} setSearch={setSearch} stage={tableStage} setStage={setTableStage} showStages={view === "list"}
+            quick={quick} setQuick={setQuick} quickDefs={quickDefs} tag={tagFilter} setTag={setTagFilter} source={sourceFilter} setSource={setSourceFilter}
+            views={business?.customer_views || []} onSaveViews={saveViews} view={view} setView={setView} />
 
           {view === "pipeline" ? (
             <div className="grid grid-flow-col auto-cols-[minmax(200px,1fr)] gap-3 overflow-x-auto pb-3 -mx-1 px-1">
@@ -223,7 +204,7 @@ export default function Stranke() {
               })}
             </div>
           ) : (
-            <CustomersTable leads={filtered} companiesById={companiesById} pendingByLead={pendingByLead} tasksByLead={tasksByLead} onOpen={open} onStage={stageMany} onExport={exportCsv} onTag={tagMany} views={business?.customer_views || []} onSaveViews={saveViews} initialStage={tableStage} />
+            <CustomersTable leads={tableRows} companiesById={companiesById} pendingByLead={pendingByLead} tasksByLead={tasksByLead} onOpen={open} onStage={stageMany} onExport={exportCsv} onTag={tagMany} />
           )}
         </>
       )}
