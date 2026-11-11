@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import nodemailer from 'npm:nodemailer@6.9.9';
+import { openMailbox } from '../../shared/secretBox.js'; // 2026-11-12: gesla v bazi šifrirana
 
 // ─── HTML predloga e-pošte (kopija v vsaki funkciji — Base44 funkcije nimajo skupnih modulov) ───
 const EMAIL_APP_URL = (Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app').replace(/\/$/, '');
@@ -69,7 +70,7 @@ Deno.serve(async (req) => {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return Response.json({ error: 'Neveljaven e-poštni naslov prejemnika.' }, { status: 400 });
 
     const businesses = await base44.asServiceRole.entities.Business.filter({ id: business_id });
-    const business = businesses[0];
+    const business = await openMailbox(businesses[0]);
     if (!business) return Response.json({ error: 'Podjetje ni najdeno' }, { status: 404 });
     if (!ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.', code: 'FORBIDDEN' }, { status: 403 });
     if (isTrialExpired(business) || !hasModule(business, 'pillar_offers')) {
