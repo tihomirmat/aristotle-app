@@ -31,8 +31,6 @@ export function useVoice(businessId) {
     r.ondataavailable = (e) => e.data?.size && chunks.current.push(e.data);
     r.start();
     rec.current = r;
-    // varovalo: največ 60 s snemanja
-    setTimeout(() => { if (rec.current === r && r.state === "recording") r.requestData?.(); }, 60000);
     setRecording(true);
   };
   const stop = () => new Promise((resolve, reject) => {
