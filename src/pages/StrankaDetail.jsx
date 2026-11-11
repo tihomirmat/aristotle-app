@@ -18,6 +18,7 @@ import TasksPanel from "@/components/crm/TasksPanel";
 import { TaskDialog, LogActivityDialog, SendEmailDialog, useCrmInvalidate } from "@/components/crm/CrmDialogs";
 import GenerateDraftButton from "@/components/stranke/GenerateDraftButton";
 import ReplyReview, { reasonFor } from "@/components/crm/ReplyReview";
+import { DraftIcon } from "@/components/crm/DraftMark";
 
 const ENROLL_STATUS = { active: "Teče", completed: "Končano", stopped_replied: "Ustavljeno — odgovoril", stopped_unsubscribed: "Ustavljeno — odjava", stopped_manual: "Ustavljeno ročno" };
 
@@ -140,7 +141,7 @@ export default function StrankaDetail() {
             ))}
           </div>
           <div className="p-5">
-            {tab === "timeline" && <Timeline activities={activities} pendingDrafts={pending} onPendingClick={() => document.getElementById("odgovori")?.scrollIntoView({ behavior: "smooth", block: "start" })} onAdd={() => setDlg("log")} emptyText="Tu se bodo pokazala vsa sporočila, klici, opombe in spremembe." />}
+            {tab === "timeline" && <Timeline activities={activities} pendingDrafts={pending} onPendingClick={(d) => { setOpenReplies((o) => (o.includes(d.id) ? o : [...o, d.id])); setTimeout(() => (document.getElementById(`odgovor-${d.id}`) || document.getElementById("odgovori"))?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); }} onAdd={() => setDlg("log")} emptyText="Tu se bodo pokazala vsa sporočila, klici, opombe in spremembe." />}
 
             {tab === "offers" && (
               <div className="space-y-2">
@@ -174,15 +175,16 @@ export default function StrankaDetail() {
       {/* Predlagani odgovori — pod časovnico */}
       {pending.length > 0 && (
         <div id="odgovori" className="space-y-3 scroll-mt-4">
-          <p className="text-sm font-semibold">Pripravljeni odgovori</p>
+          <p className="text-sm font-semibold flex items-center gap-2"><DraftIcon />Pripravljeno, še ni poslano <span className="font-normal text-muted-foreground">— preberite, po potrebi popravite in pošljite</span></p>
           {pending.map((d) => {
             // Prvi odgovor vsake vrste je odprt, naslednji iste vrste so zaprti (klik odpre).
             const firstOfKind = pending.find((x) => x.pillar === d.pillar)?.id === d.id;
             const isOpen = firstOfKind || openReplies.includes(d.id);
-            if (isOpen) return <ReplyReview key={d.id} draft={d} lead={lead} activities={activities} />;
+            if (isOpen) return <div key={d.id} id={`odgovor-${d.id}`} className="scroll-mt-4"><ReplyReview draft={d} lead={lead} activities={activities} /></div>;
             const R = reasonFor(d.pillar);
             return (
-              <button key={d.id} onClick={() => setOpenReplies((o) => [...o, d.id])} className="w-full text-left rounded-xl border bg-card px-4 py-3 flex items-center gap-3 hover:border-primary/40 hover:shadow-sm">
+              <button key={d.id} id={`odgovor-${d.id}`} onClick={() => setOpenReplies((o) => [...o, d.id])} className="w-full text-left rounded-xl border border-dashed border-amber-300 bg-amber-50/40 px-4 py-3 flex items-center gap-3 hover:bg-amber-50 scroll-mt-4">
+                <DraftIcon />
                 <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${R.color}`}><R.icon className="w-3.5 h-3.5" />{R.label}</span>
                 <span className="text-sm font-medium truncate flex-1">{d.subject || "Predlagan odgovor"}</span>
                 <span className="text-xs text-muted-foreground shrink-0">{ago(d.created_date)}</span>
