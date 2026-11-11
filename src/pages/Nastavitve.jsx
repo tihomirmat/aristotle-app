@@ -218,21 +218,31 @@ export default function Nastavitve() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Nastavitve</h1>
-        <p className="text-muted-foreground mt-1">Profil podjetja, povezave (pošta, koledar, računi, klepet) in naročnina.</p>
+        <h1>Nastavitve</h1>
       </div>
 
-      <Tabs defaultValue={defaultTab}>
-        <TabsList className="mb-6 flex-wrap h-auto gap-1">
-          <TabsTrigger value="profil" className="gap-2"><User className="w-4 h-4" /> Profil</TabsTrigger>
-          <TabsTrigger value="glas" className="gap-2"><Mic className="w-4 h-4" /> Glas znamke</TabsTrigger>
-          <TabsTrigger value="pomocniki" className="gap-2"><LayoutGrid className="w-4 h-4" /> Pomočniki</TabsTrigger>
-          <TabsTrigger value="viri" className="gap-2"><UsersIcon className="w-4 h-4" /> Viri strank</TabsTrigger>
-          <TabsTrigger value="integracije" className="gap-2"><Mail className="w-4 h-4" /> Povezave</TabsTrigger>
-          <TabsTrigger value="termini" className="gap-2"><Calendar className="w-4 h-4" /> Termini</TabsTrigger>
-          <TabsTrigger value="billing" className="gap-2"><CreditCard className="w-4 h-4" /> Naročnina</TabsTrigger>
-          {user?.role === "admin" && <TabsTrigger value="racuni" className="gap-2"><FileText className="w-4 h-4" /> Računi (admin)</TabsTrigger>}
+      {/* Levo (1/4): seznam nastavitev z opisi; desno (3/4): izbrana nastavitev */}
+      <Tabs defaultValue={defaultTab} orientation="vertical" className="grid lg:grid-cols-[minmax(220px,1fr)_minmax(0,3fr)] gap-6 items-start">
+        <TabsList className="h-auto w-full flex flex-col items-stretch gap-0.5 bg-card border rounded-xl p-2 lg:sticky lg:top-20">
+          {[
+            ["profil", User, "Profil", "Podatki podjetja in storitve"],
+            ["glas", Mic, "Glas znamke", "Kako AI piše, podpis, naučena pravila"],
+            ["pomocniki", LayoutGrid, "Pomočniki", "Kateri pomočniki so vklopljeni"],
+            ["viri", UsersIcon, "Viri strank", "Obrazec na strani, uvoz strank"],
+            ["integracije", Mail, "Povezave", "E-poštni predal, naslovi, koledar"],
+            ["termini", Calendar, "Termini", "Google Koledar in prosti termini"],
+            ["billing", CreditCard, "Naročnina", "Paket in plačila"],
+            ...(user?.role === "admin" ? [["racuni", FileText, "Računi (admin)", "Naslov za posredovanje, webhook"]] : []),
+          ].map(([v, Icon, label, hint]) => (
+            <TabsTrigger key={v} value={v}
+              className="w-full justify-start items-start gap-3 rounded-lg px-3 py-2.5 text-left whitespace-normal text-muted-foreground hover:bg-muted/60 hover:text-foreground data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none">
+              <Icon className="w-4 h-4 mt-0.5 shrink-0" />
+              <span className="min-w-0"><span className="block text-sm font-medium">{label}</span><span className="block text-xs font-normal text-muted-foreground">{hint}</span></span>
+            </TabsTrigger>
+          ))}
         </TabsList>
+
+        <div className="min-w-0 [&>[role=tabpanel]]:mt-0">
 
         {/* PROFIL */}
         <TabsContent value="profil">
@@ -480,6 +490,7 @@ export default function Nastavitve() {
             </div>
           </div>
         </TabsContent>
+        </div>
       </Tabs>
     </div>
   );
