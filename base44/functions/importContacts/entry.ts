@@ -72,7 +72,7 @@ function rowsFromText(text) {
 //   → osnovno preverjanje (zapis, podvojeni, začasni naslovi, ali domena sprejema pošto) in shranjevanje.
 // action delete { business_id, list_id } → izbriše seznam in njegove naslove (aktivne kampanje jih nehajo uporabljati).
 
-const VERSION = 'import-contacts-2026-11-11b';
+const VERSION = 'import-contacts-2026-11-11c';
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const MAX_ROWS = 5000;
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
