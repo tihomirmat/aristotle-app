@@ -11,7 +11,7 @@ import { lower, inSendWindow, ljNow, remainingToday, perRunCap, sentToday, merge
 //    Najprej nadaljevanja sekvence (follow-up), nato novi naslovi. Vsaka oseba dobiva vsa sporočila z istega predala.
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
-const VERSION = 'run-campaigns-2026-11-11-lists';
+const VERSION = 'run-campaigns-2026-11-11-lists-b';
 const MAX_AI_PER_RUN = 15;
 const MAX_LIST_SENDS_PER_RUN = 40;
 const DAY = 86400000;
@@ -135,9 +135,10 @@ async function runListCampaign({ base44, sr, camp, business, senders, blocked, s
       const msg = String(err?.response || err?.message || err).slice(0, 200);
       if (err?.code === 'EENVELOPE' || (code >= 550 && code < 560)) { // strežnik je naslov zavrnil takoj
         const at = new Date().toISOString();
-        await sr.CampaignEnrollment.update(enr.id, { status: 'stopped_bounced', bounce_reason: `Naslov zavrnjen: ${msg}`, bounced_at: at, mailbox_id: sender.mb.id });
-        Object.assign(enr, { status: 'stopped_bounced', bounced_at: at, bounce_reason: msg });
-        await sr.ListContact.update(contact.id, { status: 'bounced', bounce_reason: msg, bounced_at: at });
+        const reason = `Naslov ne obstaja (strežnik ga je zavrnil: ${msg})`.slice(0, 300);
+        await sr.CampaignEnrollment.update(enr.id, { status: 'stopped_bounced', bounce_reason: reason, bounced_at: at, last_sent_at: at, mailbox_id: sender.mb.id });
+        Object.assign(enr, { status: 'stopped_bounced', bounced_at: at, last_sent_at: at, bounce_reason: reason });
+        await sr.ListContact.update(contact.id, { status: 'bounced', bounce_reason: reason, bounced_at: at });
         blocked.add(em); newBounces++; summary.bounced_now++;
         return 'bounced';
       }
