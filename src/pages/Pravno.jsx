@@ -28,7 +28,7 @@ export const KRATKO = [
   "Vsebina, ki jo obdela AI, gre ponudniku Anthropic (ZDA). Aplikacija in baza tečeta na platformi Base44 (strežniki privzeto v ZDA).",
   "Privzeto nič ne gre ven brez vašega klika. Samodejno pošiljanje vklopite sami; e-poštne kampanje s seznama po zagonu pošiljajo same.",
   "AI se lahko zmoti — tudi pri cenah v ponudbah. Za vse, kar pošljete strankam, odgovarjate vi.",
-  "Gesla e-poštnih predalov so trenutno shranjena v bazi brez dodatnega šifriranja; dostop imata le vaš račun in skrbnik aplikacije. Šifriranje uvajamo.",
+  "Gesla e-poštnih predalov so v bazi shranjena šifrirano (AES-256). Ker mora aplikacija s predalom delati sama, jih naš strežnik ob uporabi odšifrira.",
   "Skrbnik aplikacije (ponudnik) ima tehnični dostop do vaših podatkov — uporablja ga samo za podporo, vzdrževanje in odpravo napak.",
   "Naročnino lahko prekinete kadar koli. Podatke lahko izvozite in zahtevate izbris.",
 ];
@@ -114,7 +114,7 @@ export function PogojiVsebina() {
         "Povezava do aplikacije in do e-poštnih strežnikov je šifrirana (HTTPS/TLS).",
         "Vsako podjetje vidi samo svoje podatke (pravila dostopa v bazi).",
         "Skrbnik aplikacije (ponudnik) ima tehnični dostop do vseh podatkov. Uporablja ga samo za podporo, vzdrževanje, odpravo napak in na vašo zahtevo.",
-        "Gesla e-poštnih predalov so trenutno shranjena v bazi brez dodatnega šifriranja; dostop do njih imata vaš račun in skrbnik. Dodatno šifriranje uvajamo. Priporočamo, da za aplikacijo uporabite geslo, ki ga ne uporabljate drugje.",
+        "Gesla e-poštnih predalov so v bazi shranjena šifrirano (AES-256-GCM); ključ je shranjen ločeno od baze. Ker aplikacija bere in pošilja pošto namesto vas, mora geslo ob uporabi odšifrirati — to naredi samo naš strežnik, nikoli vaš brskalnik. Priporočamo, da za aplikacijo uporabite geslo, ki ga ne uporabljate drugje.",
         "Dostopni ključi za Google Koledar so shranjeni šifrirano.",
         "Za vsako uporabo AI beležimo čas, vrsto opravila, model, število žetonov in strošek (brez vsebine) — za omejitve in obračun.",
       ]} />
@@ -178,7 +178,7 @@ export function ZasebnostVsebina() {
       <p>Uporaba in prenos podatkov, prejetih iz Googlovih API-jev, sta skladna s politiko Google API Services User Data Policy, vključno z zahtevami o omejeni uporabi (Limited Use). Podatkov iz Google Koledarja ne prodajamo, ne uporabljamo za oglaševanje in jih ne posredujemo tretjim osebam, razen kot je potrebno za delovanje funkcije, ki jo je uporabnik vklopil.</p>
 
       <H>7. Varnost</H>
-      <p>Šifrirana povezava (HTTPS/TLS), ločen dostop po podjetjih, šifrirani ključi Google Koledarja. Skrbnik aplikacije ima tehnični dostop do podatkov za podporo in vzdrževanje. Gesla e-poštnih predalov so trenutno shranjena brez dodatnega šifriranja; šifriranje uvajamo.</p>
+      <p>Šifrirana povezava (HTTPS/TLS), ločen dostop po podjetjih, šifrirani ključi Google Koledarja in šifrirana gesla e-poštnih predalov (AES-256-GCM). Skrbnik aplikacije ima tehnični dostop do podatkov za podporo in vzdrževanje.</p>
 
       <H>8. Hramba</H>
       <p>Dokler uporabljate aplikacijo in največ 12 mesecev po prenehanju naročnine, razen kadar zakon zahteva daljšo hrambo. Izbris lahko zahtevate kadar koli; izvedemo ga v 30 dneh.</p>
