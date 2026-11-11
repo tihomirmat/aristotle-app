@@ -8,7 +8,7 @@ import { PogojiVsebina, ZasebnostVsebina } from "@/pages/Pravno";
 // Uporablja uvod (korak »Pogoji«) in TermsGate. Ena kljukica nastavi oba podatka (pogoji + pravna podlaga za pisanje strankam).
 const POINTS = [
   { icon: Hand, title: "Vi odločate", text: "Odgovori čakajo na vaš pregled. Samodejno pošiljanje vklopite sami, če ga želite." },
-  { icon: Lock, title: "Podatki so vaši", text: "Ne prodajamo jih in AI se na njih ne uči. Izvoz ali izbris kadar koli." },
+  { icon: Lock, title: "Podatki so vaši", text: "Ne prodajamo jih in AI modeli se na njih ne učijo. Izvoz ali izbris kadar koli." },
   { icon: KeyRound, title: "Gesla so šifrirana", text: "Geslo predala je v bazi zaklenjeno; uporabi ga samo naš strežnik." },
   { icon: CalendarCheck, title: "Brez vezave", text: "14 dni brezplačno, brez kartice. Prekinete kadar koli." },
 ];
