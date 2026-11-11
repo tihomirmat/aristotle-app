@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2, Sparkles, Send, Phone, Users, StickyNote, Smartphone } from "lucide-react";
+import { Loader2, Sparkles, Send, Phone, Users, StickyNote, Smartphone, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
 import { generateDraft } from "@/functions/generateDraft";
