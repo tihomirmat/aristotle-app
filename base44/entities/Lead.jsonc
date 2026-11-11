@@ -27,6 +27,10 @@
       ],
       "default": "manual"
     },
+    "email_bounced": {
+      "type": "boolean",
+      "description": "E-po\u0161ta na ta naslov se je vrnila (naslov ne obstaja) \u2014 kampanje ga presko\u010dijo"
+    },
     "reply_mailbox_id": {
       "type": "string",
       "description": "Stranka je odgovorila na kampanjo s tega predala (SendingMailbox) \u2014 odgovor gre z istega naslova"
