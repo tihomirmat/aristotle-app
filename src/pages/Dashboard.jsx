@@ -1,213 +1,233 @@
 import { featureOn } from "@/lib/features";
-import React from "react";
+import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useBusiness } from "@/lib/business-context";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mail, Star, MessageSquare, FileSignature, ArrowRight, Users, UserPlus, Calendar, CheckCircle2, Circle, Inbox, Send, RotateCcw } from "lucide-react";
+import { Mail, Star, MessageSquare, FileSignature, ArrowRight, Users, UserPlus, Calendar, CheckCircle2, Circle, Inbox, Megaphone, ListChecks, ChevronRight, FileText } from "lucide-react";
 import ReactivationPanel from "@/components/dashboard/ReactivationPanel";
 import TrialBanner from "@/components/dashboard/TrialBanner";
 import StatusBanner from "@/components/ui/StatusBanner";
+import { STAGES, ago, dueLabel, cnt, W, eur, fmtDate } from "@/lib/crm";
+import { reasonFor } from "@/components/crm/ReplyReview";
+import { format } from "date-fns";
+import { sl } from "date-fns/locale";
 
-
+// Pregled (namizje): levo »Danes« — kaj čaka na lastnika (odgovori, opravila, termini), desno številke, faze in nastavitev.
 const greeting = () => { const h = new Date().getHours(); return h < 10 ? "Dobro jutro" : h < 18 ? "Dober dan" : "Dober večer"; };
+
+function Panel({ icon: Icon, title, count, to, cta, children, tone = "text-primary" }) {
+  return (
+    <section className="card-elevated overflow-hidden flex flex-col">
+      <header className="flex items-center gap-2.5 px-5 py-3.5 border-b">
+        <Icon className={`w-4 h-4 ${tone}`} />
+        <h2 className="text-[15px] font-semibold">{title}</h2>
+        {count > 0 && <span className="text-[11px] font-bold text-white bg-primary rounded-full min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center">{count}</span>}
+        {to && <Link to={to} className="ml-auto text-sm text-primary font-medium inline-flex items-center gap-1 hover:underline">{cta}<ArrowRight className="w-3.5 h-3.5" /></Link>}
+      </header>
+      <div className="flex-1">{children}</div>
+    </section>
+  );
+}
+const Empty = ({ children }) => <p className="px-5 py-6 text-sm text-muted-foreground flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />{children}</p>;
 
 export default function Dashboard() {
   const { business, user } = useBusiness();
+  const bid = business?.id;
+  const q = (key, fn) => ({ queryKey: [key, bid], queryFn: fn, enabled: !!bid });
 
-  const { data: drafts = [] } = useQuery({
-    queryKey: ["drafts", business?.id],
-    queryFn: async () => (await base44.entities.DraftMessage.filter({ business_id: business.id })).filter((d) => d.status === "pending" || d.status === "flagged_for_review"),
-    enabled: !!business?.id,
-  });
-  const { data: leads = [] } = useQuery({
-    queryKey: ["leads_all", business?.id],
-    queryFn: () => base44.entities.Lead.filter({ business_id: business.id }),
-    enabled: !!business?.id,
-  });
-  const { data: confirmedBookings = [] } = useQuery({
-    queryKey: ["confirmed_bookings", business?.id],
-    queryFn: () => base44.entities.ConfirmedBooking.filter({ business_id: business.id, status: "confirmed" }),
-    enabled: !!business?.id,
-  });
+  const { data: leads = [] } = useQuery(q("leads_all", () => base44.entities.Lead.filter({ business_id: bid }, "-created_date", 5000)));
+  const { data: allDrafts = [] } = useQuery(q("drafts-all", () => base44.entities.DraftMessage.filter({ business_id: bid })));
+  const { data: tasks = [] } = useQuery(q("tasks", () => base44.entities.Task.filter({ business_id: bid, status: "open" })));
+  const { data: confirmedBookings = [] } = useQuery(q("confirmed_bookings", () => base44.entities.ConfirmedBooking.filter({ business_id: bid, status: "confirmed" })));
+  const { data: convs = [] } = useQuery(q("convs_dash", () => base44.entities.ChatbotConversation.filter({ business_id: bid })));
+  const { data: kb = [] } = useQuery(q("kb_dash", () => base44.entities.KnowledgeBase.filter({ business_id: bid })));
+  const { data: offers = [] } = useQuery(q("offers_dash", () => base44.entities.OfferGeneration.filter({ business_id: bid })));
+  const { data: campaigns = [] } = useQuery(q("campaigns", () => base44.entities.Campaign.filter({ business_id: bid })));
+  const { data: invoices = [] } = useQuery(q("invoices", () => base44.entities.Invoice.filter({ business_id: bid })));
 
-  const { data: convs = [] } = useQuery({
-    queryKey: ["convs_dash", business?.id],
-    queryFn: () => base44.entities.ChatbotConversation.filter({ business_id: business.id }),
-    enabled: !!business?.id,
-  });
-  const { data: kb = [] } = useQuery({
-    queryKey: ["kb_dash", business?.id],
-    queryFn: () => base44.entities.KnowledgeBase.filter({ business_id: business.id }),
-    enabled: !!business?.id,
-  });
-  const { data: offers = [] } = useQuery({
-    queryKey: ["offers_dash", business?.id],
-    queryFn: () => base44.entities.OfferGeneration.filter({ business_id: business.id }),
-    enabled: !!business?.id,
-  });
-  const { data: allDrafts = [] } = useQuery({
-    queryKey: ["drafts-all", business?.id],
-    queryFn: () => base44.entities.DraftMessage.filter({ business_id: business.id }),
-    enabled: !!business?.id,
-  });
-
+  const leadsById = useMemo(() => Object.fromEntries(leads.map((l) => [l.id, l])), [leads]);
+  const drafts = allDrafts.filter((d) => d.status === "pending" || d.status === "flagged_for_review").sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
   const now = new Date();
+  const endOfToday = new Date(); endOfToday.setHours(23, 59, 59, 999);
+  const weekAgo = new Date(now.getTime() - 7 * 86400000);
+  const weekFromNow = new Date(now.getTime() + 7 * 86400000);
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7);
-  const weekFromNow = new Date(); weekFromNow.setDate(now.getDate() + 7);
-  const leadsThisMonth = leads.filter((l) => new Date(l.created_date) >= startOfMonth).length;
+  const dueTasks = tasks.filter((t) => t.due_at && new Date(t.due_at) <= endOfToday).sort((a, b) => new Date(a.due_at) - new Date(b.due_at));
+  const upcoming = confirmedBookings.filter((b) => b.booked_at && new Date(b.booked_at) >= now && new Date(b.booked_at) <= weekFromNow).sort((a, b) => new Date(a.booked_at) - new Date(b.booked_at));
   const leadsThisWeek = leads.filter((l) => new Date(l.created_date) >= weekAgo).length;
-  const bookingsThisWeek = confirmedBookings.filter((b) => b.booked_at && new Date(b.booked_at) >= now && new Date(b.booked_at) <= weekFromNow).length;
+  const leadsThisMonth = leads.filter((l) => new Date(l.created_date) >= startOfMonth).length;
+  const sentThisWeek = allDrafts.filter((d) => d.status === "sent" && d.sent_at && new Date(d.sent_at) >= weekAgo).length;
+  const openValue = leads.filter((l) => !["converted", "lost", "unsubscribed"].includes(l.status)).reduce((s, l) => s + (Number(l.value) || 0), 0);
+  const waiting = drafts.length + dueTasks.length;
 
-  const emailReady = (business?.email_provider === "smtp" && business?.smtp_host && business?.smtp_user) || !!business?.gmail_email || !!business?.outlook_email;
   const setup = [
-    { done: !!business?.website && !!business?.services, label: "Profil podjetja", hint: "Ime, storitve, spletna stran — iz tega AI piše sporočila.", href: "/nastavitve?tab=profil" },
+    { done: !!business?.website && !!business?.services, label: "Profil podjetja", hint: "Iz tega AI piše sporočila.", href: "/nastavitve?tab=profil" },
     { done: !!business?.brand_voice, label: "Glas znamke", hint: "Kako naj zvenijo vaša sporočila.", href: "/nastavitve?tab=glas" },
-    { done: !!business?.imap_enabled, label: "E-poštni predal", hint: "AI najde povpraševanja v vaši pošti in odgovarja z vašega naslova.", href: "/nastavitve?tab=integracije" },
-    { feature: "chat", done: leads.some((l) => l.source === "form" || l.source === "chatbot"), label: "Obrazec ali klepet na strani", hint: "Da tudi obiskovalci spletne strani postanejo stranke.", href: "/nastavitve?tab=viri" },
+    { done: !!business?.imap_enabled, label: "E-poštni predal", hint: "AI najde povpraševanja v vaši pošti.", href: "/nastavitve?tab=integracije" },
+    { feature: "chat", done: leads.some((l) => l.source === "form" || l.source === "chatbot"), label: "Obrazec ali klepet na strani", hint: "Da obiskovalci postanejo stranke.", href: "/nastavitve?tab=viri" },
     { done: !!business?.google_calendar_connected, label: "Google Koledar", hint: "Asistent predlaga proste termine.", href: "/nastavitve?tab=termini" },
   ].filter((s) => !s.feature || featureOn(business, s.feature));
   const setupDone = setup.filter((s) => s.done).length;
-  const showSetup = setupDone < setup.length;
+  const nextSetup = setup.find((s) => !s.done);
 
   const trialSendsOut = business?.subscription_status === "trialing" && (business?.trial_sends_remaining ?? 20) <= 0;
   const trialCostOut = business?.subscription_status === "trialing" && (business?.trial_cost_used_eur ?? 0) >= (business?.trial_cost_cap_eur ?? 0.45);
 
   const kpis = [
-    { label: "Stranke", value: leads.length, sub: leadsThisWeek > 0 ? `+${leadsThisWeek} ta teden` : "brez novih ta teden", icon: Users },
-    { label: "Nova povpraševanja ta mesec", value: leadsThisMonth, sub: "iz obrazca in klepeta", icon: UserPlus },
-    { label: "Čaka na vaš odgovor", value: drafts.length, sub: drafts.length > 0 ? "čakajo na vaš klik" : "nič ne čaka", icon: Inbox, href: "/stranke?tab=odgovori", highlight: drafts.length > 0 },
-    { label: "Termini ta teden", value: bookingsThisWeek, sub: business?.google_calendar_connected ? "iz Google Koledarja" : "koledar ni povezan", icon: Calendar },
+    { label: "Stranke", value: leads.length, sub: leadsThisWeek > 0 ? `+${leadsThisWeek} ta teden` : "brez novih ta teden", icon: Users, href: "/stranke?tab=stranke" },
+    { label: "Nova povpraševanja", value: leadsThisMonth, sub: "ta mesec", icon: UserPlus, href: "/stranke?tab=stranke" },
+    { label: "Poslana sporočila", value: sentThisWeek, sub: "ta teden", icon: Mail },
+    { label: "Odprti posli", value: openValue ? eur(openValue) : "—", sub: "ocenjena vrednost", icon: FileSignature },
   ];
 
-  const monthAgo = new Date(); monthAgo.setDate(now.getDate() - 30);
-  const sentThisWeek = allDrafts.filter((d) => d.status === "sent" && d.sent_at && new Date(d.sent_at) >= weekAgo);
   const convsThisWeek = convs.filter((c) => new Date(c.started_at || c.created_date) >= weekAgo).length;
-  const dormant = leads.filter((l) => l.email && l.consent_email && !["unsubscribed", "converted", "lost"].includes(l.status) && (!l.last_contacted_at || new Date(l.last_contacted_at) <= monthAgo)).length;
+  const activeCampaigns = campaigns.filter((c) => c.status === "active").length;
+  const stoppedCampaigns = campaigns.filter((c) => c.status === "paused" && c.paused_reason === "bounces").length;
   const reviewsSent = allDrafts.filter((d) => d.pillar === "review_request" && d.status === "sent").length;
-  const statusCards = [
-    { title: "Povpraševanja iz e-pošte", icon: Mail, tone: "from-primary to-[hsl(41,100%,53%)]", href: business?.imap_enabled ? "/stranke" : "/nastavitve?tab=integracije",
-      ok: !!business?.imap_enabled, state: business?.imap_enabled ? (business?.imap_last_error ? "Napaka pri branju pošte" : "Predal povezan, berem vsakih 10 min") : "Predal ni povezan",
-      metric: leads.filter((l) => l.source === "email" && new Date(l.created_date) >= weekAgo).length, metricLabel: "novih iz pošte ta teden", cta: business?.imap_enabled ? "Odpri stranke" : "Poveži predal" },
-    { feature: "chat", title: "Spletni klepet", icon: MessageSquare, tone: "from-violet-600 to-indigo-500", href: "/klepet",
-      ok: kb.length > 0 && convs.length > 0, state: kb.length === 0 ? "Klepet še ne pozna vašega podjetja" : convs.length === 0 ? "Še ni vstavljen na spletno stran" : "Deluje",
-      metric: convsThisWeek, metricLabel: "pogovorov ta teden", cta: kb.length === 0 ? "Naučite ga iz spletne strani" : "Odpri klepet" },
-    { title: "Odgovori strankam", icon: Send, tone: "from-emerald-500 to-teal-400", href: "/stranke?tab=odgovori",
-      ok: drafts.length === 0, state: drafts.length > 0 ? `${drafts.length} čaka na vašo odobritev` : "Nič ne čaka",
-      metric: sentThisWeek.length, metricLabel: "poslanih ta teden", cta: drafts.length > 0 ? "Preglej in pošlji" : "Odpri" },
-    { feature: "campaigns", title: "Vrnite stare stranke", icon: RotateCcw, tone: "from-blue-700 to-blue-500", href: "/stranke",
-      ok: dormant === 0, state: dormant > 0 ? "Gumb »Vrnite stare stranke« zgoraj" : "Ni strank za vabilo",
-      metric: dormant, metricLabel: "strank brez stika 30+ dni", cta: "Poglej stranke" },
-    { feature: "reviews", title: "Google ocene", icon: Star, tone: "from-amber-500 to-orange-400", href: "/ocene",
-      ok: !!business?.google_review_link, state: business?.google_review_link ? "Prošnje gredo po vsaki zaključeni storitvi" : "Dodajte povezavo za ocene",
-      metric: reviewsSent, metricLabel: "poslanih prošenj za oceno", cta: business?.google_review_link ? "Odpri ocene" : "Dodaj povezavo" },
-    { feature: "offers", title: "Ponudbe", icon: FileSignature, tone: "from-slate-700 to-slate-500", href: "/ponudbe",
-      ok: offers.length > 0, state: offers.length > 0 ? "V uporabi" : "Pripravite prvo ponudbo",
-      metric: offers.length, metricLabel: "pripravljenih ponudb", cta: "Nova ponudba" },
+  const invoicesWaiting = invoices.filter((i) => i.status === "captured").length;
+  const helpers = [
+    { title: "Povpraševanja iz e-pošte", icon: Mail, href: business?.imap_enabled ? "/stranke" : "/nastavitve?tab=integracije", ok: !!business?.imap_enabled && !business?.imap_last_error,
+      state: business?.imap_enabled ? (business?.imap_last_error ? "Napaka pri branju pošte" : "Berem vsakih 10 minut") : "Predal ni povezan", metric: `${leads.filter((l) => l.source === "email" && new Date(l.created_date) >= weekAgo).length} novih ta teden` },
+    { feature: "chat", title: "Spletni klepet", icon: MessageSquare, href: "/klepet", ok: kb.length > 0 && !!business?.chat_installed_url,
+      state: kb.length === 0 ? "Še ne pozna vašega podjetja" : !business?.chat_installed_url ? "Še ni na vaši spletni strani" : "Deluje", metric: `${cnt(convsThisWeek, W.pogovor)} ta teden` },
+    { feature: "campaigns", title: "E-poštne kampanje", icon: Megaphone, href: "/kampanje", ok: stoppedCampaigns === 0 && activeCampaigns > 0, warn: stoppedCampaigns > 0,
+      state: stoppedCampaigns > 0 ? "Kampanja ustavljena: vrnjena pošta" : activeCampaigns > 0 ? "Teče" : "Nobena kampanja ne teče", metric: `${activeCampaigns} aktivnih` },
+    { feature: "reviews", title: "Google ocene", icon: Star, href: "/ocene", ok: !!business?.google_review_link,
+      state: business?.google_review_link ? "Prošnje gredo po zaključeni storitvi" : "Dodajte povezavo za ocene", metric: `${reviewsSent} poslanih prošenj` },
+    { feature: "offers", title: "Ponudbe", icon: FileSignature, href: "/ponudbe", ok: offers.length > 0, state: offers.length > 0 ? "V uporabi" : "Pripravite prvo ponudbo", metric: `${offers.length} pripravljenih` },
+    { feature: "invoices", title: "Računi", icon: FileText, href: "/racuni", ok: !!business?.accountant_email && !!business?.invoice_enabled,
+      state: business?.accountant_email ? "Računovodja jih dobi 1. v mesecu" : "Vpišite računovodjo", metric: `${cnt(invoicesWaiting, W.racun)} čaka` },
   ].filter((c) => !c.feature || featureOn(business, c.feature));
 
+  const stageCount = (k) => leads.filter((l) => (l.status || "new") === k).length;
+  const maxStage = Math.max(1, ...STAGES.map((s) => stageCount(s.key)));
   const firstName = (user?.full_name || "").split(" ")[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <TrialBanner business={business} />
       {trialSendsOut && <StatusBanner variant="warning" message="Porabili ste vse brezplačne pošiljke preizkusa (20). Aktivirajte naročnino za nadaljevanje pošiljanja." action={{ label: "Aktiviraj", href: "/nastavitve?tab=billing" }} />}
       {trialCostOut && !trialSendsOut && <StatusBanner variant="warning" message="AI kredit za preizkus je porabljen. Aktivirajte naročnino za nova sporočila." action={{ label: "Aktiviraj", href: "/nastavitve?tab=billing" }} />}
 
-      {/* Hero */}
-      <div className="relative overflow-hidden rounded-3xl bg-space bg-space-stars text-white p-7 md:p-9">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+      {/* Glava: ena vrstica — kaj čaka danes */}
+      <div className="relative overflow-hidden rounded-2xl bg-space bg-space-stars text-white px-6 py-5">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-white/70">{greeting()}{firstName ? `, ${firstName}` : ""}</p>
-            <h1 className="text-white mt-1 text-3xl md:text-4xl">
-              {drafts.length > 0
-                ? <>{drafts.length} {drafts.length === 1 ? "sporočilo čaka" : drafts.length < 5 ? "sporočila čakajo" : "sporočil čaka"} na vaš <span className="text-gradient-brand">klik</span>.</>
-                : <>Vse je <span className="text-gradient-brand">urejeno</span>. AI dela v ozadju.</>}
+            <p className="text-sm text-white/70">{greeting()}{firstName ? `, ${firstName}` : ""} · {format(now, "EEEE, d. MMMM", { locale: sl })}</p>
+            <h1 className="text-white mt-0.5 text-2xl md:text-[28px]">
+              {waiting > 0 ? <>Danes vas čaka: <span className="text-gradient-brand">{[drafts.length > 0 && cnt(drafts.length, ["odgovor", "odgovora", "odgovori", "odgovorov"]), dueTasks.length > 0 && cnt(dueTasks.length, ["opravilo", "opravili", "opravila", "opravil"])].filter(Boolean).join(" in ")}</span></> : <>Vse je <span className="text-gradient-brand">urejeno</span>. AI dela v ozadju.</>}
             </h1>
-            <p className="text-white/70 mt-2 max-w-xl text-sm md:text-[15px]">
-              AI pripravi odgovore na povpraševanja, vi jih pregledate in pošljete.
-            </p>
           </div>
           <div className="flex gap-2 shrink-0">
-            {drafts.length > 0 && (
-              <Button asChild className="btn-brand h-11 px-5 rounded-xl text-[15px]">
-                <Link to="/stranke?tab=odgovori">Preglej sporočila <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
-              </Button>
-            )}
-            {featureOn(business, "campaigns") && (
-            <div className="[&>button]:h-11 [&>button]:rounded-xl [&>button]:bg-white/10 [&>button]:border-white/20 [&>button]:text-white [&>button:hover]:bg-white/20">
-              <ReactivationPanel />
-            </div>
+            {drafts.length > 0 && <Button asChild className="btn-brand h-10 px-5 rounded-xl"><Link to="/stranke?tab=odgovori">Preglej odgovore <ArrowRight className="w-4 h-4 ml-1.5" /></Link></Button>}
+            {featureOn(business, "campaigns") && drafts.length === 0 && (
+              <div className="[&>button]:h-10 [&>button]:rounded-xl [&>button]:bg-white/10 [&>button]:border-white/20 [&>button]:text-white [&>button:hover]:bg-white/20"><ReactivationPanel /></div>
             )}
           </div>
         </div>
       </div>
 
-      {/* KPI */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((k) => {
-          const Icon = k.icon;
-          const inner = (
-            <div className={`card-elevated p-5 h-full ${k.href ? "card-hover" : ""} ${k.highlight ? "ring-2 ring-primary/40" : ""}`}>
-              <div className="flex items-center justify-between">
-                <p className="text-[13px] text-muted-foreground">{k.label}</p>
-                <Icon className={`w-4 h-4 ${k.highlight ? "text-primary" : "text-muted-foreground/60"}`} />
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-5 items-start">
+        {/* LEVO: Danes */}
+        <div className="space-y-5 min-w-0">
+          <Panel icon={Inbox} title="Čaka na vaš odgovor" count={drafts.length} to="/stranke?tab=odgovori" cta={drafts.length > 6 ? `Vseh ${drafts.length}` : "Odpri"}>
+            {drafts.length === 0 ? <Empty>Vsem ste odgovorili. Ko vam kdo piše, AI tu pripravi odgovor.</Empty> : (
+              <ul className="divide-y">
+                {drafts.slice(0, 6).map((d) => { const l = leadsById[d.lead_id]; const r = reasonFor(d.pillar); return (
+                  <li key={d.id}><Link to={l ? `/stranke/${l.id}` : "/stranke?tab=odgovori"} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/40">
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${r.color}`}><r.icon className="w-4 h-4" /></span>
+                    <span className="min-w-0 flex-1"><span className="block text-sm font-medium truncate">{l?.name || "Stranka"} <span className="font-normal text-muted-foreground">· {r.label}</span></span><span className="block text-xs text-muted-foreground truncate">{d.subject || String(d.body || "").slice(0, 90)}</span></span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{ago(d.created_date)}</span><ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                  </Link></li>
+                ); })}
+              </ul>
+            )}
+          </Panel>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <Panel icon={ListChecks} title="Opravila za danes" count={dueTasks.length} to="/opravila" cta="Vsa opravila">
+              {dueTasks.length === 0 ? <Empty>Za danes ni opravil.</Empty> : (
+                <ul className="divide-y">
+                  {dueTasks.slice(0, 6).map((t) => { const due = dueLabel(t.due_at); const l = leadsById[t.lead_id]; return (
+                    <li key={t.id}><Link to={l ? `/stranke/${l.id}` : "/opravila"} className="flex items-center gap-3 px-5 py-2.5 hover:bg-muted/40">
+                      <Circle className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                      <span className="min-w-0 flex-1"><span className="block text-sm truncate">{t.title}</span>{l && <span className="block text-xs text-muted-foreground truncate">{l.name}</span>}</span>
+                      <span className={`text-xs whitespace-nowrap ${due.cls}`}>{due.text}</span>
+                    </Link></li>
+                  ); })}
+                  {dueTasks.length > 6 && <li className="px-5 py-2 text-xs text-muted-foreground">… in še {dueTasks.length - 6}</li>}
+                </ul>
+              )}
+            </Panel>
+            <Panel icon={Calendar} title="Termini v 7 dneh" count={upcoming.length} to={business?.google_calendar_connected ? "/asistent" : "/nastavitve?tab=termini"} cta={business?.google_calendar_connected ? "Koledar" : "Poveži koledar"}>
+              {upcoming.length === 0 ? <p className="px-5 py-6 text-sm text-muted-foreground">{business?.google_calendar_connected ? "V naslednjih 7 dneh ni dogovorjenih terminov." : "Koledar ni povezan, zato terminov ne vidimo."}</p> : (
+                <ul className="divide-y">
+                  {upcoming.slice(0, 6).map((b) => { const l = leadsById[b.lead_id]; return (
+                    <li key={b.id}><Link to={l ? `/stranke/${l.id}` : "/asistent"} className="flex items-center gap-3 px-5 py-2.5 hover:bg-muted/40">
+                      <span className="w-11 text-center shrink-0"><span className="block text-[10px] uppercase text-muted-foreground">{format(new Date(b.booked_at), "EEE", { locale: sl })}</span><span className="block text-base font-display font-bold leading-none">{format(new Date(b.booked_at), "d")}</span></span>
+                      <span className="min-w-0 flex-1"><span className="block text-sm truncate">{l?.name || b.notes || "Termin"}</span><span className="block text-xs text-muted-foreground">{format(new Date(b.booked_at), "HH:mm")}{b.duration_minutes ? ` · ${b.duration_minutes} min` : ""}</span></span>
+                    </Link></li>
+                  ); })}
+                </ul>
+              )}
+            </Panel>
+          </div>
+
+          <Panel icon={CheckCircle2} title="Pomočniki" to="/pomocniki" cta="Vsi pomočniki" tone="text-muted-foreground">
+            <ul className="divide-y">
+              {helpers.map((h) => (
+                <li key={h.title}><Link to={h.href} className="flex items-center gap-3 px-5 py-2.5 hover:bg-muted/40">
+                  <h.icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm font-medium w-56 shrink-0 truncate">{h.title}</span>
+                  <span className={`text-xs flex-1 min-w-0 truncate inline-flex items-center gap-1.5 ${h.warn ? "text-red-600 font-medium" : h.ok ? "text-emerald-700" : "text-amber-700"}`}><span className={`w-1.5 h-1.5 rounded-full shrink-0 ${h.warn ? "bg-red-500" : h.ok ? "bg-emerald-500" : "bg-amber-500"}`} />{h.state}</span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap hidden md:inline">{h.metric}</span><ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                </Link></li>
+              ))}
+            </ul>
+          </Panel>
+        </div>
+
+        {/* DESNO: številke, faze, nastavitev */}
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3">
+            {kpis.map((k) => { const inner = (
+              <div className={`card-elevated p-4 h-full ${k.href ? "card-hover" : ""}`}>
+                <p className="text-xs text-muted-foreground flex items-center justify-between">{k.label}<k.icon className="w-3.5 h-3.5 text-muted-foreground/60" /></p>
+                <p className="font-display text-2xl font-bold mt-1.5 leading-none">{k.value}</p>
+                <p className="text-[11px] text-muted-foreground mt-1.5">{k.sub}</p>
               </div>
-              <p className="font-display text-3xl font-bold mt-2 leading-none">{k.value}</p>
-              <p className="text-xs text-muted-foreground mt-2">{k.sub}</p>
-            </div>
-          );
-          return k.href ? <Link key={k.label} to={k.href}>{inner}</Link> : <div key={k.label}>{inner}</div>;
-        })}
-      </div>
-
-      {/* Setup checklist */}
-      {showSetup && (
-        <div className="card-elevated p-6">
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <div>
-              <h2 className="text-lg">Nastavite AI Aristotla v 5 korakih</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">Opravljeno {setupDone} od {setup.length}. Vsak korak vzame nekaj minut.</p>
-            </div>
-            <div className="w-40 h-2 rounded-full bg-muted overflow-hidden hidden sm:block">
-              <div className="h-full bg-gradient-to-r from-primary to-[hsl(41,100%,53%)] transition-all" style={{ width: `${(setupDone / setup.length) * 100}%` }} />
-            </div>
+            ); return k.href ? <Link key={k.label} to={k.href}>{inner}</Link> : <div key={k.label}>{inner}</div>; })}
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {setup.map((s) => (
-              <Link key={s.label} to={s.href} className={`rounded-xl border p-4 transition-colors ${s.done ? "border-emerald-200 bg-emerald-50/50" : "border-border hover:border-primary/40 hover:bg-accent/40"}`}>
-                {s.done ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <Circle className="w-5 h-5 text-muted-foreground/50" />}
-                <p className="text-sm font-semibold mt-2">{s.label}</p>
-                <p className="text-xs text-muted-foreground mt-1">{s.hint}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* Kaj se dogaja — stanje vsakega dela aplikacije */}
-      <div>
-        <h2 className="text-lg mb-3">Kaj se dogaja</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {statusCards.map((c) => {
-            const Icon = c.icon;
-            return (
-              <Link key={c.title} to={c.href} className="card-elevated card-hover p-5 flex flex-col">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${c.tone} flex items-center justify-center shrink-0`}><Icon className="w-[18px] h-[18px] text-white" /></div>
-                  <div className="min-w-0">
-                    <h3 className="text-[15px] font-semibold">{c.title}</h3>
-                    <p className={`text-xs mt-0.5 ${c.ok ? "text-emerald-700" : "text-amber-700"}`}>{c.state}</p>
-                  </div>
+          <Panel icon={Users} title="Stranke po fazah" to="/stranke?tab=stranke" cta="Odpri" tone="text-muted-foreground">
+            <div className="px-5 py-4 space-y-2.5">
+              {STAGES.map((s) => { const n = stageCount(s.key); return (
+                <div key={s.key} className="flex items-center gap-3 text-sm">
+                  <span className="w-28 shrink-0 flex items-center gap-2 text-xs"><span className={`w-2 h-2 rounded-full ${s.dot}`} />{s.label}</span>
+                  <span className="flex-1 h-2 rounded-full bg-muted overflow-hidden"><span className={`block h-full rounded-full ${s.dot}`} style={{ width: `${(n / maxStage) * 100}%` }} /></span>
+                  <span className="w-8 text-right text-xs font-semibold">{n}</span>
                 </div>
-                <p className="font-display text-2xl font-bold mt-4">{c.metric}</p>
-                <p className="text-xs text-muted-foreground">{c.metricLabel}</p>
-                <p className="text-sm font-medium mt-4 text-primary inline-flex items-center gap-1">{c.cta} <ArrowRight className="w-3.5 h-3.5" /></p>
-              </Link>
-            );
-          })}
+              ); })}
+            </div>
+          </Panel>
+
+          {nextSetup && (
+            <section className="card-elevated p-5">
+              <div className="flex items-center justify-between gap-3"><h2 className="text-[15px] font-semibold">Nastavitev</h2><span className="text-xs text-muted-foreground">{setupDone} od {setup.length}</span></div>
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-2"><div className="h-full bg-gradient-to-r from-primary to-[hsl(41,100%,53%)]" style={{ width: `${(setupDone / setup.length) * 100}%` }} /></div>
+              <ul className="mt-3 space-y-1">
+                {setup.map((s) => (
+                  <li key={s.label}><Link to={s.href} className={`flex items-start gap-2.5 rounded-lg px-2 py-1.5 hover:bg-muted/50 ${s === nextSetup ? "bg-accent/60" : ""}`}>
+                    {s.done ? <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground/50 mt-0.5 shrink-0" />}
+                    <span className="min-w-0"><span className={`block text-sm ${s.done ? "text-muted-foreground line-through" : "font-medium"}`}>{s.label}</span>{s === nextSetup && <span className="block text-xs text-muted-foreground">{s.hint}</span>}</span>
+                    {s === nextSetup && <span className="ml-auto text-xs text-primary font-medium whitespace-nowrap">Naslednji korak</span>}
+                  </Link></li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
       </div>
     </div>
