@@ -39,12 +39,50 @@ const REPLY_PILLARS = ["web_form_lead", "chatbot_handoff", "booking_proposal", "
 export const lastInbound = (lead, activities = []) => {
   const a = activities.filter((x) => x.lead_id === lead?.id && INBOUND.includes(x.type))
     .sort((x, y) => new Date(y.occurred_at || y.created_date) - new Date(x.occurred_at || x.created_date))[0];
+  const aAt = a ? new Date(a.occurred_at || a.created_date).getTime() : 0;
+  // Celotno zadnje e-sporočilo (syncInbox) ima prednost, če ni novejšega dogodka
+  if (lead?.last_inbound_body && (!a || new Date(lead.last_inbound_at || 0).getTime() >= aAt - 60000)) {
+    return { type: "email_in", subject: lead.email_subject, content: lead.last_inbound_body, at: lead.last_inbound_at, from: lead.last_inbound_from };
+  }
   if (a) return { type: a.type, subject: a.subject, content: a.content, at: a.occurred_at || a.created_date };
   const notes = String(lead?.notes || "");
   const orig = notes.split("Izvirno sporočilo:")[1];
   if (orig || lead?.email_subject) return { type: lead?.source === "chatbot" ? "chat" : lead?.source === "form" ? "form" : "email_in", subject: lead?.email_subject, content: (orig || notes).trim(), at: lead?.last_inbound_at || lead?.created_date };
   return null;
 };
+
+// Loči novo besedilo od citiranih prejšnjih sporočil (»On … wrote:«, »From: … Sent:«, vrstice z »>«).
+const splitQuoted = (text) => {
+  const lines = String(text || "").replace(/\r/g, "").split("\n");
+  const re = /^(\s*>|\s*(On|Am|Dne|V|Le) .{4,120}(wrote|schrieb|napisal|je napisal|a écrit)[^\n]*:?\s*$|\s*-{2,}\s*(Original Message|Izvirno sporočilo|Prvotno sporočilo)|\s*_{5,}\s*$|\s*(From|Od|Von):\s.+)/i;
+  const i = lines.findIndex((l, k) => k > 0 && re.test(l));
+  const main = (i > 0 ? lines.slice(0, i) : lines).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const rest = i > 0 ? lines.slice(i).join("\n").trim() : "";
+  return { main, rest };
+};
+
+function InboundMail({ inbound, lead }) {
+  const [showAll, setShowAll] = useState(false);
+  const { main, rest } = splitQuoted(inbound.content);
+  const from = inbound.from || (lead?.name ? `${lead.name}${lead.email ? ` <${lead.email}>` : ""}` : lead?.email || "");
+  const Icon = ACTIVITY[inbound.type]?.icon || Inbox;
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap"><Icon className="w-3.5 h-3.5" />{ACTIVITY[inbound.type]?.label || "Sporočilo"}{inbound.at ? ` · ${fmtDateTime(inbound.at)}` : ""}</p>
+      <div className="rounded-xl bg-card border p-4">
+        {from && <p className="text-xs text-muted-foreground mb-1">Od: <span className="text-foreground">{from}</span></p>}
+        {inbound.subject && <p className="text-sm font-semibold">{inbound.subject}</p>}
+        <p className="text-sm whitespace-pre-wrap mt-2 leading-relaxed">{main || "—"}</p>
+        {rest && (
+          <div className="mt-3 pt-3 border-t">
+            <button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs text-primary font-medium">{showAll ? "Skrij prejšnja sporočila" : "Pokaži prejšnja sporočila v pogovoru"}</button>
+            {showAll && <p className="text-xs text-muted-foreground whitespace-pre-wrap mt-2 max-h-80 overflow-y-auto leading-relaxed">{rest}</p>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ReplyReview({ draft, lead, activities = [], showCustomerLink = false, onDone }) {
   const { business } = useBusiness();
@@ -109,7 +147,6 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
     } catch (e) { toast.error(e.message); } finally { setBusy(null); }
   };
 
-  const InIcon = (inbound && ACTIVITY[inbound.type]?.icon) || Inbox;
   return (
     <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
       {/* Glava: kdo, od kod, zakaj */}
@@ -134,11 +171,7 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
               {lead?.notes && <p className="text-xs text-muted-foreground mt-3 whitespace-pre-wrap line-clamp-4">O stranki: {lead.notes}</p>}
             </div>
           ) : inbound ? (
-            <div className="rounded-xl bg-blue-50/60 border border-blue-100 p-4">
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><InIcon className="w-3.5 h-3.5" />{ACTIVITY[inbound.type]?.label || "Sporočilo"} · {fmtDateTime(inbound.at)}</p>
-              {inbound.subject && <p className="text-sm font-medium mt-1.5">{inbound.subject}</p>}
-              <p className="text-sm whitespace-pre-wrap mt-1.5 max-h-72 overflow-y-auto">{inbound.content || "—"}</p>
-            </div>
+            <InboundMail inbound={inbound} lead={lead} />
           ) : (
             <div className="rounded-xl border border-dashed p-4 text-sm space-y-2">
               <p>{r.why}</p>
