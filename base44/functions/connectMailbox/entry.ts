@@ -34,6 +34,16 @@ Deno.serve(async (req) => {
     const business = business_id ? (await base44.asServiceRole.entities.Business.filter({ id: business_id }))[0] : null;
     if (!business || !ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.' });
 
+    const campaign = body.target === 'campaign'; // ločen predal za e-poštne kampanje (SendingMailbox)
+    if (action === 'remove_campaign_mailbox') {
+      const mb = (await base44.asServiceRole.entities.SendingMailbox.filter({ id: body.mailbox_id }))[0];
+      if (!mb || mb.business_id !== business.id) return Response.json({ error: 'Predal ni najden.' });
+      await base44.asServiceRole.entities.SendingMailbox.delete(mb.id);
+      const camps = await base44.asServiceRole.entities.Campaign.filter({ business_id: business.id });
+      for (const c of camps) if ((c.mailbox_ids || []).includes(mb.id)) await base44.asServiceRole.entities.Campaign.update(c.id, { mailbox_ids: c.mailbox_ids.filter((x) => x !== mb.id) });
+      return Response.json({ success: true });
+    }
+
     if (action === 'disconnect') {
       await base44.asServiceRole.entities.Business.update(business.id, {
         imap_enabled: false, imap_pass: '', smtp_pass: '', email_provider: 'platform', imap_last_error: '',
@@ -79,6 +89,24 @@ Deno.serve(async (req) => {
 
     if (!imap && !smtp) {
       return Response.json({ error: 'Poštnega strežnika nismo našli samodejno. Vpišite strežnik ročno (najdete ga v nastavitvah e-pošte pri vašem ponudniku).', code: 'NOT_FOUND' });
+    }
+
+    if (campaign) {
+      if (!smtp) return Response.json({ error: smtpErr === 'auth' ? 'Strežnik je zavrnil prijavo za pošiljanje. Preverite geslo.' : 'Pošiljanja s tega naslova nismo mogli nastaviti. Vpišite strežnik ročno.', code: smtpErr === 'auth' ? 'AUTH' : 'NOT_FOUND' });
+      const sr = base44.asServiceRole.entities;
+      const owner = business.owner_email || business.created_by;
+      const existing = (await sr.SendingMailbox.filter({ business_id: business.id })).find((m) => m.email === email);
+      const data = {
+        business_id: business.id, owner_email: owner, email, from_name: String(body.from_name || '').trim() || existing?.from_name || business.smtp_from_name || business.name,
+        smtp_host: smtp.host, smtp_port: smtp.port, smtp_encryption: smtp.port === 465 ? 'ssl_tls' : 'starttls', smtp_pass: password,
+        imap_enabled: !!imap, imap_host: imap?.host || '', imap_port: imap?.port || 993, imap_pass: imap ? password : '',
+        status: 'ok', last_error: imap ? '' : 'Odbitih sporočil in odgovorov s tega naslova ne moremo brati (branje pošte ni uspelo).',
+      };
+      const mb = existing ? await sr.SendingMailbox.update(existing.id, data) : await sr.SendingMailbox.create({ ...data, created_by: owner, sent_today: 0, total_sent: 0, bounces_total: 0 });
+      const id = existing?.id || mb.id;
+      if (imap) base44.asServiceRole.functions.invoke('syncCampaignMailboxes', { mailbox_id: id, internal_secret: INTERNAL_SECRET }).catch(() => {});
+      const same = [business.smtp_user, business.imap_user].map((x) => String(x || '').toLowerCase()).includes(email);
+      return Response.json({ success: true, mailbox_id: id, imap, smtp, warning: same ? 'To je isti naslov kot vaš glavni predal. Za kampanje priporočamo ločen naslov, da glavni ne pride na seznam neželene pošte.' : (!imap ? 'Pošiljanje deluje, branja pošte pa nismo mogli vklopiti — odbitih sporočil zato ne bomo zaznali.' : null) });
     }
 
     const updates = {
