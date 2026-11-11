@@ -11,6 +11,7 @@ import TrialBanner from "@/components/dashboard/TrialBanner";
 import StatusBanner from "@/components/ui/StatusBanner";
 import { STAGES, ago, dueLabel, cnt, W, eur } from "@/lib/crm";
 import { reasonFor } from "@/components/crm/ReplyReview";
+import { DraftIcon } from "@/components/crm/DraftMark";
 import { format } from "date-fns";
 import { sl } from "date-fns/locale";
 
