@@ -37,7 +37,7 @@ export default function Dashboard() {
   const bid = business?.id;
   const q = (key, fn) => ({ queryKey: [key, bid], queryFn: fn, enabled: !!bid });
 
-  const { data: leads = [] } = useQuery(q("leads_all", () => base44.entities.Lead.filter({ business_id: bid }, "-created_date", 5000)));
+  const { data: leads = [] } = useQuery(q("leads", () => base44.entities.Lead.filter({ business_id: bid }, "-created_date", 5000)));
   const { data: allDrafts = [] } = useQuery(q("drafts-all", () => base44.entities.DraftMessage.filter({ business_id: bid })));
   const { data: tasks = [] } = useQuery(q("tasks", () => base44.entities.Task.filter({ business_id: bid, status: "open" })));
   const { data: confirmedBookings = [] } = useQuery(q("confirmed_bookings", () => base44.entities.ConfirmedBooking.filter({ business_id: bid, status: "confirmed" })));
