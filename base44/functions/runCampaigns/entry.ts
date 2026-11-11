@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import nodemailer from 'npm:nodemailer@6.9.9';
 import { imapConnect, findSentBox } from '../../shared/imap.js';
-import { lower, inSendWindow, ljNow, remainingToday, perRunCap, sentToday, mergeFields, pauseIfTooManyBounces, allRecords } from '../../shared/campaignMail.js';
+import { lower, inSendWindow, ljNow, remainingToday, perRunCap, sentToday, mergeFields, pauseIfTooManyBounces, allRecords, htmlToText, emailifyHtml, hasHtml, fetchAttachments } from '../../shared/campaignMail.js';
 import { syncCampaignMailboxesFor } from '../../shared/campaignSync.js';
 
 // E-poštne kampanje (vsako uro).
@@ -12,7 +12,7 @@ import { syncCampaignMailboxesFor } from '../../shared/campaignSync.js';
 //    Najprej nadaljevanja sekvence (follow-up), nato novi naslovi. Vsaka oseba dobiva vsa sporočila z istega predala.
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
-const VERSION = 'run-campaigns-2026-11-11-lists-d';
+const VERSION = 'run-campaigns-2026-11-11-html';
 const MAX_AI_PER_RUN = 15;
 const MAX_LIST_SENDS_PER_RUN = 40;
 const DAY = 86400000;
@@ -53,12 +53,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 class MailboxSender {
   constructor(sr, mb) { this.sr = sr; this.mb = mb; this.transport = null; this.imap = null; this.sentBox = undefined; this.sentRun = 0; this.dead = null; }
   get capacity() { return this.dead ? 0 : Math.max(0, Math.min(remainingToday(this.mb), perRunCap(this.mb) - this.sentRun)); }
-  async send({ to, subject, text, html, messageId, headers }) {
+  async send({ to, subject, text, html, messageId, headers, attachments }) {
     const mb = this.mb;
     if (!this.transport) {
       this.transport = nodemailer.createTransport({ host: mb.smtp_host, port: Number(mb.smtp_port) || 587, secure: Number(mb.smtp_port) === 465, requireTLS: Number(mb.smtp_port) === 587, auth: { user: mb.email, pass: mb.smtp_pass }, connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000 });
     }
-    const opts = { from: `"${String(mb.from_name || '').replace(/"/g, '')}" <${mb.email}>`, to, subject, text, html, messageId, headers };
+    const opts = { from: `"${String(mb.from_name || '').replace(/"/g, '')}" <${mb.email}>`, to, subject, text, html, messageId, headers, ...(attachments?.length ? { attachments } : {}) };
     const raw = (await nodemailer.createTransport({ streamTransport: true, buffer: true }).sendMail(opts)).message;
     await this.transport.sendMail({ envelope: { from: mb.email, to: [to] }, raw });
     this.sentRun++;
@@ -101,6 +101,7 @@ async function runListCampaign({ base44, sr, camp, business, senders, blocked, s
   const owner = business.owner_email || business.created_by;
   const signature = business.email_signature ? String(business.email_signature).trim() : `Lep pozdrav,\n${business.name}`;
   let newBounces = 0;
+  const attachCache = {};
 
   const pickSender = (e) => {
     if (e?.mailbox_id) { const s = senders[e.mailbox_id]; return s && s.capacity > 0 ? s : null; }
@@ -120,17 +121,22 @@ async function runListCampaign({ base44, sr, camp, business, senders, blocked, s
     if (!sender) return 'nocap';
     if (budget.left <= 0) return 'nocap';
     const subject = mergeFields(step.subject, contact).trim() || '(brez zadeve)';
-    const bodyText = mergeFields(step.body, contact).trim();
+    const richBody = hasHtml(step.body_html) ? emailifyHtml(mergeFields(step.body_html, contact)) : null;
+    const bodyText = richBody ? htmlToText(richBody) : mergeFields(step.body, contact).trim();
+    // Podpis: najprej podpis predala (HTML, lahko z logotipom), sicer podpis podjetja.
+    const sigHtml = hasHtml(sender.mb.signature_html) ? emailifyHtml(sender.mb.signature_html) : null;
+    const sigText = sigHtml ? htmlToText(sigHtml) : signature;
+    const files = step.attachments?.length ? (attachCache[`${camp.id}:${idx}`] ||= await fetchAttachments(step.attachments)) : [];
     const unsubUrl = `${APP_URL}/api/apps/${APP_ID}/functions/unsubscribe?c=${encodeURIComponent(contact.id)}&t=${await hmac('c:' + contact.id)}`;
     const footer = `Če teh sporočil ne želite več prejemati, odgovorite z besedo »Odjava« ali kliknite: ${unsubUrl}`;
-    const text = `${bodyText}\n\n${signature}\n\n--\n${footer}`;
-    const html = `<!doctype html><html lang="sl"><head><meta charset="utf-8"></head><body style="margin:0;padding:12px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#111">${textToHtml(`${bodyText}\n\n${signature}`)}<p style="margin:18px 0 0;font-size:12px;color:#777">Če teh sporočil ne želite več prejemati, odgovorite z besedo »Odjava« ali se <a href="${esc(unsubUrl)}" style="color:#777">odjavite tukaj</a>.</p></body></html>`;
+    const text = `${bodyText}\n\n${sigText}\n\n--\n${footer}`;
+    const html = `<!doctype html><html lang="sl"><head><meta charset="utf-8"></head><body style="margin:0;padding:12px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#111">${richBody || textToHtml(bodyText)}<div style="margin-top:16px">${sigHtml || textToHtml(sigText)}</div><p style="margin:18px 0 0;font-size:12px;color:#777">Če teh sporočil ne želite več prejemati, odgovorite z besedo »Odjava« ali se <a href="${esc(unsubUrl)}" style="color:#777">odjavite tukaj</a>.</p></body></html>`;
     const domain = sender.mb.email.split('@')[1];
     const messageId = `<cmp-${enr.id}-${idx + 1}-${crypto.randomUUID().slice(0, 8)}@${domain}>`;
     const headers = { 'List-Unsubscribe': `<mailto:${sender.mb.email}?subject=Odjava>, <${unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' };
     try {
       budget.left--;
-      await sender.send({ to: contact.email, subject, text, html, messageId, headers });
+      await sender.send({ to: contact.email, subject, text, html, messageId, headers, attachments: files });
     } catch (err) {
       const code = Number(err?.responseCode) || 0;
       const msg = String(err?.response || err?.message || err).slice(0, 200);
