@@ -159,7 +159,7 @@ function ListSheet({ list, contacts, open, onOpenChange }) {
 }
 
 // »Seznami naslovov«: vir naslovov za kampanje. Naslovi niso stranke, dokler ne odgovorijo.
-export default function ContactLists({ business, lists, contacts, onChanged }) {
+export default function ContactLists({ business, lists, contacts, onChanged, bare = false }) {
   const [importOpen, setImportOpen] = useState(false);
   const [view, setView] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -171,10 +171,10 @@ export default function ContactLists({ business, lists, contacts, onChanged }) {
     catch (e) { toast.error(fnError(e)); } finally { setDeleting(null); }
   };
   return (
-    <div className="card-elevated p-5 space-y-4 h-full">
+    <div className={bare ? "space-y-4" : "card-elevated p-5 space-y-4 h-full"}>
       <div className="flex items-start gap-3">
         <div className="flex-1">
-          <h3 className="text-base font-semibold flex items-center gap-2"><ListChecks className="w-4 h-4 text-primary" />Seznami naslovov</h3>
+          {!bare && <h3 className="text-base font-semibold flex items-center gap-2"><ListChecks className="w-4 h-4 text-primary" />Seznami naslovov</h3>}
           <p className="text-sm text-muted-foreground mt-1">Komu pišete. Naslovi s seznama niso med vašimi strankami — ko kdo odgovori, ga dodamo med Stranke.</p>
         </div>
         <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-1.5" />Uvozi seznam</Button>
