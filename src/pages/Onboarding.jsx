@@ -205,15 +205,10 @@ export default function Onboarding({ preview = false }) {
           {step === 5 && (
             <div className="space-y-7 max-w-xl">
               <div>
-                <h1 className="text-3xl">Preden začnete</h1>
-                <p className="text-muted-foreground mt-2">Preberite, kako aplikacija deluje in kaj se zgodi z vašimi podatki. Brez drobnega tiska — vse je zapisano spodaj. Nato vas odpeljemo na povezavo e-poštnega predala (to lahko naredite tudi pozneje).</p>
+                <h1 className="text-3xl">Skoraj ste pripravljeni</h1>
+                <p className="text-muted-foreground mt-2">Še na kratko, kako delamo. Nato vas odpeljemo na povezavo e-poštnega predala (lahko tudi pozneje).</p>
               </div>
-              <TermsReview id="terms" accepted={form.terms_accepted} onAccept={(v) => update("terms_accepted", v)} />
-              <label htmlFor="gdpr" className="flex items-start gap-3 rounded-xl border p-4 cursor-pointer hover:bg-muted/30">
-                <Checkbox id="gdpr" checked={form.gdpr_confirmed} onCheckedChange={(v) => update("gdpr_confirmed", !!v)} className="mt-0.5" />
-                <span className="text-sm leading-relaxed">Strankam pišem le, če imam za to pravno podlago (soglasje, obstoječe poslovno razmerje ali so mi pisale same) — GDPR in ZEKom-2.</span>
-              </label>
-              <p className="text-xs text-muted-foreground flex gap-2"><ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />Prvih 14 dni je brezplačnih, brez kartice. Odgovori na povpraševanja privzeto čakajo na vaš pregled.</p>
+              <TermsReview id="terms" accepted={form.terms_accepted} onAccept={(v) => setForm((f) => ({ ...f, terms_accepted: v, gdpr_confirmed: v }))} />
             </div>
           )}
 
