@@ -9,7 +9,7 @@ import { Search } from "lucide-react";
 // Naslovi strani za zgornjo vrstico (brezhibno ujemanje z menijem)
 const TITLES = [
   ["/stranke", "Stranke"], ["/podjetja", "Stranke"], ["/opravila", "Opravila"], ["/kampanje", "E-poštne kampanje"],
-  ["/pomocniki", "Pomočniki"], ["/klepet", "Spletni klepet"], ["/asistent", "Asistent"], ["/ocene", "Google ocene"],
+  ["/pomocniki", "Pomočniki"], ["/klepet", "Spletni klepet"], ["/asistent", "Asistent"], ["/termini", "Termini"], ["/ocene", "Google ocene"],
   ["/ponudbe", "Ponudbe"], ["/racuni", "Računi"], ["/nastavitve", "Nastavitve"],
   ["/admin/businesses", "Podjetja"], ["/admin/usage", "Poraba"],
 ];
