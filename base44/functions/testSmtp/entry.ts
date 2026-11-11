@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import nodemailer from 'npm:nodemailer@6.9.9';
+import { openMailbox } from '../../shared/secretBox.js'; // 2026-11-12: gesla v bazi šifrirana
 
 // Nastavitve → Integracije → "Pošlji testno e-pošto": preveri SMTP nastavitve podjetja (verify + testno sporočilo
 // na e-naslov prijavljenega lastnika) in zapiše rezultat v email_last_health_check_* polja.
@@ -55,7 +56,7 @@ Deno.serve(async (req) => {
     if (!business_id) return Response.json({ error: 'business_id manjka' }, { status: 400 });
 
     const businesses = await base44.asServiceRole.entities.Business.filter({ id: business_id });
-    const business = businesses[0];
+    const business = await openMailbox(businesses[0]);
     if (!business) return Response.json({ error: 'Podjetje ni najdeno' }, { status: 404 });
     if (!ownsBusiness(user, business)) return Response.json({ error: 'Nimate dostopa do tega podjetja.', code: 'FORBIDDEN' }, { status: 403 });
 
