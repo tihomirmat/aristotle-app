@@ -220,7 +220,7 @@ export default function ReplyReview({ draft, lead, activities = [], showCustomer
             {editing
               ? <Button variant="outline" onClick={() => { setSubject(draft.subject || ""); setBody(draft.body || ""); setEditing(false); }} disabled={!!busy}>Prekliči urejanje</Button>
               : <Button className="btn-brand" onClick={() => setEditing(true)} disabled={!!busy}><Pencil className="w-4 h-4 mr-2" />Uredi</Button>}
-            <Button className="bg-[#091f93] hover:bg-[#0b2ab8] text-white" onClick={send} disabled={!!busy || !lead?.email}>{busy === "send" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}{changed ? "Shrani in pošlji" : "Pošlji"}</Button>
+            <Button className="bg-[hsl(var(--soft-blue))] hover:bg-[hsl(222_60%_92%)] text-[hsl(var(--soft-blue-foreground))] border border-[hsl(226_45%_42%/.25)] shadow-none" onClick={send} disabled={!!busy || !lead?.email}>{busy === "send" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}{changed ? "Shrani in pošlji" : "Pošlji"}</Button>
             <Button variant="ghost" className="text-muted-foreground" onClick={() => setSkipOpen(true)} disabled={!!busy}><X className="w-4 h-4 mr-1" />Ne pošlji</Button>
             <span className="ml-auto inline-flex gap-1">
               <Button size="sm" variant="ghost" className="text-emerald-700 hover:bg-emerald-50" title="AI naj piše tako" onClick={() => setExample({ kind: "good", why: "" })}><ThumbsUp className="w-4 h-4 mr-1" />Dober primer</Button>
