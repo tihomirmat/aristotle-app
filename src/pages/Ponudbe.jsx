@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -186,48 +186,17 @@ export default function Ponudbe() {
         </div>
       )}
 
-      {/* Seznam levo, predogled desno */}
-      {offers.length > 0 && (
-        <div className="grid xl:grid-cols-[380px_minmax(0,1fr)] gap-6 items-start">
-          <div className="space-y-2">
-            <h2 className="text-lg mb-1">Vaše ponudbe <span className="text-muted-foreground font-normal text-base">({offers.length})</span></h2>
-            {offers.map((o) => {
-              const St = STATUS[o.offer_status] || STATUS.draft; const active = sel?.id === o.id;
-              return (
-                <button key={o.id} onClick={() => pick(o)} className={`w-full text-left rounded-xl border-2 bg-card px-4 py-3 transition-all ${active ? "border-primary shadow-md" : "border-transparent shadow-sm hover:border-primary/30"}`}>
-                  <div className="flex items-center gap-2"><p className="font-semibold flex-1 truncate">{clientOf(o)}</p>{o.amount ? <span className="font-semibold text-sm">{eur(o.amount)}</span> : null}</div>
-                  <div className="flex items-center gap-2 mt-1.5"><span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${St.cls}`}>{St.label}</span><span className="text-xs text-muted-foreground">{day(o.created_date)}</span></div>
-                </button>
-              );
-            })}
-          </div>
+      {/* Starejše ponudbe brez PDF: besedilo v oknu */}
+      <Dialog open={!!textOffer} onOpenChange={(o) => !o && setTextOffer(null)}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{textOffer ? clientOf(textOffer) : ""}</DialogTitle></DialogHeader>
+          {textOffer && <OfferPreview markdown={textOffer.output_markdown} />}
+          {textOffer?.output_docx_url && <a href={textOffer.output_docx_url} target="_blank" rel="noreferrer" className="text-sm text-primary inline-flex items-center gap-1"><Download className="w-4 h-4" />Prenesi Word</a>}
+        </DialogContent>
+      </Dialog>
 
-          {sel && (
-            <div ref={previewRef} className="xl:sticky xl:top-20 space-y-3 scroll-mt-20">
-              <div className="card-elevated p-4 flex items-center gap-3 flex-wrap">
-                <div className="flex-1 min-w-[180px]">
-                  <p className="font-semibold text-lg leading-tight">{clientOf(sel)}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Pripravljena {day(sel.created_date)}{sel.amount ? ` · ${eur(sel.amount)}` : ""}</p>
-                </div>
-                <Link to={`/ponudbe/nova?duplicate=${sel.id}`}><Button size="lg" className="btn-brand gap-2 text-base"><Pencil className="w-4 h-4" />Spremeni ponudbo</Button></Link>
-                {sel.output_pdf_url && <a href={sel.output_pdf_url} target="_blank" rel="noreferrer"><Button size="lg" variant="outline" className="gap-2"><Download className="w-4 h-4" />Prenesi PDF</Button></a>}
-                {sel.output_docx_url && <a href={sel.output_docx_url} target="_blank" rel="noreferrer"><Button size="lg" variant="outline" className="gap-2"><Download className="w-4 h-4" />Prenesi Word</Button></a>}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap text-sm">
-                <span className="text-muted-foreground">Kaj se je zgodilo s ponudbo?</span>
-                {Object.entries(STATUS).map(([k, s]) => (
-                  <button key={k} onClick={() => setStatus(sel, k)} className={`text-xs font-medium px-3 py-1.5 rounded-full border ${((sel.offer_status || "draft") === k) ? `${s.cls} border-transparent ring-2 ring-offset-1 ring-slate-300` : "bg-card hover:bg-muted"}`}>{s.label}</button>
-                ))}
-                {sel.lead_id && <Link to={`/stranke/${sel.lead_id}`} className="ml-auto text-primary font-medium inline-flex items-center gap-1">Odpri stranko<ArrowRight className="w-3.5 h-3.5" /></Link>}
-              </div>
-              <OfferPreview markdown={sel.output_markdown} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Vzorci */}
-      {(templates.length > 0 || offers.length > 0) && <section className="space-y-3 pt-2">
+      {/* Vzorci (samo, ko še ni ponudb — sicer so desno) */}
+      {templates.length > 0 && offers.length === 0 && <section className="space-y-3 pt-2">
         <div>
           <h2 className="text-lg">Vaši vzorci</h2>
           <p className="text-sm text-muted-foreground">Vzorec je vaša ponudba brez podatkov stranke. Po njem nastane vsaka nova ponudba.</p>
@@ -248,11 +217,11 @@ export default function Ponudbe() {
         </div>
       </section>}
 
-      <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground border-t pt-4">
+      {offers.length === 0 && <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground border-t pt-4">
         {!hasByok && !quotaExhausted && <span>Brezplačno lahko pripravite še <strong className="text-foreground">{freeGenLeft}</strong> od 5 ponudb.</span>}
         {isAdmin && hasByok && <span>Admin: lasten AI račun ({business.offers_byok_provider} · {business.offers_byok_model})</span>}
         <Link to="/ponudbe/nastavitve" className="ml-auto inline-flex items-center gap-1.5 hover:text-foreground"><Settings className="w-4 h-4" />Nastavitve ponudb</Link>
-      </div>
+      </div>}
     </div>
   );
 }
