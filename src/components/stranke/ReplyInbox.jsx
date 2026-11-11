@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Users, Mail, MessageCircleReply, MessageSquare, Megaphone, Star } from "lucide-react";
 import ReplyReview, { reasonFor } from "@/components/crm/ReplyReview";
+import { DraftIcon } from "@/components/crm/DraftMark";
 import { ago, firstLine, SOURCES } from "@/lib/crm";
 
 // Skupine v »Čaka na vaš odgovor« — od kod je prišlo (lastnik 11. 11.: ne mešaj povpraševanj, kampanj in klepeta).
