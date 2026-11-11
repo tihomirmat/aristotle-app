@@ -5,7 +5,7 @@ import { syncCampaignMailboxesFor } from '../../shared/campaignSync.js';
 // Klic: urnik/interno { internal_secret, business_id?, mailbox_id? } ali lastnik { business_id | mailbox_id }.
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
-const VERSION = 'campaign-mail-2026-11-11h';
+const VERSION = 'campaign-mail-2026-11-12-enc';
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
   || (!!user.email && (b.created_by === user.email || b.owner_email === user.email)));
 
