@@ -610,6 +610,17 @@
       "type": "string",
       "description": "E-po\u0161ta lastnika podjetja. Nujno za RLS vidljivost, ker service-role zapisi dobijo created_by = service+... (completeOnboarding)."
     },
+    "terms_version": {
+      "type": "string",
+      "description": "Razli\u010dica splo\u0161nih pogojev, ki jo je lastnik sprejel (TERMS_VERSION v src/pages/Pravno.jsx)"
+    },
+    "terms_accepted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "terms_accepted_by": {
+      "type": "string"
+    },
     "auto_send": {
       "type": "object",
       "description": "Samodejno po\u0161iljanje po vrsti: { web_form_lead, email_inquiry, chatbot_handoff, review_request, reactivation, campaign } (true = brez odobritve)"
