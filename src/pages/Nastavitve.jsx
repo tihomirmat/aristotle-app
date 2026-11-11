@@ -246,7 +246,7 @@ export default function Nastavitve() {
 
         {/* PROFIL */}
         <TabsContent value="profil">
-          <div className="max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pb-24 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pb-24 items-start">
             <div className="space-y-2"><Label>Ime podjetja *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
             <div className="space-y-2">
               <Label>Dejavnost</Label>
