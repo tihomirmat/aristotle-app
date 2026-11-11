@@ -11,9 +11,8 @@ import { lower, classifyBounce, isAutoReply, isUnsubscribe, replyOnly, pauseIfTo
 // Klic: urnik/interno { internal_secret, business_id?, mailbox_id? } ali lastnik { business_id }.
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
-const VERSION = 'campaign-mail-2026-11-11b';
+const VERSION = 'campaign-mail-2026-11-11c';
 const MAX_PER_RUN = 60;
-const FIRST_RUN_DAYS = 2;
 const APP_URL = (Deno.env.get('APP_URL') || 'https://aristotle-smart-growth.base44.app').replace(/\/$/, '');
 
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
@@ -24,9 +23,15 @@ async function readMailbox(mb) {
   let maxUid = Number(mb.imap_last_uid) || 0;
   const c = await imapConnect({ host: mb.imap_host, port: Number(mb.imap_port) || 993, user: mb.email, pass: mb.imap_pass, timeoutMs: 15000, socketTimeoutMs: 60000 });
   try {
-    await c.select('INBOX');
+    const sel = await c.select('INBOX');
     const last = Number(mb.imap_last_uid) || 0;
-    let uids = last > 0 ? await c.uidSearch(`UID ${last + 1}:*`) : await c.uidSearch(`SINCE ${imapDate(new Date(Date.now() - FIRST_RUN_DAYS * 86400000))}`);
+    // Prvo branje (ob povezavi predala, še pred pošiljanjem): samo zapomni si, kje je predal — stara pošta ni povezana s kampanjami.
+    if (!last) {
+      let top = sel?.uidNext ? sel.uidNext - 1 : 0;
+      if (!top) { const all = await c.uidSearch(`SINCE ${imapDate(new Date(Date.now() - 30 * 86400000))}`); top = all.length ? Math.max(...all) : 0; }
+      return { mails: [], maxUid: top || 1 };
+    }
+    let uids = await c.uidSearch(`UID ${last + 1}:*`);
     uids = (uids || []).filter((u) => u > last).sort((a, b) => a - b).slice(0, MAX_PER_RUN);
     if (uids.length) {
       const sizes = await c.uidSizes(uids);
@@ -93,7 +98,8 @@ async function syncBusiness(base44, business, mailboxes) {
         // Komu se je vrnilo: sklic v Message-ID (cmp-<vključitev>) ali naslov iz poročila, ki smo mu pisali.
         const hits = new Map();
         for (const ref of b.refs) { const e = enrById[ref]; if (e) hits.set(emailOf(e), true); }
-        for (const em of [...b.recipients, ...b.emailsInText]) if (enrByEmail.has(em) && em !== lower(mb.email)) hits.set(em, true);
+        const sentFromHere = (em) => (enrByEmail.get(em) || []).some((e) => e.mailbox_id === mb.id && e.last_sent_at);
+        for (const em of [...b.recipients, ...b.emailsInText]) if (em !== lower(mb.email) && sentFromHere(em)) hits.set(em, true);
         if (!hits.size) continue;
         const now = new Date().toISOString();
         for (const em of hits.keys()) {
@@ -114,9 +120,9 @@ async function syncBusiness(base44, business, mailboxes) {
         }
         continue;
       }
-      // Ni odbito: ali je to odgovor nekoga, ki smo mu pisali v kampanji?
-      const enrs = enrByEmail.get(m.fromEmail);
-      if (!enrs?.length) continue;
+      // Ni odbito: ali je to odgovor nekoga, ki smo mu s TEGA predala že pisali (pred tem sporočilom)?
+      const enrs = (enrByEmail.get(m.fromEmail) || []).filter((e) => e.mailbox_id === mb.id && e.last_sent_at && new Date(m.date) >= new Date(e.created_date));
+      if (!enrs.length) continue;
       if (isAutoReply(m)) { res.auto_replies++; continue; }
       const now = new Date(m.date).toISOString();
       if (isUnsubscribe(m.text)) {
