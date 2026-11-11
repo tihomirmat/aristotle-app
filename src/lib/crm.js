@@ -21,6 +21,7 @@ export const SOURCES = {
   chatbot: { label: "Klepet", icon: MessageSquare, cls: "text-violet-700 bg-violet-50" },
   import: { label: "Uvoz", icon: Upload, cls: "text-slate-700 bg-slate-100" },
   manual: { label: "Ročno", icon: PenLine, cls: "text-slate-700 bg-slate-100" },
+  campaign: { label: "Odgovor na kampanjo", icon: Send, cls: "text-amber-800 bg-amber-50" },
 };
 
 export const ACTIVITY = {
@@ -107,4 +108,6 @@ export const W = {
   racun: ["račun", "računa", "računi", "računov"],
   pogovor: ["pogovor", "pogovora", "pogovori", "pogovorov"],
   zapis: ["zapis", "zapisa", "zapisi", "zapisov"],
+  naslov: ["naslov", "naslova", "naslovi", "naslovov"],
+  oseba: ["oseba", "osebi", "osebe", "oseb"],
 };
