@@ -16,6 +16,7 @@ import { Link } from "react-router-dom";
 import { addDays } from "date-fns";
 import { CAMPAIGN_GOALS, CAMPAIGN_STATUS, STAGES, SOURCES, pl, cnt, W, fmtDateTime } from "@/lib/crm";
 import { useCrmInvalidate } from "@/components/crm/CrmDialogs";
+import { DraftIcon } from "@/components/crm/DraftMark";
 import SendingMailboxes, { dailyLimit, sentToday, SignatureDialog } from "@/components/kampanje/SendingMailboxes";
 import ContactLists, { VerifyHelp } from "@/components/kampanje/ContactLists";
 
@@ -536,8 +537,8 @@ export default function Kampanje() {
                     </Link>
                   )}
                   {s.pending > 0 && (
-                    <Link to="/stranke?tab=odgovori" className="flex items-center gap-2 rounded-xl border border-primary/30 bg-accent/50 px-3 py-2 text-sm hover:bg-accent">
-                      <span className="font-medium">Na vašo potrditev čaka: {cnt(s.pending, W.sporocilo)}</span><ArrowRight className="w-4 h-4 ml-auto text-primary" />
+                    <Link to="/stranke?tab=odgovori" className="flex items-center gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 px-3 py-2 text-sm hover:bg-amber-50">
+                      <DraftIcon /><span className="font-medium">Pripravljeno, čaka na vašo potrditev: {cnt(s.pending, W.sporocilo)}</span><ArrowRight className="w-4 h-4 ml-auto text-amber-700" />
                     </Link>
                   )}
 
