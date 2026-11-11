@@ -137,7 +137,7 @@ export default function Dashboard() {
               <ul className="divide-y">
                 {drafts.slice(0, 6).map((d) => { const l = leadsById[d.lead_id]; const r = reasonFor(d.pillar); return (
                   <li key={d.id}><Link to={l ? `/stranke/${l.id}` : "/stranke?tab=odgovori"} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/40">
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${r.color}`}><r.icon className="w-4 h-4" /></span>
+                    <DraftIcon />
                     <span className="min-w-0 flex-1"><span className="block text-sm font-medium truncate">{l?.name || "Stranka"} <span className="font-normal text-muted-foreground">· {r.label}</span></span><span className="block text-xs text-muted-foreground truncate">{d.subject || String(d.body || "").slice(0, 90)}</span></span>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">{ago(d.created_date)}</span><ChevronRight className="w-4 h-4 text-muted-foreground/50" />
                   </Link></li>
