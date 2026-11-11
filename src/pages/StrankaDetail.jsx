@@ -132,28 +132,7 @@ export default function StrankaDetail() {
         </div>
       </div>
 
-      {/*ODGOVORI_TU*/}
-      {false && (
-        <div className="space-y-3">
-          {pending.map((d) => {
-            // Prvi odgovor vsake vrste je odprt, naslednji iste vrste so zaprti (klik odpre).
-            const firstOfKind = pending.find((x) => x.pillar === d.pillar)?.id === d.id;
-            const isOpen = firstOfKind || openReplies.includes(d.id);
-            if (isOpen) return <ReplyReview key={d.id} draft={d} lead={lead} activities={activities} />;
-            const R = reasonFor(d.pillar);
-            return (
-              <button key={d.id} onClick={() => setOpenReplies((o) => [...o, d.id])} className="w-full text-left rounded-xl border bg-card px-4 py-3 flex items-center gap-3 hover:border-primary/40 hover:shadow-sm">
-                <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${R.color}`}><R.icon className="w-3.5 h-3.5" />{R.label}</span>
-                <span className="text-sm font-medium truncate flex-1">{d.subject || "Predlagan odgovor"}</span>
-                <span className="text-xs text-muted-foreground shrink-0">{ago(d.created_date)}</span>
-                <span className="text-xs text-primary font-medium shrink-0 inline-flex items-center gap-1">Odpri<ChevronDown className="w-3.5 h-3.5" /></span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-        {/* Zavihki */}
+        {/* Zavihki: Časovnica (vsi pogovori), ponudbe, termini — na vrhu */}
         <div className="card-elevated min-w-0">
           <div className="flex gap-1 border-b px-3 overflow-x-auto">
             {TABS.map(([k, l, n]) => (
@@ -191,6 +170,28 @@ export default function StrankaDetail() {
             )}
           </div>
         </div>
+
+      {/* Predlagani odgovori — pod časovnico */}
+      {pending.length > 0 && (
+        <div id="odgovori" className="space-y-3 scroll-mt-4">
+          <p className="text-sm font-semibold">Pripravljeni odgovori</p>
+          {pending.map((d) => {
+            // Prvi odgovor vsake vrste je odprt, naslednji iste vrste so zaprti (klik odpre).
+            const firstOfKind = pending.find((x) => x.pillar === d.pillar)?.id === d.id;
+            const isOpen = firstOfKind || openReplies.includes(d.id);
+            if (isOpen) return <ReplyReview key={d.id} draft={d} lead={lead} activities={activities} />;
+            const R = reasonFor(d.pillar);
+            return (
+              <button key={d.id} onClick={() => setOpenReplies((o) => [...o, d.id])} className="w-full text-left rounded-xl border bg-card px-4 py-3 flex items-center gap-3 hover:border-primary/40 hover:shadow-sm">
+                <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${R.color}`}><R.icon className="w-3.5 h-3.5" />{R.label}</span>
+                <span className="text-sm font-medium truncate flex-1">{d.subject || "Predlagan odgovor"}</span>
+                <span className="text-xs text-muted-foreground shrink-0">{ago(d.created_date)}</span>
+                <span className="text-xs text-primary font-medium shrink-0 inline-flex items-center gap-1">Odpri<ChevronDown className="w-3.5 h-3.5" /></span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       </div>
 
