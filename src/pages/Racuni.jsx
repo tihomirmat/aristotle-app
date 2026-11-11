@@ -14,6 +14,7 @@ import { sendMonthlyInvoicePackage } from "@/functions/sendMonthlyInvoicePackage
 import { fnError } from "@/lib/fn-error";
 import { cnt, W } from "@/lib/crm";
 import { HelperHeader } from "@/components/pomocniki/HelperKit";
+import InvoiceInbox, { invoiceAddressOf } from "@/components/racuni/InvoiceInbox";
 
 const monthKey = (d) => { const dt = new Date(d); return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`; };
 const monthLabel = (ym) => { const [y, m] = ym.split("-"); return new Date(Number(y), Number(m) - 1, 1).toLocaleString("sl-SI", { month: "long", year: "numeric" }); };
@@ -149,7 +150,7 @@ export default function Racuni() {
       {/* Nastavitev: dokler ni vse urejeno, trije koraki; potem ena vrstica s stanjem */}
       {allSet && !showSetup ? (
         <div className="card-elevated px-5 py-3.5 flex items-center gap-x-6 gap-y-2 flex-wrap text-sm">
-          <span className="inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" />Račune iz pošte <strong>{business?.imap_user}</strong> shranimo sami</span>
+          <span className="inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" />Račune iz pošte <strong>{business?.imap_user}</strong> in s <strong>{invoiceAddressOf(business)}</strong> shranimo sami</span>
           <span className="inline-flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" />Vsakega 1. v mesecu jih dobi <strong>{business?.accountant_email}</strong></span>
           <button className="ml-auto text-primary font-medium" onClick={() => setShowSetup(true)}>Spremeni</button>
         </div>
@@ -157,7 +158,7 @@ export default function Racuni() {
         <div className="grid md:grid-cols-3 gap-3">
         <StepCard n={1} done={mailOn} icon={Mail} title="Računi iz e-pošte" state={mailOn ? `Vključeno. Račune, ki pridejo na ${business?.imap_user || "vaš predal"}, shranimo sami.` : "Ni povezano. Povežite predal in račune iz pošte bomo shranjevali sami."}>
           {mailOn
-            ? <p className="text-xs text-muted-foreground">Predal preverimo vsakih 10 minut. Shranimo račune v priponki (PDF).</p>
+            ? <p className="text-xs text-muted-foreground">Predal preverimo vsakih 10 minut. Shranimo račune v priponki (PDF). Naslov za posredovanje računov je spodaj.</p>
             : <Link to="/nastavitve?tab=integracije"><Button className="btn-brand w-full gap-2">Poveži e-poštni predal<ArrowRight className="w-4 h-4" /></Button></Link>}
         </StepCard>
 
@@ -178,6 +179,8 @@ export default function Racuni() {
         </StepCard>
       </div>
       )}
+
+      {mailOn && <InvoiceInbox business={business} onSaved={refreshBusiness} />}
 
       <div className="grid xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
         {/* Seznam računov */}
