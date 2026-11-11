@@ -19,6 +19,12 @@ Deno.serve(async (req) => {
         steps: [{ order: 1, delay_days: 0, subject: 'Preizkus e-poštne kampanje', body: 'Spoštovani,\n\nto je preizkusno sporočilo e-poštne kampanje iz aplikacije AI Aristotle (podjetje: {podjetje}).\n\nNa to sporočilo ni treba odgovoriti.', ai_personalize: false }, { order: 2, delay_days: 3, subject: 'Preizkus: opomnik', body: 'Spoštovani,\n\nto je drugo preizkusno sporočilo.', ai_personalize: false }] });
       return Response.json({ mailbox_id: mb.id, baseline, imp, campaign_id: camp.id });
     }
+    if (body.action === 'fix') {
+      await sr.DraftMessage.delete('6af458960832a8c8cb4be460').catch((e) => e?.message);
+      await sr.OfferGeneration.delete('6af4588737d4729a1e91d2e3').catch((e) => e?.message);
+      await sr.Lead.update('6ab3c2e3271cadf1cf013e3b', { reply_mailbox_id: '' });
+      return Response.json({ fixed: true });
+    }
     if (body.action === 'run') return Response.json(await inv('runCampaigns', { business_id: BID }));
     if (body.action === 'sync') return Response.json(await inv('syncCampaignMailboxes', { business_id: BID }));
     if (body.action === 'state') {
