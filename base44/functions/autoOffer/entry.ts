@@ -9,7 +9,7 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0';
 // 3) Sporočilo brez želje po ponudbi → navaden odgovor (nova stranka) ali nič (obstoječa — opravilo že ustvari crmEvents).
 // Klic: { business_id, lead_id, text, subject, is_reply, internal_secret }  (iz syncInbox) ali kot lastnik { business_id, lead_id }.
 
-const VERSION = 'auto-offer-2026-11-11b';
+const VERSION = 'auto-offer-2026-11-11c';
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const ownsBusiness = (user, b) => !!user && !!b && (user.role === 'admin' || b.created_by_id === user.id
@@ -91,7 +91,7 @@ Vrni ZGOLJ JSON: {"wants_offer": true, "missing": ["…"], "service": "…"}`;
       await sr.DraftMessage.update(draftId, { status: 'approved', reviewer_notes: `${fresh.reviewer_notes ? fresh.reviewer_notes + ' ' : ''}Samodejno poslano (samodejne ponudbe).` });
       sent = true;
     }
-    await sr.Activity.create({ business_id: business.id, lead_id: lead.id, type: 'offer', direction: 'internal', subject: `Samodejno pripravljena ponudba${offer.amount ? ` (${eurFmt(offer.amount)})` : ''}`, content: sent ? 'Poslana samodejno.' : 'Čaka na vaš pregled.', occurred_at: new Date().toISOString(), is_automated: true, owner_email: owner, created_by: owner }).catch(() => {});
+    await sr.Activity.create({ business_id: business.id, lead_id: lead.id, type: 'offer', direction: 'internal', subject: `Samodejno pripravljena ponudba${offer.amount ? ` (${eurFmt(offer.amount)})` : ''}`, content: sent ? 'Poslana samodejno.' : 'Čaka na vaš pregled.', draft_id: draftId, occurred_at: new Date().toISOString(), is_automated: true, owner_email: owner, created_by: owner }).catch(() => {});
     return Response.json({ success: true, version: VERSION, action: sent ? 'offer_sent' : 'offer_review', draft_id: draftId, generation_id: offer.generation_id, pdf: offer.output_pdf_url, amount: offer.amount || null });
   } catch (error) {
     return Response.json({ error: 'Samodejna ponudba: ' + (error?.message || String(error)), version: VERSION });
