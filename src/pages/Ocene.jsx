@@ -12,6 +12,10 @@ import { toast } from "sonner";
 import { generateDraft } from "@/functions/generateDraft";
 import { fnError } from "@/lib/fn-error";
 import { HelperHeader, PillTabs, Stepper, StepCard, Stat, Empty } from "@/components/pomocniki/HelperKit";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ReplyReview from "@/components/crm/ReplyReview";
+import { X } from "lucide-react";
 
 const DELAYS = [[2, "Še isti dan", "Čez 2 uri"], [24, "Naslednji dan", "Priporočamo"], [72, "Čez 3 dni", "Ko se vtisi poležejo"]];
 const STATUS = {
@@ -48,9 +52,12 @@ export default function Ocene() {
   const [linkInput, setLinkInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [busyFor, setBusyFor] = useState(null);
+  const [reviewId, setReviewId] = useState(null); // prošnja, odprta v oknu za pregled in pošiljanje
+  const [toCancel, setToCancel] = useState(null);
 
   const { data: drafts = [] } = useQuery({ queryKey: ["ocene-drafts", bid], queryFn: () => base44.entities.DraftMessage.filter({ business_id: bid }), enabled: !!bid });
   const { data: customers = [] } = useQuery({ queryKey: ["converted-leads", bid], queryFn: () => base44.entities.Lead.filter({ business_id: bid, status: "converted" }), enabled: !!bid });
+  const { data: allLeads = [] } = useQuery({ queryKey: ["leads", bid], queryFn: () => base44.entities.Lead.filter({ business_id: bid }, "-created_date", 5000), enabled: !!bid });
 
   useEffect(() => { setLinkInput(business?.google_review_link || ""); }, [business?.google_review_link]);
 
@@ -62,7 +69,16 @@ export default function Ocene() {
   const pending = reqs.filter((d) => d.status === "pending" || d.status === "flagged_for_review").length;
   const asked = new Set(reqs.map((d) => d.lead_id));
   const toAsk = customers.filter((l) => !asked.has(l.id));
-  const nameOf = (id) => customers.find((l) => l.id === id)?.name;
+  const leadOf = (id) => allLeads.find((l) => l.id === id) || customers.find((l) => l.id === id);
+  const nameOf = (id) => leadOf(id)?.name;
+  const isPending = (d) => d.status === "pending" || d.status === "flagged_for_review";
+  const reviewDraft = reqs.find((d) => d.id === reviewId);
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["ocene-drafts", bid] }); qc.invalidateQueries({ queryKey: ["drafts-all", bid] }); };
+  // Prekliči prošnjo: osnutek se izbriše, stranka se vrne med »Koga lahko prosite«.
+  const cancelRequest = async (d) => {
+    try { await base44.entities.DraftMessage.delete(d.id); refresh(); if (reviewId === d.id) setReviewId(null); toast.success("Prošnja je preklicana. Nič ni bilo poslano."); }
+    catch (e) { toast.error(fnError(e)); }
+  };
 
   const save = async (data, msg = "Shranjeno.") => {
     setSaving(true);
@@ -81,8 +97,9 @@ export default function Ocene() {
     try {
       const res = await generateDraft({ business_id: bid, lead_id: lead.id, pillar: "review_request", sequence_step: 1 });
       const d = res?.data ?? res; if (d?.error) throw new Error(d.error);
-      qc.invalidateQueries({ queryKey: ["ocene-drafts", bid] }); qc.invalidateQueries({ queryKey: ["drafts-all", bid] });
-      toast.success(`Prošnja za ${lead.name} je pripravljena. Preberite in pošljite jo v Strankah.`);
+      await qc.refetchQueries({ queryKey: ["ocene-drafts", bid] }); qc.invalidateQueries({ queryKey: ["drafts-all", bid] });
+      // Takoj odpri pripravljeno prošnjo: preberete, pošljete ali prekličete.
+      if (d?.draft?.id) setReviewId(d.draft.id);
     } catch (e) { toast.error(fnError(e)); } finally { setBusyFor(null); }
   };
 
@@ -155,9 +172,9 @@ export default function Ocene() {
             <Stat value={sent} label="Poslane prošnje doslej" />
           </div>
           {pending > 0 && (
-            <Link to="/stranke?tab=odgovori" className="flex items-center gap-3 rounded-2xl border-2 border-primary/30 bg-accent/50 px-5 py-4 hover:bg-accent">
+            <button onClick={() => setReviewId(reqs.find(isPending)?.id)} className="w-full text-left flex items-center gap-3 rounded-2xl border-2 border-primary/30 bg-accent/50 px-5 py-4 hover:bg-accent">
               <Send className="w-5 h-5 text-primary" /><span className="font-semibold flex-1">Pripravljene prošnje čakajo, da jih preberete in pošljete.</span><span className="text-primary font-semibold inline-flex items-center gap-1">Odpri<ArrowRight className="w-4 h-4" /></span>
-            </Link>
+            </button>
           )}
           <div className="grid xl:grid-cols-2 gap-6 items-start">
             <div className="card-elevated p-6">
@@ -180,10 +197,15 @@ export default function Ocene() {
               <p className="text-sm text-muted-foreground mt-1 mb-4">Kaj se je zgodilo z vsako prošnjo.</p>
               {reqs.length === 0 ? <Empty icon={Star} title="Prošenj še ni" text="Prva se pojavi, ko nekoga prosite za oceno." /> : (
                 <div className="divide-y">
-                  {reqs.slice(0, 12).map((d) => { const [label, cls] = STATUS[d.status] || [d.status, "bg-slate-100 text-slate-600"]; return (
+                  {reqs.slice(0, 12).map((d) => { const [label, cls] = STATUS[d.status] || [d.status, "bg-slate-100 text-slate-600"]; const p = isPending(d); return (
                     <div key={d.id} className="py-3 flex items-center gap-3">
                       <div className="flex-1 min-w-0"><p className="font-medium truncate">{nameOf(d.lead_id) || d.subject || "Prošnja za oceno"}</p><p className="text-xs text-muted-foreground">{d.created_date ? format(new Date(d.created_date), "d. M. yyyy") : ""}</p></div>
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${cls}`}>{label}</span>
+                      {p ? (
+                        <span className="flex items-center gap-1.5 shrink-0">
+                          <Button size="sm" variant="outline" className="border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100" onClick={() => setReviewId(d.id)} title="Preberite prošnjo in jo pošljite">Preglej in pošlji<ArrowRight className="w-3.5 h-3.5 ml-1" /></Button>
+                          <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-600 px-2" onClick={() => setToCancel(d)} aria-label="Prekliči prošnjo" title="Prekliči prošnjo"><X className="w-4 h-4" /></Button>
+                        </span>
+                      ) : <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${cls}`}>{label}</span>}
                     </div>
                   ); })}
                 </div>
@@ -192,6 +214,25 @@ export default function Ocene() {
           </div>
         </div>
       )}
+
+      {/* Pregled prošnje: preberete, uredite, pošljete ali prekličete */}
+      <Sheet open={!!reviewDraft} onOpenChange={(o) => { if (!o) { setReviewId(null); refresh(); } }}>
+        <SheetContent className="w-full sm:max-w-5xl overflow-y-auto">
+          <SheetHeader className="text-left"><SheetTitle className="font-display text-xl">Prošnja za oceno{reviewDraft ? ` — ${nameOf(reviewDraft.lead_id) || ""}` : ""}</SheetTitle><SheetDescription>Preberite in pošljite. Če si premislite, prošnjo prekličite — nič ne bo poslano.</SheetDescription></SheetHeader>
+          {reviewDraft && (
+            <div className="mt-4 space-y-4">
+              <ReplyReview draft={reviewDraft} lead={leadOf(reviewDraft.lead_id)} showCustomerLink onDone={() => { setReviewId(null); refresh(); }} />
+              <div className="flex justify-end"><Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" onClick={() => cancelRequest(reviewDraft)}><X className="w-4 h-4 mr-1.5" />Prekliči prošnjo</Button></div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+      <AlertDialog open={!!toCancel} onOpenChange={(o) => !o && setToCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Prekličem prošnjo za {toCancel ? nameOf(toCancel.lead_id) || "to stranko" : ""}?</AlertDialogTitle><AlertDialogDescription>Prošnja ni bila poslana in ne bo. Stranka se vrne na seznam »Koga lahko prosite za oceno«.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Ne, obdrži</AlertDialogCancel><AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => { const d = toCancel; setToCancel(null); cancelRequest(d); }}>Prekliči prošnjo</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Nastavitve */}
       {hasLink && tab === "settings" && (
