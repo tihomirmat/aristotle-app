@@ -3,6 +3,7 @@ import nodemailer from 'npm:nodemailer@6.9.9';
 import { imapConnect, findSentBox } from '../../shared/imap.js';
 import { lower, inSendWindow, ljNow, remainingToday, perRunCap, sentToday, mergeFields, pauseIfTooManyBounces, allRecords, htmlToText, emailifyHtml, hasHtml, fetchAttachments } from '../../shared/campaignMail.js';
 import { syncCampaignMailboxesFor } from '../../shared/campaignSync.js';
+import { openMailbox } from '../../shared/secretBox.js';
 
 // E-poštne kampanje (vsako uro).
 // 1) Najprej prebere kampanjske predale (odbita sporočila, odgovori, odjave) — syncCampaignMailboxes.
@@ -12,7 +13,7 @@ import { syncCampaignMailboxesFor } from '../../shared/campaignSync.js';
 //    Najprej nadaljevanja sekvence (follow-up), nato novi naslovi. Vsaka oseba dobiva vsa sporočila z istega predala.
 
 const INTERNAL_SECRET = Deno.env.get('INTERNAL_FUNCTION_SECRET') || '';
-const VERSION = 'run-campaigns-2026-11-11-html2';
+const VERSION = 'run-campaigns-2026-11-12-enc';
 const MAX_AI_PER_RUN = 15;
 const MAX_LIST_SENDS_PER_RUN = 40;
 const DAY = 86400000;
@@ -241,7 +242,7 @@ Deno.serve(async (req) => {
       if (!business) continue;
       const owner = business.owner_email || business.created_by;
       if (!senderCache[camp.business_id]) {
-        const mbs = await sr.SendingMailbox.filter({ business_id: camp.business_id });
+        const mbs = await Promise.all((await sr.SendingMailbox.filter({ business_id: camp.business_id })).map(openMailbox)); // gesla samo v pomnilniku
         senderCache[camp.business_id] = Object.fromEntries(mbs.filter((m) => m.status !== 'error' && m.smtp_host && m.smtp_pass).map((m) => [m.id, new MailboxSender(sr, m)]));
       }
       const senders = senderCache[camp.business_id];
