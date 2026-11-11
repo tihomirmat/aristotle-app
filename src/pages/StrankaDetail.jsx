@@ -132,7 +132,8 @@ export default function StrankaDetail() {
         </div>
       </div>
 
-      {pending.length > 0 && (
+      {/*ODGOVORI_TU*/}
+      {false && (
         <div className="space-y-3">
           {pending.map((d) => {
             // Prvi odgovor vsake vrste je odprt, naslednji iste vrste so zaprti (klik odpre).
@@ -160,7 +161,7 @@ export default function StrankaDetail() {
             ))}
           </div>
           <div className="p-5">
-            {tab === "timeline" && <Timeline activities={activities} emptyText="Tu se bodo pokazala vsa sporočila, klici, opombe in spremembe." />}
+            {tab === "timeline" && <Timeline activities={activities} pendingDrafts={pending} onPendingClick={() => document.getElementById("odgovori")?.scrollIntoView({ behavior: "smooth", block: "start" })} onAdd={() => setDlg("log")} emptyText="Tu se bodo pokazala vsa sporočila, klici, opombe in spremembe." />}
 
             {tab === "offers" && (
               <div className="space-y-2">
