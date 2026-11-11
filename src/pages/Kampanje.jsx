@@ -374,7 +374,7 @@ export default function Kampanje() {
               const mbs = (c.mailbox_ids || []).map((id) => mbById[id]).filter(Boolean);
               const mbError = c.status === "active" && mbs.length > 0 && mbs.every((m) => m.status === "error");
               const explain = bounced ? "Ustavili smo jo, ker se je vrnilo preveč sporočil."
-                : c.status === "active" ? (isList ? `Pošilja pon–pet 8–17. Na prvo sporočilo čaka še ${cnt(s.waiting || 0, W.naslov)}, sekvenco nadaljuje ${cnt(s.active || 0, W.oseba)}.` : `Sporočila še prejema: ${cnt(s.active || 0, W.stranka)}.`)
+                : c.status === "active" ? (isList ? `Pošilja pon–pet 8–17. Še brez prvega sporočila: ${cnt(s.waiting || 0, W.naslov)}. Sekvenco nadaljuje: ${cnt(s.active || 0, W.oseba)}.` : `Sporočila še prejema: ${cnt(s.active || 0, W.stranka)}.`)
                 : c.status === "paused" ? "Nič se ne pošilja, dokler ne kliknete »Nadaljuj«."
                 : c.status === "completed" ? "Vsa sporočila so bila poslana."
                 : "Nič se ne pošilja, dokler ne kliknete »Zaženi«.";
