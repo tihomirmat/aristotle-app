@@ -50,6 +50,16 @@ Deno.serve(async (req) => {
       await c.logout();
       return Response.json({ to, sendErr, found, hdr });
     }
+    if (body.action === 'peek') {
+      const b = (await sr.Business.filter({ id: BID }))[0];
+      const c = await imapConnect({ host: b.imap_host, port: b.imap_port || 993, user: b.imap_user, pass: b.imap_pass });
+      const sel = await c.select('INBOX');
+      const top = (sel.uidNext || 1) - 1;
+      const uids = await c.uidSearch(`UID ${Math.max(1, top - 6)}:*`);
+      const ms = await c.uidFetchSource(uids.slice(-6));
+      await c.logout();
+      return Response.json({ sel, msgs: ms.map((m) => { const h = new TextDecoder().decode(m.source).split(/\r?\n\r?\n/)[0]; return { uid: m.uid, h: h.split(/\r?\n/).filter((l) => /^(from|subject|to|delivered-to|x-failed-recipients|date):/i.test(l)).join(' | ').slice(0, 400) }; }) });
+    }
     if (body.action === 'run') return Response.json(await inv('runCampaigns', { business_id: BID }));
     if (body.action === 'sync') return Response.json(await inv('syncCampaignMailboxes', { business_id: BID }));
     if (body.action === 'state') {
