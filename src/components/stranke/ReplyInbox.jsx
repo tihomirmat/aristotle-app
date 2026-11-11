@@ -73,7 +73,7 @@ export default function ReplyInbox({ drafts = [], leads = [], activities = [] })
               return (
                 <button key={d.id} onClick={() => setSelectedId(d.id)} className={`w-full text-left px-4 py-3 transition-colors ${on ? "bg-accent/60 border-l-4 border-primary pl-3" : "hover:bg-muted/40"}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold text-sm truncate">{l?.name || "Stranka"}</p>
+                    <p className="font-semibold text-sm truncate flex items-center gap-2"><DraftIcon />{l?.name || "Stranka"}</p>
                     <span className="text-[11px] text-muted-foreground shrink-0">{ago(d.created_date)}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><r.icon className="w-3 h-3" />{active === "campaign_replies" && d.pillar === "web_form_lead" ? "Odgovor na kampanjo" : r.label}{active === "inquiries" && src ? ` · ${src.label}` : ""}{d.status === "flagged_for_review" ? " · preverite" : ""}</p>
