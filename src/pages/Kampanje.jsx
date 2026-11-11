@@ -251,7 +251,7 @@ function BounceAlert({ c, onResume }) {
   const list = a.addresses || [];
   return (
     <div className="rounded-xl border border-red-200 bg-red-50/60 p-4 space-y-3 text-sm">
-      <p className="font-semibold text-red-800 flex items-center gap-2"><MailX className="w-4 h-4" />Ustavljeno: vrnilo se je {cnt(a.count || list.length, W.sporocilo)}{a.sent ? ` (od ${a.sent} poslanih, ${((a.rate || 0) * 100).toFixed(1).replace(".", ",")} %)` : ""}</p>
+      <p className="font-semibold text-red-800 flex items-center gap-2"><MailX className="w-4 h-4" />Ustavljeno. Vrnjena sporočila: {a.count || list.length}{a.sent ? ` od ${a.sent} prejemnikov (${((a.rate || 0) * 100).toFixed(1).replace(".", ",")} %)` : ""}</p>
       <p className="text-red-900/80">Ti naslovi ne obstajajo več. Ponudniki e-pošte (Gmail, Outlook, Siol …) spremljajo, koliko vaših sporočil se vrne — pri več kot nekaj odstotkih začnejo vašo pošto pošiljati med neželeno ali jo zavračati, tudi običajna sporočila z vaše domene. Vrnjene naslove smo že izločili.</p>
       <ul className="text-xs space-y-0.5">
         {list.slice(0, 5).map((x) => <li key={x.email}><span className="font-medium">{x.email}</span>{x.reason ? ` — ${x.reason}` : ""}</li>)}
