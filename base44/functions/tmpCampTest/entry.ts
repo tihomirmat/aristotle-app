@@ -25,6 +25,12 @@ Deno.serve(async (req) => {
       await sr.Lead.update('6ab3c2e3271cadf1cf013e3b', { reply_mailbox_id: '' });
       return Response.json({ fixed: true });
     }
+    if (body.action === 'resume') {
+      const camp = (await sr.Campaign.filter({ id: body.campaign_id }))[0];
+      const imp = await inv('importContacts', { business_id: BID, list_id: camp.list_ids[0], rows: body.rows || [] });
+      await sr.Campaign.update(camp.id, { status: 'active', paused_reason: '', resumed_at: new Date().toISOString() });
+      return Response.json({ imp });
+    }
     if (body.action === 'run') return Response.json(await inv('runCampaigns', { business_id: BID }));
     if (body.action === 'sync') return Response.json(await inv('syncCampaignMailboxes', { business_id: BID }));
     if (body.action === 'state') {
